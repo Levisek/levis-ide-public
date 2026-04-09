@@ -1,0 +1,59 @@
+{
+  "name": "levis-ide-public",
+  "version": "1.0.0",
+  "description": "LevisIDE - Electron IDE with Claude Code inspector/preview workflow",
+  "main": "dist/electron/main.js",
+  "scripts": {
+    "dev": "tsc && concurrently \"tsc -w\" \"electron .\"",
+    "build": "tsc && electron-builder --win",
+    "start": "electron ."
+  },
+  "build": {
+    "appId": "cz.levis.ide",
+    "productName": "LevisIDE",
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "files": [
+      "dist/**/*",
+      "src/index.html",
+      "src/popout.html",
+      "src/popout-panel.html",
+      "src/css/**/*",
+      "node_modules/**/*",
+      "assets/**/*"
+    ]
+  },
+  "keywords": [],
+  "author": "Martin Levinger",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/addon-search": "^0.16.0",
+    "@xterm/addon-web-links": "^0.12.0",
+    "@xterm/addon-webgl": "^0.19.0",
+    "@xterm/xterm": "^6.0.0",
+    "chokidar": "^5.0.0",
+    "degit": "^2.8.4",
+    "electron-log": "^5.4.3",
+    "electron-store": "^11.0.2",
+    "electron-updater": "^6.8.3",
+    "monaco-editor": "^0.55.1",
+    "node-pty": "^1.1.0",
+    "qrcode": "^1.5.4",
+    "simple-git": "^3.33.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.2",
+    "concurrently": "^9.2.1",
+    "electron": "^41.1.1",
+    "electron-builder": "^26.8.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.2"
+  }
+}

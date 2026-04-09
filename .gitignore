@@ -1,0 +1,11 @@
+node_modules/
+dist/
+*.exe
+*.msi
+*.nsis
+*.zip
+release/
+.env
+.env.*
+.claude/
+scripts/

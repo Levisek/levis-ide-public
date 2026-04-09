@@ -1,0 +1,637 @@
+// ── LevisIDE App (Tab Manager + Init) ───
+
+interface TabInfo {
+  id: string;
+  label: string;
+  projectPath?: string;
+  contentEl: HTMLElement;
+  tabEl: HTMLElement;
+  workspace?: any;
+}
+
+const tabs: TabInfo[] = [];
+let activeTabId: string = 'hub';
+
+function init(): void {
+  document.getElementById('btn-min')!.addEventListener('click', () => levis.minimize());
+  document.getElementById('btn-max')!.addEventListener('click', () => levis.maximize());
+  document.getElementById('btn-close')!.addEventListener('click', () => levis.close());
+
+  // Confirm close + git pre-quit check
+  let quitInProgress = false;
+  levis.onConfirmQuit(() => {
+    if (quitInProgress) return;
+    showQuitConfirm();
+  });
+
+  function showQuitConfirm(): void {
+    const overlay = document.createElement('div');
+    overlay.className = 'quit-overlay';
+    overlay.innerHTML = `
+      <div class="quit-box">
+        <div class="quit-title">Opravdu chceš zavřít LevisIDE?</div>
+        <div class="quit-sub">Zkontroluju jestli máš všechno commitnuté a pushnuté.</div>
+        <div class="quit-btns">
+          <button class="quit-cancel">Zůstat</button>
+          <button class="quit-confirm">Ano, zkontrolovat a zavřít</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    const cancel = () => overlay.remove();
+    const confirm = async () => {
+      overlay.remove();
+      await runGitCheckThenQuit();
+    };
+    overlay.querySelector('.quit-cancel')!.addEventListener('click', cancel);
+    overlay.querySelector('.quit-confirm')!.addEventListener('click', confirm);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) cancel(); });
+    const escHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { cancel(); document.removeEventListener('keydown', escHandler); }
+      if (e.key === 'Enter') { confirm(); document.removeEventListener('keydown', escHandler); }
+    };
+    document.addEventListener('keydown', escHandler);
+  }
+
+  interface GitIssue {
+    name: string;
+    path: string;
+    dirty: boolean;
+    ahead: number;
+  }
+
+  async function runGitCheckThenQuit(): Promise<void> {
+    quitInProgress = true;
+    // Loading state
+    const loading = document.createElement('div');
+    loading.className = 'quit-overlay';
+    loading.innerHTML = `<div class="quit-box"><div class="quit-title">Kontroluju git stav projektů…</div></div>`;
+    document.body.appendChild(loading);
+
+    const projects = tabs.filter(t => t.projectPath).map(t => ({ name: t.label, path: t.projectPath! }));
+    console.log('[quit-check] projects:', projects);
+    const issues: GitIssue[] = [];
+    // Parallel s 3 s timeout per projekt — nezaseknout se na jediné
+    const checks = projects.map(async (p) => {
+      try {
+        const status = await Promise.race([
+          levis.gitStatus(p.path),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 3000)),
+        ]) as any;
+        if (status && !status.error) {
+          const dirty = (status.files && status.files.length > 0) || (status.modified && status.modified.length > 0) || (status.created && status.created.length > 0);
+          const ahead = status.ahead || 0;
+          if (dirty || ahead > 0) {
+            issues.push({ name: p.name, path: p.path, dirty: !!dirty, ahead });
+          }
+        }
+      } catch (e) {
+        console.warn('[quit-check] failed for', p.path, e);
+      }
+    });
+    await Promise.allSettled(checks);
+
+    // Terminal aktivity check — pokud nějaký CC pracuje nebo čeká na input
+    const activeTerms: Array<{ tab: string; label: string; state: string }> = [];
+    for (const t of tabs) {
+      if (!t.workspace || !t.workspace.getActiveTerminals) continue;
+      try {
+        const terms = t.workspace.getActiveTerminals();
+        for (const term of terms) {
+          if (term.state === 'working' || term.state === 'waiting') {
+            activeTerms.push({ tab: t.label, label: term.label, state: term.state });
+          }
+        }
+      } catch {}
+    }
+
+    loading.remove();
+
+    if (issues.length === 0 && activeTerms.length === 0) {
+      levis.forceQuit();
+      return;
+    }
+    showQuitIssuesModal(issues, activeTerms);
+  }
+
+  function showQuitIssuesModal(issues: GitIssue[], activeTerms: Array<{ tab: string; label: string; state: string }>): void {
+    const overlay = document.createElement('div');
+    overlay.className = 'quit-overlay';
+    const termRows = activeTerms.map(t => `
+      <div class="git-issue-row">
+        <div class="git-issue-info">
+          <div class="git-issue-name">${escapeHtmlSafe(t.tab)} · ${escapeHtmlSafe(t.label)}</div>
+          <div class="git-issue-detail">
+            <span class="git-tag ${t.state === 'waiting' ? 'ahead' : 'dirty'}">
+              ${t.state === 'waiting' ? '🔵 CC čeká na tvou odpověď' : '🟠 CC pracuje'}
+            </span>
+          </div>
+        </div>
+      </div>
+    `).join('');
+    const rows = issues.map((i, idx) => `
+      <div class="git-issue-row" data-idx="${idx}">
+        <div class="git-issue-info">
+          <div class="git-issue-name">${escapeHtmlSafe(i.name)}</div>
+          <div class="git-issue-detail">
+            ${i.dirty ? '<span class="git-tag dirty">⚠ necommitované změny</span>' : ''}
+            ${i.ahead > 0 ? `<span class="git-tag ahead">↑ ${i.ahead} nepushnuto</span>` : ''}
+          </div>
+        </div>
+        <div class="git-issue-actions">
+          ${i.ahead > 0 && !i.dirty ? '<button class="git-action push">Push</button>' : ''}
+          <span class="git-issue-status"></span>
+        </div>
+      </div>
+    `).join('');
+    const subParts = [];
+    if (activeTerms.length > 0) subParts.push('běžící Claude Code');
+    if (issues.length > 0) subParts.push('necommitované změny');
+    overlay.innerHTML = `
+      <div class="quit-box quit-box-wide">
+        <div class="quit-title">Pozor — máš nedokončenou práci</div>
+        <div class="quit-sub">Našel jsem ${subParts.join(' a ')}:</div>
+        <div class="git-issues-list">${termRows}${rows}</div>
+        <div class="quit-btns">
+          <button class="quit-cancel">Zůstat (vyřeším to)</button>
+          <button class="quit-confirm">Stejně zavřít</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    overlay.querySelectorAll('.git-action.push').forEach((btn, i) => {
+      const idx = parseInt((btn.closest('.git-issue-row') as HTMLElement).dataset.idx || '0', 10);
+      btn.addEventListener('click', async () => {
+        const issue = issues[idx];
+        const statusEl = (btn.closest('.git-issue-row') as HTMLElement).querySelector('.git-issue-status') as HTMLElement;
+        (btn as HTMLButtonElement).disabled = true;
+        statusEl.textContent = '…';
+        const r = await levis.gitPush(issue.path);
+        if (r.error) {
+          statusEl.textContent = '✗';
+          statusEl.title = r.error;
+          (btn as HTMLButtonElement).disabled = false;
+        } else {
+          statusEl.textContent = '✓';
+          (btn as HTMLElement).style.display = 'none';
+        }
+      });
+    });
+
+    overlay.querySelector('.quit-cancel')!.addEventListener('click', () => {
+      overlay.remove();
+      quitInProgress = false;
+    });
+    overlay.querySelector('.quit-confirm')!.addEventListener('click', () => {
+      overlay.remove();
+      levis.forceQuit();
+    });
+    const escHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        overlay.remove();
+        quitInProgress = false;
+        document.removeEventListener('keydown', escHandler);
+      }
+    };
+    document.addEventListener('keydown', escHandler);
+  }
+
+  const content = document.getElementById('content')!;
+  const hubContent = document.createElement('div');
+  hubContent.className = 'tab-content active';
+  hubContent.id = 'tab-content-hub';
+  content.appendChild(hubContent);
+
+  const hubTab: TabInfo = {
+    id: 'hub',
+    label: 'Hub',
+    contentEl: hubContent,
+    tabEl: document.querySelector('.tab[data-tab="hub"]')!,
+  };
+  tabs.push(hubTab);
+  hubTab.tabEl.addEventListener('click', () => switchTab('hub'));
+
+  renderHub(hubContent, openProject);
+
+  document.getElementById('btn-new-tab')!.addEventListener('click', () => {
+    switchTab('hub');
+    setTimeout(() => {
+      // Najdi tile "Nový projekt" v Hubu nebo button v empty state a klikni
+      const tile = document.querySelector('.tile-new') as HTMLElement;
+      if (tile) tile.click();
+      else {
+        const emptyBtn = document.querySelector('.hub-empty-btn[data-action="new"]') as HTMLElement;
+        if (emptyBtn) emptyBtn.click();
+      }
+    }, 150);
+  });
+  const btnHelp = document.getElementById('btn-help');
+  if (btnHelp) btnHelp.addEventListener('click', () => (window as any).showHelpOverlay?.());
+
+  // ── Native keyboard shortcuts (NO hotkeys-js — no Ctrl+C/V conflict) ──
+  document.addEventListener('keydown', (e: KeyboardEvent) => {
+    // Don't intercept anything inside terminal, editor, or inputs
+    const el = e.target as HTMLElement;
+    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') return;
+    if (el.closest('.xterm')) return;
+    if (el.closest('.monaco-editor')) return;
+    if (el.getAttribute('contenteditable')) return;
+
+    // Ctrl+Shift+P — command palette
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'P') {
+      e.preventDefault();
+      (window as any).commandPalette.show();
+    }
+    // Ctrl+P — quick file open
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'p') {
+      e.preventDefault();
+      const activeTab = tabs.find(t => t.id === activeTabId);
+      if (activeTab?.projectPath) {
+        (window as any).showQuickFileOpen?.(activeTab.projectPath, activeTab.workspace);
+      }
+    }
+    // Ctrl+Shift+F — project search & replace
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'F' || e.key === 'f')) {
+      e.preventDefault();
+      const activeTab = tabs.find(t => t.id === activeTabId);
+      if (activeTab?.projectPath) {
+        (window as any).showProjectSearch?.(activeTab.projectPath, activeTab.workspace);
+      }
+    }
+    // Ctrl+Shift+T — hub
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'T') {
+      e.preventDefault();
+      switchTab('hub');
+    }
+    // Ctrl+Shift+R — hard reload (no cache)
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'R') {
+      e.preventDefault();
+      levis.hardReload();
+    }
+    // Ctrl+Tab / Ctrl+Shift+Tab — cyklovat mezi taby
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Tab') {
+      e.preventDefault();
+      if (tabs.length < 2) return;
+      const idx = tabs.findIndex(t => t.id === activeTabId);
+      const next = e.shiftKey
+        ? (idx - 1 + tabs.length) % tabs.length
+        : (idx + 1) % tabs.length;
+      switchTab(tabs[next].id);
+    }
+    // Ctrl+Shift+W — close tab
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'W') {
+      e.preventDefault();
+      if (activeTabId !== 'hub') closeTab(activeTabId);
+    }
+    // Ctrl+, — settings
+    if ((e.ctrlKey || e.metaKey) && e.key === ',') {
+      e.preventDefault();
+      switchTab('hub');
+      setTimeout(() => {
+        const btn = document.querySelector('.hub-btn-settings') as HTMLElement;
+        if (btn) btn.click();
+      }, 100);
+    }
+    // F1 nebo ? — help overlay
+    if (e.key === 'F1' || (e.key === '?' && !e.ctrlKey && !e.metaKey)) {
+      e.preventDefault();
+      showHelpOverlay();
+    }
+  });
+
+  // ── Help overlay ──
+  function showHelpOverlay(): void {
+    const existing = document.getElementById('help-overlay');
+    if (existing) { existing.remove(); return; }
+    const overlay = document.createElement('div');
+    overlay.id = 'help-overlay';
+    overlay.className = 'help-overlay';
+    overlay.innerHTML = `
+      <div class="help-box">
+        <div class="help-header">
+          <h2>Nápověda · LevisIDE</h2>
+          <button class="help-close" title="Zavřít (Esc)">${(window as any).icon('close')}</button>
+        </div>
+        <div class="help-body">
+          <section>
+            <h3>Globální zkratky</h3>
+            <table>
+              <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd></td><td>Command palette</td></tr>
+              <tr><td><kbd>Ctrl</kbd>+<kbd>P</kbd></td><td>Quick file open (fuzzy)</td></tr>
+              <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd></td><td>Hledání &amp; nahrazování v projektu</td></tr>
+              <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>T</kbd></td><td>Přepnout na Hub</td></tr>
+              <tr><td><kbd>Ctrl</kbd>+<kbd>Tab</kbd> / <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Tab</kbd></td><td>Cyklovat mezi taby</td></tr>
+              <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>W</kbd></td><td>Zavřít tab</td></tr>
+              <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd></td><td>Hard reload</td></tr>
+              <tr><td><kbd>Ctrl</kbd>+<kbd>,</kbd></td><td>Nastavení</td></tr>
+              <tr><td><kbd>F1</kbd> / <kbd>?</kbd></td><td>Tato nápověda</td></tr>
+            </table>
+          </section>
+          <section>
+            <h3>Workspace</h3>
+            <table>
+              <tr><td><kbd>Alt</kbd>+<kbd>I</kbd></td><td>Toggle Inspect mode</td></tr>
+              <tr><td><kbd>Ctrl</kbd>+<kbd>Enter</kbd></td><td>Pošli výběr z editoru do terminálu</td></tr>
+              <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd></td><td>Refresh artifact preview</td></tr>
+              <tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>Uložit aktivní soubor (s format)</td></tr>
+              <tr><td><kbd>Ctrl</kbd>+<kbd>F</kbd> / <kbd>Ctrl</kbd>+<kbd>H</kbd></td><td>Find / Replace v editoru</td></tr>
+              <tr><td><kbd>Shift</kbd>+<kbd>Enter</kbd> v terminálu</td><td>Newline (line continuation)</td></tr>
+            </table>
+          </section>
+          <section>
+            <h3>Drag & drop / popout</h3>
+            <ul>
+              <li>Drag header panelu (terminal/editor/náhled/prohlížeč/mobil) <strong>mimo workspace</strong> → otevře v samostatném okně</li>
+              <li>V plovoucím okně tlačítko „Vrátit do workspace" → panel se vrátí zpět</li>
+              <li>Drag mezi sloty v gridu → panely se prohodí (lock toggle zamyká)</li>
+            </ul>
+          </section>
+          <section>
+            <h3>Inspector → Claude Code</h3>
+            <ol>
+              <li>Stiskni <kbd>Alt</kbd>+<kbd>I</kbd> nebo klikni „Inspect" v toolbaru</li>
+              <li>Klikni na element v náhledu — objeví se prompt input</li>
+              <li>Napiš co změnit a stiskni <kbd>Enter</kbd></li>
+              <li>Element + screenshot oblasti se odešlou Claude Code v terminálu</li>
+            </ol>
+          </section>
+          <section>
+            <h3>Annotace</h3>
+            <ol>
+              <li>Klikni „Označit" → kreslí se po náhledu</li>
+              <li>Zakroužkuj oblast → objeví se prompt</li>
+              <li>Popiš co změnit, <kbd>Enter</kbd> → CC dostane bbox + screenshot</li>
+            </ol>
+          </section>
+          <section>
+            <h3>Hub</h3>
+            <ul>
+              <li>Pravý klik na projekt → menu (smazat, přejmenovat, duplikovat, otevřít ve file exploreru)</li>
+              <li>★ ikona — připnout projekt nahoru</li>
+              <li>Pull vše / Push vše — hromadný git nad všemi projekty</li>
+              <li>Filtr chips podle typu projektu, fulltext search</li>
+            </ul>
+          </section>
+          <section>
+            <h3>Pop-out</h3>
+            <p>Tlačítko „Pop out" otevře preview v samostatném okně (druhý monitor) s vlastním inspectem a anotacemi. Prompty se posílají zpět do hlavního terminálu.</p>
+          </section>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    const close = () => overlay.remove();
+    overlay.querySelector('.help-close')!.addEventListener('click', close);
+    overlay.addEventListener('click', (ev) => { if (ev.target === overlay) close(); });
+    const escHandler = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') { close(); document.removeEventListener('keydown', escHandler); }
+    };
+    document.addEventListener('keydown', escHandler);
+  }
+  (window as any).showHelpOverlay = showHelpOverlay;
+
+  // ── Command palette commands ──
+  const cp = (window as any).commandPalette;
+
+  // Nav commands
+  cp.registerCommand({ id: 'hub', label: 'Přejít na Hub', shortcut: 'Ctrl+Shift+T', category: 'Navigace', action: () => switchTab('hub') });
+  cp.registerCommand({ id: 'close-tab', label: 'Zavřít záložku', shortcut: 'Ctrl+Shift+W', category: 'Navigace', action: () => { if (activeTabId !== 'hub') closeTab(activeTabId); } });
+  cp.registerCommand({ id: 'reload', label: 'Obnovit Hub', category: 'Hub', action: () => {
+    switchTab('hub');
+    renderHub(tabs[0].contentEl, openProject);
+  }});
+  cp.registerCommand({ id: 'settings', label: 'Otevřít nastavení', shortcut: 'Ctrl+,', category: 'Aplikace', action: () => {
+    switchTab('hub');
+    setTimeout(() => {
+      const btn = document.querySelector('.hub-btn-settings') as HTMLElement;
+      if (btn) btn.click();
+    }, 100);
+  }});
+
+  showToast('LevisIDE ready', 'success');
+
+  // Welcome screen — pouze první spuštění
+  (async () => {
+    try {
+      const seen = await levis.storeGet('welcomeSeen');
+      if (!seen) showWelcomeScreen();
+    } catch {}
+  })();
+}
+
+function showWelcomeScreen(): void {
+  const overlay = document.createElement('div');
+  overlay.className = 'welcome-overlay';
+  overlay.innerHTML = `
+    <div class="welcome-box">
+      <div class="welcome-logo"><img src="../assets/icon.svg" alt="LevisIDE"></div>
+      <h1>Vítej v LevisIDE</h1>
+      <p class="welcome-tagline">IDE pro webové projekty s Claude Code v jednom okně.</p>
+      <div class="welcome-tips">
+        <div class="welcome-tip"><strong>Hub</strong> — všechny tvoje projekty na jednom místě. Připni oblíbené, scaffoldni nový.</div>
+        <div class="welcome-tip"><strong>Workspace 2×2 grid</strong> — terminál, editor, preview a další panely. Drag & drop pro přeuspořádání.</div>
+        <div class="welcome-tip"><strong>Inspector</strong> — klikni na element v náhledu, napiš prompt, pošli rovnou Claudovi se screenshotem.</div>
+        <div class="welcome-tip"><strong>F1</strong> — nápověda kdykoli, <strong>Ctrl+Shift+P</strong> — command palette, <strong>Ctrl+P</strong> — quick file open.</div>
+      </div>
+      <button class="welcome-start">Pojď na to</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  const close = async () => {
+    overlay.remove();
+    try { await levis.storeSet('welcomeSeen', true); } catch {}
+  };
+  overlay.querySelector('.welcome-start')!.addEventListener('click', close);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+}
+
+function switchTab(tabId: string): void {
+  activeTabId = tabId;
+  for (const tab of tabs) {
+    const isActive = tab.id === tabId;
+    tab.tabEl.classList.toggle('active', isActive);
+    tab.contentEl.classList.toggle('active', isActive);
+    if (isActive) tab.tabEl.classList.remove('tab-has-badge');
+  }
+}
+
+async function closeTab(tabId: string): Promise<void> {
+  if (tabId === 'hub') return;
+  const idx = tabs.findIndex(t => t.id === tabId);
+  if (idx === -1) return;
+  const tab = tabs[idx];
+
+  // Dirty check — neuložené soubory v editoru
+  if (tab.workspace?.hasUnsavedChanges?.()) {
+    const dirty = tab.workspace.getDirtyFiles?.() || [];
+    const list = dirty.map((f: string) => f.split(/[\\/]/).pop()).join(', ') || 'některé soubory';
+    const ok = await confirmCloseTab(tab.label, list);
+    if (!ok) return;
+  }
+
+  if (tab.workspace) tab.workspace.dispose();
+  tab.tabEl.remove();
+  tab.contentEl.remove();
+  tabs.splice(idx, 1);
+  if (activeTabId === tabId) {
+    switchTab(tabs[Math.min(idx, tabs.length - 1)].id);
+  }
+}
+
+function confirmCloseTab(name: string, dirtyList: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'quit-overlay';
+    overlay.innerHTML = `
+      <div class="quit-box">
+        <div class="quit-title">Zavřít „${escapeHtmlSafe(name)}"?</div>
+        <div class="quit-sub">Máš neuložené změny: <strong>${escapeHtmlSafe(dirtyList)}</strong></div>
+        <div class="quit-btns">
+          <button class="quit-cancel">Zůstat</button>
+          <button class="quit-confirm">Zavřít bez uložení</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    const done = (v: boolean) => { overlay.remove(); resolve(v); };
+    overlay.querySelector('.quit-cancel')!.addEventListener('click', () => done(false));
+    overlay.querySelector('.quit-confirm')!.addEventListener('click', () => done(true));
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) done(false); });
+    const esc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { document.removeEventListener('keydown', esc); done(false); }
+    };
+    document.addEventListener('keydown', esc);
+  });
+}
+
+async function openProject(project: any): Promise<void> {
+  const existing = tabs.find(t => t.projectPath === project.path);
+  if (existing) { switchTab(existing.id); return; }
+
+  const tabId = `project-${Date.now()}`;
+  const tabsContainer = document.getElementById('tabs')!;
+  const tabEl = document.createElement('div');
+  tabEl.className = 'tab';
+  tabEl.dataset.tab = tabId;
+  tabEl.innerHTML = `
+    <span class="tab-label">${escapeHtmlSafe(project.name)}</span>
+    <span class="tab-close">&times;</span>
+  `;
+  tabsContainer.appendChild(tabEl);
+
+  tabEl.addEventListener('click', (e: MouseEvent) => {
+    if ((e.target as HTMLElement).classList.contains('tab-close')) closeTab(tabId);
+    else switchTab(tabId);
+  });
+
+  const content = document.getElementById('content')!;
+  const contentEl = document.createElement('div');
+  contentEl.className = 'tab-content';
+  contentEl.id = `tab-content-${tabId}`;
+  contentEl.innerHTML = `<div class="loading">Načítám workspace...</div>`;
+  content.appendChild(contentEl);
+
+  const tabInfo: TabInfo = { id: tabId, label: project.name, projectPath: project.path, contentEl, tabEl };
+  tabs.push(tabInfo);
+  switchTab(tabId);
+
+  (window as any).commandPalette.registerCommand({
+    id: `goto-${tabId}`, label: `Přejít na ${project.name}`, category: 'Projekty',
+    action: () => switchTab(tabId),
+  });
+
+  try { levis.gitPull(project.path); } catch {}
+
+  // Track last opened time pro Recent sekci v Hubu
+  try {
+    const all: any = await levis.storeGet('projectLastOpened') || {};
+    all[project.path] = Date.now();
+    await levis.storeSet('projectLastOpened', all);
+  } catch {}
+
+  try {
+    const workspace = await createWorkspace(project.path, project.name);
+    contentEl.innerHTML = '';
+    contentEl.appendChild(workspace.element);
+    tabInfo.workspace = workspace;
+    // Tab badge: když CC v tomto workspace doběhne a tab není aktivní, ukaž puntík
+    if (typeof workspace.onCCDone === 'function') {
+      workspace.onCCDone(async () => {
+        if (activeTabId !== tabId) {
+          tabEl.classList.add('tab-has-badge');
+          // OS notifikace + zvuk (opt-in z prefs)
+          try {
+            const notifEnabled = await levis.storeGet('ccNotifications');
+            const soundEnabled = await levis.storeGet('ccSound');
+            if (notifEnabled !== false) {
+              new Notification('Claude Code dokončil', {
+                body: `${project.name} — klikni na záložku pro pokračování`,
+                silent: soundEnabled === false,
+              });
+            }
+            if (soundEnabled !== false) {
+              playBeep();
+            }
+          } catch {}
+        }
+      });
+    }
+  } catch (err) {
+    contentEl.innerHTML = `<div class="loading">Chyba: ${escapeHtmlSafe(String(err))}</div>`;
+    console.error('Workspace error:', err);
+  }
+}
+
+function escapeHtmlSafe(str: string): string {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// Krátký 2-tónový beep přes Web Audio
+let _audioCtx: AudioContext | null = null;
+async function playBeep(): Promise<void> {
+  try {
+    if (!_audioCtx) _audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const ctx = _audioCtx;
+    // Pokud byl kontext suspendnutý kvůli autoplay policy, probuď ho
+    if (ctx.state === 'suspended') {
+      try { await ctx.resume(); } catch {}
+    }
+    const now = ctx.currentTime;
+    const tones = [ { freq: 880, t: 0 }, { freq: 1320, t: 0.13 } ];
+    for (const tone of tones) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = tone.freq;
+      gain.gain.setValueAtTime(0, now + tone.t);
+      gain.gain.linearRampToValueAtTime(0.35, now + tone.t + 0.005);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + tone.t + 0.22);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now + tone.t);
+      osc.stop(now + tone.t + 0.25);
+    }
+  } catch (err) {
+    console.warn('[playBeep]', err);
+  }
+}
+
+// Inicializuj audio kontext na první user interaction (autoplay policy)
+let _audioInited = false;
+function initAudioOnce(): void {
+  if (_audioInited) return;
+  _audioInited = true;
+  try {
+    _audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    if (_audioCtx.state === 'suspended') _audioCtx.resume().catch(() => {});
+  } catch {}
+}
+document.addEventListener('click', initAudioOnce, { once: true });
+document.addEventListener('keydown', initAudioOnce, { once: true });
+
+// Vystavit pro debug — F12 console: playBeep()
+(window as any).playBeep = playBeep;
+
+document.addEventListener('DOMContentLoaded', init);

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src *; img-src * data:; frame-src *;">
+  <title>LevisIDE — Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/utilities.css">
+  <link rel="stylesheet" href="css/artifact.css">
+</head>
+<body>
+  <div id="popout-bar">
+    <span class="popout-title">LevisIDE Preview</span>
+    <span class="popout-file"></span>
+    <span style="flex:1"></span>
+    <button class="pop-btn pop-return" id="pop-return" title="Vrátit náhled do hlavního okna">‹ Vrátit</button>
+    <div class="artifact-size-btns" style="-webkit-app-region:no-drag">
+      <button class="pop-size-btn" data-size="mobile" title="Mobile (375 px)">M</button>
+      <button class="pop-size-btn" data-size="tablet" title="Tablet (768 px)">T</button>
+      <button class="pop-size-btn pop-size-active" data-size="full" title="Plná šířka">F</button>
+    </div>
+    <button class="pop-btn pop-inspect" title="Inspect element — klikni na prvek a pošli prompt">Inspect</button>
+    <button class="pop-btn pop-annotate" title="Označit oblast — zakroužkuj a pošli screenshot">Označit</button>
+    <button class="pop-btn pop-fullscreen" title="Přepnout fullscreen">Fullscreen</button>
+    <button class="pop-btn pop-reload" title="Obnovit náhled">Obnovit</button>
+    <button class="pop-btn pop-devtools" title="Otevřít DevTools">DevTools</button>
+    <div id="popout-controls">
+      <button id="pop-min">&#x2500;</button>
+      <button id="pop-max">&#x25A1;</button>
+      <button id="pop-close">&#x2715;</button>
+    </div>
+  </div>
+  <div id="popout-content">
+    <canvas id="popout-annot-canvas" class="artifact-annot-canvas"></canvas>
+    <iframe id="popout-iframe"></iframe>
+  </div>
+  <div id="popout-info-bar" class="artifact-info-bar" style="display:none">
+    <span class="info-selector"></span>
+    <input type="text" class="info-prompt" placeholder="Co chceš změnit?">
+    <button class="info-send" title="Odeslat do Claude Code (Enter)">›</button>
+    <button class="info-clear" title="Zrušit">×</button>
+  </div>
+  <script src="../dist/src/inspector.js"></script>
+  <script src="../dist/src/popout.js"></script>
+</body>
+</html>
