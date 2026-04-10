@@ -289,7 +289,7 @@
 
 /* Recent — projekty otevřené v posledních 7 dnech */
 .tile-recent::after {
-  content: 'Naposledy';
+  content: attr(data-recent-label);
   position: absolute;
   top: 12px; left: 12px;
   font-size: 9px; font-weight: 700;

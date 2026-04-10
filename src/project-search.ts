@@ -27,21 +27,21 @@ async function showProjectSearch(projectPath: string, workspace?: any): Promise<
     <div class="psr-header">
       <div class="psr-row">
         <span class="psr-icon">${I('search')}</span>
-        <input type="text" class="psr-query" placeholder="Hledat v projektu..." spellcheck="false" autocomplete="off">
+        <input type="text" class="psr-query" placeholder="${t('hub.search')}" spellcheck="false" autocomplete="off">
         <button class="psr-toggle psr-case" title="Case sensitive (Aa)">Aa</button>
         <button class="psr-toggle psr-regex" title="Regex">.*</button>
       </div>
       <div class="psr-row psr-replace-row">
         <span class="psr-icon">${I('editor')}</span>
-        <input type="text" class="psr-replacement" placeholder="Nahradit..." spellcheck="false" autocomplete="off">
-        <button class="psr-btn psr-replace-all" title="Nahradit všechny výskyty">Nahradit vše</button>
+        <input type="text" class="psr-replacement" placeholder="${t('search.replaceAll')}…" spellcheck="false" autocomplete="off">
+        <button class="psr-btn psr-replace-all" title="${t('search.replaceAllTip')}">${t('search.replaceAll')}</button>
       </div>
     </div>
     <div class="psr-results"></div>
     <div class="psr-footer">
-      <span class="psr-status">Začni psát pro hledání</span>
+      <span class="psr-status">${t('search.startTyping')}</span>
       <span style="flex:1"></span>
-      <span><kbd>Esc</kbd> zavřít</span>
+      <span><kbd>Esc</kbd> ${t('search.close')}</span>
     </div>
   `;
   backdrop.appendChild(modal);
@@ -83,7 +83,7 @@ async function showProjectSearch(projectPath: string, workspace?: any): Promise<
   function renderResults(): void {
     resultsEl.innerHTML = '';
     if (lastHits.length === 0) {
-      resultsEl.innerHTML = '<div class="psr-empty">Žádné výsledky</div>';
+      resultsEl.innerHTML = `<div class="psr-empty">${t('search.noResults')}</div>`;
       return;
     }
     // Group by file
@@ -143,7 +143,7 @@ async function showProjectSearch(projectPath: string, workspace?: any): Promise<
     const r = replInput.value;
     if (!q) return;
     if (lastHits.length === 0) return;
-    if (!confirm(`Nahradit ${lastHits.length} výskytů ve ${new Set(lastHits.map(h => h.rel)).size} souborech?`)) return;
+    if (!confirm(t('search.confirmReplace', { n: lastHits.length, files: new Set(lastHits.map(h => h.rel)).size }))) return;
     const targetFiles = Array.from(new Set(lastHits.map(h => h.path)));
     statusEl.textContent = 'Nahrazuji...';
     try {

@@ -14,16 +14,58 @@ interface WorkspaceInstance {
 type RightPanel = 'browser' | 'artifact' | 'mobile' | 'hidden';
 type WsPanelId = 'terminal' | 'editor' | 'diff' | 'browser' | 'artifact' | 'mobile';
 
-const PANEL_LABELS: Record<WsPanelId, { icon: string; text: string }> = {
-  terminal: { icon: (window as any).icon('terminal'), text: 'Terminál' },
-  editor:   { icon: (window as any).icon('editor'),   text: 'Editor' },
-  diff:     { icon: (window as any).icon('git'),      text: 'Git změny' },
-  browser:  { icon: (window as any).icon('browser'),  text: 'Prohlížeč' },
-  artifact: { icon: (window as any).icon('preview'),  text: 'Náhled' },
-  mobile:   { icon: (window as any).icon('mobile'),   text: 'Mobil' },
+function panelLabel(panel: WsPanelId): { icon: string; text: string } {
+  const I = (window as any).icon;
+  switch (panel) {
+    case 'terminal': return { icon: I('terminal'), text: t('ws.terminal') };
+    case 'editor':   return { icon: I('editor'),   text: t('ws.editor') };
+    case 'diff':     return { icon: I('git'),      text: t('ws.diff') };
+    case 'browser':  return { icon: I('browser'),  text: t('ws.browser') };
+    case 'artifact': return { icon: I('preview'),  text: t('ws.preview') };
+    case 'mobile':   return { icon: I('mobile'),   text: t('ws.mobile') };
+  }
+}
+const PANEL_LABELS = new Proxy({} as Record<WsPanelId, { icon: string; text: string }>, {
+  get: (_t, p: string) => panelLabel(p as WsPanelId),
+});
+
+type AutostartEntry = {
+  cmd: string | null;
+  scriptName?: string;
+  port: number | null;
+  panel: 'browser' | 'mobile' | 'artifact';
 };
 
-async function createWorkspace(projectPath: string, projectName: string): Promise<WorkspaceInstance> {
+const AUTOSTART: Record<string, AutostartEntry> = {
+  next:     { cmd: 'npm run dev', scriptName: 'dev', port: 3000, panel: 'browser' },
+  vite:     { cmd: 'npm run dev', scriptName: 'dev', port: 5173, panel: 'browser' },
+  react:    { cmd: 'npm run dev', scriptName: 'dev', port: 3000, panel: 'browser' },
+  astro:    { cmd: 'npm run dev', scriptName: 'dev', port: 4321, panel: 'browser' },
+  nuxt:     { cmd: 'npm run dev', scriptName: 'dev', port: 3000, panel: 'browser' },
+  svelte:   { cmd: 'npm run dev', scriptName: 'dev', port: 5173, panel: 'browser' },
+  expo:     { cmd: "$env:BROWSER='none'; npm run web", scriptName: 'web', port: 8081, panel: 'browser' },
+  php:      { cmd: 'php -S localhost:8000', port: 8000, panel: 'browser' },
+  node:     { cmd: 'npm start', scriptName: 'start', port: 3000, panel: 'browser' },
+  static:   { cmd: null, port: null, panel: 'artifact' },
+  electron: { cmd: null, port: null, panel: 'artifact' },
+  tauri:    { cmd: null, port: null, panel: 'artifact' },
+  other:    { cmd: null, port: null, panel: 'artifact' },
+};
+
+async function probePort(port: number, signal: { aborted: boolean }): Promise<boolean> {
+  const deadline = Date.now() + 30_000;
+  while (Date.now() < deadline && !signal.aborted) {
+    try {
+      await fetch(`http://localhost:${port}`, { method: 'GET', mode: 'no-cors' });
+      return true;
+    } catch {
+      await new Promise(res => setTimeout(res, 500));
+    }
+  }
+  return false;
+}
+
+async function createWorkspace(projectPath: string, projectName: string, projectType?: string): Promise<WorkspaceInstance> {
   const STAGE = (_s: string) => {};
   const wrapper = document.createElement('div');
   wrapper.className = 'workspace';
@@ -40,18 +82,16 @@ async function createWorkspace(projectPath: string, projectName: string): Promis
   const I = (window as any).icon;
   wsToolbar.innerHTML = `
     <div class="ws-panel-tabs">
-      <button class="ws-panel-tab ws-btn-toggle-sidebar" title="Skrýt/zobrazit panel souborů">${I('sidebar')}</button>
-      <button class="ws-panel-tab ws-btn-sidebar-side" title="Přehodit sidebar vlevo/vpravo">${I('swap')}</button>
+      <button class="ws-panel-tab ws-btn-toggle-sidebar" title="${t('ws.toggleSidebar')}">${I('sidebar')}</button>
+      <button class="ws-panel-tab ws-btn-sidebar-side" title="${t('ws.swapSidebar')}">${I('swap')}</button>
       <span class="ws-toolbar-divider"></span>
-      <button class="ws-panel-tab ws-btn-add-panel" title="Přidat panel do workspace">${I('plus')} Panel</button>
-      <button class="ws-panel-tab ws-btn-reset-layout" title="Obnovit výchozí rozložení panelů">${I('refresh')}</button>
-      <button class="ws-panel-tab ws-btn-equalize-layout" title="Zarovnat panely na stejnou velikost">${I('equalize')}</button>
-      <button class="ws-panel-tab ws-btn-lock-layout" title="Zamknout rovnoměrné rozložení (vypne volný resize)">${I('lock')}</button>
+      <button class="ws-panel-tab ws-btn-add-panel" title="${t('ws.addPanel')}">${I('plus')} ${t('ws.addPanel')}</button>
+      <button class="ws-panel-tab ws-btn-reset-layout" title="${t('ws.resetLayout')}">${I('refresh')}</button>
+      <button class="ws-panel-tab ws-btn-equalize-layout" title="${t('ws.equalize')}">${I('equalize')}</button>
+      <button class="ws-panel-tab ws-btn-lock-layout" title="${t('ws.lockLayout')}">${I('lock')}</button>
     </div>
     <span style="flex:1"></span>
-    <div class="ws-right-tabs">
-      <button class="ws-panel-tab ws-btn-popout" title="Vysunout náhled na druhý monitor">${I('arrow-up')} Vysunout</button>
-    </div>
+    <div class="ws-right-tabs"></div>
   `;
   wrapper.appendChild(wsToolbar);
 
@@ -113,6 +153,8 @@ async function createWorkspace(projectPath: string, projectName: string): Promis
   diffPanel.className = 'panel-diff';
   diffPanel.dataset.panel = 'diff';
 
+
+
   const browserPanel = document.createElement('div');
   browserPanel.className = 'panel-browser';
   browserPanel.dataset.rpanel = 'browser';
@@ -142,57 +184,76 @@ async function createWorkspace(projectPath: string, projectName: string): Promis
     <span class="status-branch">...</span>
     <span class="status-sizes"></span>
     <span style="flex:1"></span>
-    <button class="status-btn status-btn-save" title="/takjo — uložit změny lokálně (git add + commit)">${I('save')} Uložit</button>
-    <button class="status-btn status-btn-push" title="/jeb — uložit a odeslat na GitHub (commit + push)">${I('upload')} Odeslat</button>
-    <button class="status-btn status-btn-pull" title="Git pull — stáhnout změny z GitHubu">${I('download')} Stáhnout</button>
-    <button class="status-btn status-btn-restart" title="Ukončit a znovu spustit Claude Code v terminálu">${I('restart')} CC</button>
-    <button class="status-btn status-btn-split" title="Otevřít další terminál vedle stávajícího (max 3)">${I('plus')} Terminál</button>
-    <button class="status-btn status-btn-devlog" title="Log dev serveru (npm run dev output)" style="display:none">${I('file')} Dev log</button>
+    <button class="status-btn status-btn-save" title="${t('ws.takjo')}">${I('save')} ${t('ws.btnSave')}</button>
+    <button class="status-btn status-btn-push" title="${t('ws.jeb')}">${I('upload')} ${t('ws.btnSend')}</button>
+    <button class="status-btn status-btn-pull" title="${t('ws.gitPull')}">${I('download')} ${t('ws.btnPull')}</button>
+    <button class="status-btn status-btn-restart" title="${t('ws.restartCC')}">${I('restart')} ${t('ws.btnCC')}</button>
+    <button class="status-btn status-btn-split" title="${t('ws.newTerminal')}">${I('plus')} ${t('ws.btnTerminal')}</button>
+    <button class="status-btn status-btn-devlog" title="${t('ws.devLogTooltip')}" style="display:none">${I('file')} ${t('ws.btnDevLog')}</button>
   `;
   wrapper.appendChild(statusBar);
 
   // ── Auto-generate CLAUDE.md ───────────
   levis.generateClaudeMd(projectPath).then((r: any) => {
-    if (r.success) showToast('CLAUDE.md vygenerován', 'info');
+    if (r.success) showToast(t('toast.claudemdGenerated'), 'info');
   }).catch(() => {});
 
   // ── Project type detection ─────────────
   let autoCommand: string | undefined = undefined;
   let termCwd = projectPath;
 
-  // Detect Expo / web framework — pro auto-spousteni dev serveru a Mobile panelu
-  let isExpo = false;
-  let devCommand: string | null = null;
-  let isWebApp = false;
-  let hasNoPreview = false; // Electron, Tauri, CLI, knihovna
+
+
+  // ── AUTOSTART resolution ─────────────
+  // projectType prijde z hubu (HubProjectInfo.projectType). Pokud chybi, fallback re-detekce.
+  let resolvedType: string = projectType || 'other';
+  let pkgScripts: Record<string, string> = {};
   try {
     const pkgRaw = await levis.readFile(projectPath + '\\package.json');
     if (typeof pkgRaw === 'string') {
       const pkg = JSON.parse(pkgRaw);
-      const deps = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
-      isExpo = !!deps.expo;
-      isWebApp = !!(deps.vite || deps.next || deps['react-scripts'] || deps.astro || deps.nuxt || deps['@sveltejs/kit'] || deps.remix);
-      const isElectron = !!deps.electron;
-      const isTauri = !!(deps['@tauri-apps/api'] || deps['@tauri-apps/cli']);
-      hasNoPreview = isElectron || isTauri || (!isExpo && !isWebApp);
-      const scripts: Record<string, string> = pkg.scripts || {};
-      // Expo: preferuj `npm run web` (spusti web build na portu 8081), ne `npm start` (interaktivni Metro menu)
-      // BROWSER=none zabrani Expo otevrit Chrome s localhostem
-      if (isExpo && scripts.web) devCommand = "$env:BROWSER='none'; npm run web";
-      else if (scripts.dev) devCommand = 'npm run dev';
-      else if (scripts.start) devCommand = 'npm start';
-      else if (scripts.serve) devCommand = 'npm run serve';
+      pkgScripts = pkg.scripts || {};
+      if (!projectType) {
+        const deps = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
+        if (deps.electron) resolvedType = 'electron';
+        else if (deps['@tauri-apps/api'] || deps['@tauri-apps/cli']) resolvedType = 'tauri';
+        else if (deps.expo) resolvedType = 'expo';
+        else if (deps.next) resolvedType = 'next';
+        else if (deps.nuxt || deps['nuxt3']) resolvedType = 'nuxt';
+        else if (deps.astro) resolvedType = 'astro';
+        else if (deps.vite) resolvedType = 'vite';
+        else if (deps['@sveltejs/kit'] || deps.svelte) resolvedType = 'svelte';
+        else if (deps.react || deps['react-scripts']) resolvedType = 'react';
+        else resolvedType = 'node';
+      }
     }
   } catch {
-    // Bez package.json — vanilla web (index.html), ne non-preview
+    if (!projectType) {
+      try {
+        const html = await levis.readFile(projectPath + '\\index.html');
+        if (typeof html === 'string') resolvedType = 'static';
+      } catch {}
+      try {
+        const php = await levis.readFile(projectPath + '\\index.php');
+        if (typeof php === 'string') resolvedType = 'php';
+      } catch {}
+    }
   }
-  // Tauri bez package.json
-  if (!hasNoPreview) {
-    try {
-      const tauriConf = await levis.readFile(projectPath + '\\src-tauri\\tauri.conf.json');
-      if (typeof tauriConf === 'string') hasNoPreview = true;
-    } catch {}
+
+  const autostartEntry: AutostartEntry = AUTOSTART[resolvedType] || AUTOSTART.other;
+  const hasNoPreview = autostartEntry.panel === 'artifact' && autostartEntry.cmd === null && resolvedType !== 'static';
+  const hasStorybook = !!pkgScripts.storybook;
+
+  // Skript fallback: pokud preferovany script chybi, zkus dev/start/serve a uprav cmd.
+  let devCommand: string | null = autostartEntry.cmd;
+  if (devCommand && autostartEntry.scriptName && !pkgScripts[autostartEntry.scriptName]) {
+    if (pkgScripts.dev) devCommand = 'npm run dev';
+    else if (pkgScripts.start) devCommand = 'npm start';
+    else if (pkgScripts.serve) devCommand = 'npm run serve';
+    else devCommand = null;
   }
+
+
 
   // ── Initialize components ─────────────
   let editorInstance: any = null;
@@ -206,7 +267,7 @@ async function createWorkspace(projectPath: string, projectName: string): Promis
 
   async function addTerminal(cmdOverride?: string, label?: string): Promise<void> {
     if (termInstances.length >= 3) {
-      showToast('Max 3 terminály', 'warning');
+      showToast(t('toast.maxTerminals'), 'warning');
       return;
     }
     const termSlot = document.createElement('div');
@@ -231,7 +292,7 @@ async function createWorkspace(projectPath: string, projectName: string): Promis
       // Handle close event from terminal
       termSlot.addEventListener('term-close', () => {
         if (termInstances.length <= 1) {
-          showToast('Poslední terminál nelze zavřít', 'warning');
+          showToast(t('toast.lastTerminal'), 'warning');
           return;
         }
         const idx = termInstances.indexOf(inst);
@@ -296,7 +357,7 @@ async function createWorkspace(projectPath: string, projectName: string): Promis
     diffPanel.innerHTML = `<div class="loading">Chyba diff vieweru</div>`;
   }
 
-  const browserInstance = createBrowser(browserPanel);
+  const browserInstance = createBrowser(browserPanel, 'http://localhost:8080', projectPath);
   const artifactInstance = createArtifact(artifactPanel, projectPath);
   const mobileInstance = createMobile(mobilePanel, projectPath, projectName);
 
@@ -365,7 +426,7 @@ async function createWorkspace(projectPath: string, projectName: string): Promis
         if (devPtyId) levis.writePty(devPtyId, command + '\r');
       }, 500);
     } catch (err) {
-      showToast('Dev server selhal: ' + (err as any)?.message, 'error');
+      showToast(t('toast.devFailed', { msg: (err as any)?.message || '' }), 'error');
     }
   }
 
@@ -457,10 +518,10 @@ async function createWorkspace(projectPath: string, projectName: string): Promis
           return;
         }
         grid.removePanel(panel);
-        showToast(`${PANEL_LABELS[panel].text} v plovoucím okně`, 'info');
+        showToast(t('toast.notInGrid', { name: PANEL_LABELS[panel].text }), 'info');
       } catch (err) {
         console.error('[popout] selhal:', err);
-        showToast('Popout selhal', 'error');
+        showToast(t('toast.popoutFailed'), 'error');
       }
     },
   });
@@ -477,26 +538,88 @@ async function createWorkspace(projectPath: string, projectName: string): Promis
     });
   }
   STAGE('grid: ensurePanel detection');
-  if (isExpo || isWebApp) {
-    grid.ensurePanel('mobile');
+  if (autostartEntry.panel !== 'artifact') {
+    grid.ensurePanel(autostartEntry.panel as WsPanelId);
   } else if (!hasNoPreview) {
     grid.ensurePanel('artifact');
   }
   STAGE('grid: done');
 
-  if ((isExpo || isWebApp) && devCommand) {
-    switchRightPanel('mobile');
+  // Autostart dev serveru — globalni opt-out v Hub Settings
+  let autostartEnabled = true;
+  try {
+    const v = await levis.storeGet('autostartDev');
+    if (v === false) autostartEnabled = false;
+  } catch {}
+
+  if (autostartEnabled && devCommand && autostartEntry.cmd !== null) {
+    switchRightPanel(autostartEntry.panel as RightPanel);
     startBackgroundDevPty(termCwd, devCommand);
-    // Zobraz tlacitko Dev log v statusbaru
     const btnDevLog = statusBar.querySelector('.status-btn-devlog') as HTMLElement;
     if (btnDevLog) btnDevLog.style.display = '';
-    setTimeout(() => mobileInstance.start(), isExpo ? 12000 : 4000);
-  } else if (isExpo) {
-    switchRightPanel('mobile');
+
+    if (autostartEntry.port != null) {
+      const probeSignal = { aborted: false };
+      cleanups.push(() => { probeSignal.aborted = true; });
+      (async () => {
+        const ok = await probePort(autostartEntry.port!, probeSignal);
+        if (probeSignal.aborted) return;
+        // Pokus o detekci jineho portu z dev logu (port collision)
+        let actualPort = autostartEntry.port!;
+        const m = devLogBuffer.join('').match(/https?:\/\/(?:localhost|127\.0\.0\.1):(\d+)/);
+        if (m) actualPort = parseInt(m[1], 10);
+        const url = `http://localhost:${actualPort}`;
+        if (ok || m) {
+          if (autostartEntry.panel === 'browser') browserInstance.setUrl(url);
+          else if (autostartEntry.panel === 'mobile') mobileInstance.loadUrl(url);
+          showToast(t('toast.devStarted', { name: resolvedType, port: actualPort }), 'success');
+        } else {
+          showToast(t('toast.devTimeout'), 'error');
+        }
+      })();
+    }
   } else if (hasNoPreview) {
     // Electron/Tauri/CLI/knihovna — pravy panel je k nicemu, defaultne editor pres celou sirku
     switchRightPanel('hidden');
     switchLeftPanel('editor');
+  }
+
+  // Storybook tlacitko (pokud projekt ma scripts.storybook)
+  if (hasStorybook) {
+    const btnSb = document.createElement('button');
+    btnSb.className = 'status-btn status-btn-storybook';
+    btnSb.title = 'Spustit Storybook (npm run storybook)';
+    btnSb.innerHTML = `${I('play')} Storybook`;
+    let sbPtyId: string | null = null;
+    let sbStarted = false;
+    btnSb.addEventListener('click', async () => {
+      if (sbStarted) {
+        switchRightPanel('browser');
+        browserInstance.setUrl('http://localhost:6006');
+        return;
+      }
+      sbStarted = true;
+      btnSb.classList.add('ws-tab-active');
+      try {
+        sbPtyId = await levis.createPty(termCwd);
+        setTimeout(() => sbPtyId && levis.writePty(sbPtyId, 'npm run storybook\r'), 500);
+        showToast(t('toast.storybookStarting'), 'info');
+        const probeSignal = { aborted: false };
+        cleanups.push(() => { probeSignal.aborted = true; });
+        const ok = await probePort(6006, probeSignal);
+        if (ok) {
+          grid.ensurePanel('browser');
+          switchRightPanel('browser');
+          browserInstance.setUrl('http://localhost:6006');
+          showToast(t('toast.storybookReady'), 'success');
+        } else {
+          showToast(t('toast.storybookTimeout'), 'error');
+        }
+      } catch (err) {
+        showToast(t('toast.storybookFailed', { msg: (err as any)?.message || '' }), 'error');
+      }
+    });
+    statusBar.appendChild(btnSb);
   }
 
   // Dev log floating panel toggle
@@ -534,6 +657,8 @@ async function createWorkspace(projectPath: string, projectName: string): Promis
     });
   });
 
+
+
   // File tree
   let fileTreeInstance: any = null;
   try {
@@ -545,6 +670,8 @@ async function createWorkspace(projectPath: string, projectName: string): Promis
   } catch (err) {
     sidebarContainer.innerHTML = `<div class="loading">Chyba file tree</div>`;
   }
+
+
 
   // ── Git branch for status bar ─────────
   const branchEl = statusBar.querySelector('.status-branch') as HTMLElement;
@@ -598,15 +725,20 @@ async function createWorkspace(projectPath: string, projectName: string): Promis
     sidebarSide = sidebarSide === 'left' ? 'right' : 'left';
     applySidebarSide();
     await levis.storeSet('sidebarSide', sidebarSide);
-    showToast(`Soubory: ${sidebarSide === 'left' ? 'vlevo' : 'vpravo'}`, 'info');
+    showToast(t(sidebarSide === 'left' ? 'toast.sidebarLeft' : 'toast.sidebarRight'), 'info');
   });
 
   // Reset layout
   const btnResetLayout = wsToolbar.querySelector('.ws-btn-reset-layout') as HTMLElement;
   btnResetLayout?.addEventListener('click', () => {
-    grid.setState(GridMod.defaultGridState());
+    const rightPanel: WsPanelId = hasNoPreview ? 'editor' : (autostartEntry.panel as WsPanelId);
+    grid.setState({
+      rows: [{ cells: ['terminal', rightPanel], colSizes: [55, 45] }],
+      rowSizes: [100],
+      locked: false,
+    });
     persistLayout();
-    showToast('Layout obnoven', 'info');
+    showToast(t('toast.layoutReset'), 'info');
   });
 
   const btnAddPanel = wsToolbar.querySelector('.ws-btn-add-panel') as HTMLElement;
@@ -616,7 +748,7 @@ async function createWorkspace(projectPath: string, projectName: string): Promis
   btnEqualizeLayout?.addEventListener('click', () => {
     grid.equalize();
     persistLayout();
-    showToast('Panely zarovnány', 'info');
+    showToast(t('toast.layoutEqualized'), 'info');
   });
 
   const btnLockLayout = wsToolbar.querySelector('.ws-btn-lock-layout') as HTMLElement;
@@ -697,7 +829,8 @@ async function createWorkspace(projectPath: string, projectName: string): Promis
   // Sidebar splitter — drag mění šířku sidebaru proti layoutRoot
   startDrag(sidebarSplitter, (ev) => {
     const rect = panels.getBoundingClientRect();
-    sidebarContainer.style.width = `${Math.min(400, Math.max(120, ev.clientX - rect.left))}px`;
+    const raw = sidebarSide === 'left' ? ev.clientX - rect.left : rect.right - ev.clientX;
+    sidebarContainer.style.width = `${Math.min(400, Math.max(120, raw))}px`;
   });
 
   // ── Status bar actions ────────────────
@@ -727,7 +860,7 @@ async function createWorkspace(projectPath: string, projectName: string): Promis
         }, 600);
       }, 300);
     }, 400);
-    showToast('Claude Code restartován', 'info');
+    showToast(t('toast.ccRestarted'), 'info');
   });
 
   statusBar.querySelector('.status-btn-split')!.addEventListener('click', () => {
@@ -737,20 +870,22 @@ async function createWorkspace(projectPath: string, projectName: string): Promis
 
   statusBar.querySelector('.status-btn-save')!.addEventListener('click', () => {
     sendToFirstTerminal('/takjo');
-    showToast('Posílám /takjo...', 'info');
+    showToast(t('toast.takjo'), 'info');
   });
 
   statusBar.querySelector('.status-btn-push')!.addEventListener('click', () => {
     sendToFirstTerminal('/jeb');
-    showToast('Posílám /jeb (push)...', 'info');
+    showToast(t('toast.jeb'), 'info');
   });
 
   statusBar.querySelector('.status-btn-pull')!.addEventListener('click', async () => {
-    showToast('Stahuji z GitHubu...', 'info');
+    showToast(t('toast.pulling'), 'info');
     const result = await levis.gitPull(projectPath);
     if (result.error) showToast(`Pull chyba: ${result.error}`, 'error');
-    else showToast('Pull OK', 'success');
+    else showToast(t('toast.pullOk'), 'success');
   });
+
+
 
   // ── Lehký refresh po PTY ticha ──
   // Pravidelný refresh artifactu nedělá smysl — Watch mode v artifactu je
@@ -806,9 +941,9 @@ async function createWorkspace(projectPath: string, projectName: string): Promis
     grid.removePanel('artifact');
     poppedOut = true;
     poppedPanels.add('artifact');
-    showToast('Preview otevřen v plovoucím okně', 'info');
+    showToast(t('toast.previewPopout'), 'info');
   }
-  wsToolbar.querySelector('.ws-btn-popout')!.addEventListener('click', popoutArtifact);
+  wsToolbar.querySelector('.ws-btn-popout')?.addEventListener('click', popoutArtifact);
 
   // Drag-out řeší grid (onDragOut callback výš). Žádné duplicitní handlery.
 
@@ -884,14 +1019,14 @@ async function createWorkspace(projectPath: string, projectName: string): Promis
       if (sel) {
         e.preventDefault();
         sendToFirstTerminal(sel);
-        showToast('Odesláno do terminálu', 'info');
+        showToast(t('toast.sentToTerminal'), 'info');
       }
     }
     if (e.ctrlKey && e.shiftKey && e.key === 'V') {
       e.preventDefault();
       artifactInstance.refresh();
       levis.popoutRefresh();
-      showToast('Preview obnoven', 'info');
+      showToast(t('toast.previewReturned'), 'info');
     }
     // Alt+I — toggle inspect mode
     if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === 'i' || e.key === 'I' || e.code === 'KeyI')) {

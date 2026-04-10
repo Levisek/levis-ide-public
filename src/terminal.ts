@@ -33,13 +33,13 @@ async function createTerminal(
   const labelHtml = label ? ` <span class="terminal-label">${label}</span>` : '';
   const I = (window as any).icon;
   toolbar.innerHTML = `
-    <span class="term-status-dot term-status-idle" title="Stav terminálu"></span>
+    <span class="term-status-dot term-status-idle" title="${t('terminal.status')}"></span>
     <span class="project-label">${projectName}</span>${labelHtml}
     <span style="flex:1"></span>
-    <button class="btn-search-term" title="Hledat v terminálu (Ctrl+F)">${I('search')}</button>
-    <button class="btn-restart" title="Restartovat Claude Code (Ctrl+C, cls, claude)">${I('restart')} Restart CC</button>
-    <button class="btn-clear" title="Vyčistit terminál">${I('clear')} Clear</button>
-    <button class="btn-close-term" title="Zavřít terminál">${I('close')}</button>
+    <button class="btn-search-term" title="${t('terminal.search')}">${I('search')}</button>
+    <button class="btn-restart" title="${t('ws.restartCC')}">${I('restart')} Restart CC</button>
+    <button class="btn-clear" title="${t('terminal.clear')}">${I('clear')} Clear</button>
+    <button class="btn-close-term" title="${t('terminal.close')}">${I('close')}</button>
   `;
   container.appendChild(toolbar);
 
@@ -121,11 +121,11 @@ async function createTerminal(
     if (stateTimer) clearTimeout(stateTimer);
     // Dokud data tečou, považuj za working
     setState('working');
-    // Po 600ms ticha vyhodnoť skutečný stav z bufferu (idle/working/waiting)
+    // Po 600ms ticha vyhodnoť idle/working (waiting odstraněn — nespolehlivý)
     stateTimer = setTimeout(() => {
       try {
         const real = ccDetector.detect();
-        setState(real);
+        setState(real === 'waiting' ? 'working' : real);
       } catch {
         setState('idle');
       }
@@ -246,7 +246,7 @@ async function createTerminal(
     }
     searchBar = document.createElement('div');
     searchBar.className = 'term-search-bar';
-    searchBar.innerHTML = `<input type="text" class="term-search-input" placeholder="Hledat v terminálu...">`;
+    searchBar.innerHTML = `<input type="text" class="term-search-input" placeholder="${t('terminal.searchPh')}">`;
     toolbar.after(searchBar);
     searchBarVisible = true;
     const input = searchBar.querySelector('.term-search-input') as HTMLInputElement;

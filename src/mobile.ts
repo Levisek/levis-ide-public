@@ -8,6 +8,7 @@ interface MobileInstance {
   start: () => void;
   stop: () => void;
   isRunning: () => boolean;
+  loadUrl: (url: string) => void;
   dispose: () => void;
 }
 
@@ -45,14 +46,14 @@ function createMobile(container: HTMLElement, projectPath: string, _projectName:
     <span class="artifact-icon">${I('mobile')}</span>
     <span class="artifact-title">Mobile</span>
     <input type="text" class="mobile-url" placeholder="http://localhost:5173" style="flex:1;min-width:160px;max-width:280px;padding:4px 8px;background:var(--bg-1,#0a0a0f);border:1px solid var(--border,#2a2a3a);color:var(--text,#e8e8f0);border-radius:4px;font-size:12px;">
-    <button class="artifact-btn mobile-load" title="Načíst URL">${I('play')} Load</button>
-    <select class="mobile-preset" title="Velikost zařízení" style="padding:4px 6px;background:var(--bg-1,#0a0a0f);border:1px solid var(--border,#2a2a3a);color:var(--text,#e8e8f0);border-radius:4px;font-size:12px;">${presetOptions}</select>
-    <button class="artifact-btn mobile-rotate" title="Otočit (na šířku/výšku)">${I('refresh')}</button>
+    <button class="artifact-btn mobile-load" title="${t('mobile.loadUrl')}">${I('play')} Load</button>
+    <select class="mobile-preset" title="${t('mobile.deviceSize')}" style="padding:4px 6px;background:var(--bg-1,#0a0a0f);border:1px solid var(--border,#2a2a3a);color:var(--text,#e8e8f0);border-radius:4px;font-size:12px;">${presetOptions}</select>
+    <button class="artifact-btn mobile-rotate" title="${t('mobile.rotate')}">${I('refresh')}</button>
     <span style="flex:1"></span>
-    <button class="artifact-btn mobile-touch-toggle" title="Touch emulace (myš jako prst)">${I('inspect')} Touch</button>
-    <button class="artifact-btn artifact-inspect" title="Inspect element">${I('inspect')} Inspect</button>
-    <button class="artifact-btn artifact-annotate" title="Kroužkovat oblast">${I('editor')} Označit</button>
-    <button class="artifact-btn artifact-reload" title="Obnovit">${I('refresh')}</button>
+    <button class="artifact-btn mobile-touch-toggle" title="${t('mobile.touchEm')}">${I('inspect')} Touch</button>
+    <button class="artifact-btn artifact-inspect" title="${t('browser.inspect')}">${I('inspect')} ${t('browser.inspect')}</button>
+    <button class="artifact-btn artifact-annotate" title="${t('mobile.lasso')}">${I('editor')} ${t('browser.annotate')}</button>
+    <button class="artifact-btn artifact-reload" title="${t('artifact.refreshTip')}">${I('refresh')}</button>
   `;
   wrapper.appendChild(toolbar);
 
@@ -90,9 +91,9 @@ function createMobile(container: HTMLElement, projectPath: string, _projectName:
   infoBar.style.display = 'none';
   infoBar.innerHTML = `
     <span class="info-selector"></span>
-    <input type="text" class="info-prompt" placeholder="Co chceš změnit?">
-    <button class="info-send" title="Odeslat (Enter)">${I('play')}</button>
-    <button class="info-clear" title="Zrušit">${I('close')}</button>
+    <input type="text" class="info-prompt" placeholder="${t('artifact.promptPh')}">
+    <button class="info-send" title="${t('toast.sentToCC')}">${I('play')}</button>
+    <button class="info-clear" title="${t('mobile.cancel')}">${I('close')}</button>
   `;
   wrapper.appendChild(infoBar);
 
@@ -234,7 +235,7 @@ function createMobile(container: HTMLElement, projectPath: string, _projectName:
   btnInspect.addEventListener('click', () => {
     inspectActive = !inspectActive;
     btnInspect.classList.toggle('artifact-btn-active', inspectActive);
-    btnInspect.innerHTML = `${I('inspect')} ${inspectActive ? 'Inspect ON' : 'Inspect'}`;
+    btnInspect.innerHTML = `${I('inspect')} ${t(inspectActive ? 'browser.inspectOn' : 'browser.inspect')}`;
     if (inspectActive) {
       inspector.enable(iframe);
       // Mutually exclusive — vypni annotate
@@ -278,7 +279,7 @@ function createMobile(container: HTMLElement, projectPath: string, _projectName:
     touchEmulationOn = !touchEmulationOn;
     btnTouchToggle.classList.toggle('artifact-btn-active', touchEmulationOn);
     await applyTouchEmulation();
-    showToast('Touch emulace ' + (touchEmulationOn ? 'zapnutá' : 'vypnutá'), 'info');
+    showToast(t(touchEmulationOn ? 'mobile.touchOn' : 'mobile.touchOff'), 'info');
   });
 
   const infoPromptInput = infoBar.querySelector('.info-prompt') as HTMLInputElement;
@@ -300,7 +301,7 @@ function createMobile(container: HTMLElement, projectPath: string, _projectName:
       (selectedElement.text ? ` (obsah: "${selectedElement.text.substring(0, 50)}")` : '') +
       (userText ? ` — ${userText}` : '');
     wrapper.dispatchEvent(new CustomEvent('send-to-pty', { detail: fullPrompt, bubbles: true }));
-    showToast('Odesláno do Claude Code', 'success');
+    showToast(t('toast.sentToCC'), 'success');
     infoPromptInput.value = '';
     selectedElement = null;
     infoBar.style.display = 'none';
@@ -329,7 +330,7 @@ function createMobile(container: HTMLElement, projectPath: string, _projectName:
   btnAnnotate.addEventListener('click', () => {
     annotating = !annotating;
     btnAnnotate.classList.toggle('artifact-btn-active', annotating);
-    btnAnnotate.innerHTML = `${I('editor')} ${annotating ? 'Kreslím...' : 'Označit'}`;
+    btnAnnotate.innerHTML = `${I('editor')} ${t(annotating ? 'browser.annotateDraw' : 'browser.annotate')}`;
     annotCanvas.style.display = annotating ? 'block' : 'none';
     annotCanvas.style.pointerEvents = annotating ? 'auto' : 'none';
 
@@ -391,7 +392,7 @@ function createMobile(container: HTMLElement, projectPath: string, _projectName:
     annotPrompt.className = 'annot-prompt';
     annotPrompt.innerHTML = `
       <span class="annot-prompt-label">Oblast (${Math.round(maxX - minX)}x${Math.round(maxY - minY)}px) @ ${currentPreset.label}</span>
-      <input type="text" class="annot-prompt-input" placeholder="Co chceš udělat?">
+      <input type="text" class="annot-prompt-input" placeholder="${t('mobile.areaPh')}">
       <button class="annot-prompt-send">${I('play')}</button>
       <button class="annot-prompt-clear">${I('close')}</button>
     `;
@@ -405,7 +406,7 @@ function createMobile(container: HTMLElement, projectPath: string, _projectName:
       if (!text) return;
       const prompt = `V mobile preview (${currentUrl}, ${currentPreset.label}${landscape ? ' landscape' : ''}) v oblasti (${Math.round(minX)},${Math.round(minY)} → ${Math.round(maxX)},${Math.round(maxY)}) udělej: ${text}`;
       wrapper.dispatchEvent(new CustomEvent('send-to-pty', { detail: prompt, bubbles: true }));
-      showToast('Odesláno do CC', 'success');
+      showToast(t('toast.sentToCC'), 'success');
       if (annotPrompt) { annotPrompt.remove(); annotPrompt = null; }
       strokes.pop();
       redrawAll();
@@ -488,6 +489,7 @@ function createMobile(container: HTMLElement, projectPath: string, _projectName:
     start,
     stop,
     isRunning: () => !!currentUrl,
+    loadUrl: (url: string) => { urlInput.value = url; loadUrl(url); },
     dispose: () => {
       inspector.dispose();
       wrapper.remove();

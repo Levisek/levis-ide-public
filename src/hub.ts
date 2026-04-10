@@ -67,13 +67,13 @@ async function detectProjectType(projectPath: string): Promise<{ type: string; h
 function getGreeting(): { text: string; emoji: string; weekday: string } {
   const now = new Date();
   const hour = now.getHours();
-  const days = ['Neděle', 'Pondělí', 'Úterý', 'Středa', 'Čtvrtek', 'Pátek', 'Sobota'];
-  const weekday = days[now.getDay()];
-  if (hour < 5) return { text: 'Dobrou noc', emoji: '🌙', weekday };
-  if (hour < 12) return { text: 'Dobré ráno', emoji: '☀️', weekday };
-  if (hour < 18) return { text: 'Dobré odpoledne', emoji: '🌤️', weekday };
-  if (hour < 22) return { text: 'Dobrý večer', emoji: '🌆', weekday };
-  return { text: 'Dobrou noc', emoji: '🌙', weekday };
+  const dayKeys = ['day.sun', 'day.mon', 'day.tue', 'day.wed', 'day.thu', 'day.fri', 'day.sat'];
+  const weekday = t(dayKeys[now.getDay()]);
+  if (hour < 5) return { text: t('greet.night'), emoji: '', weekday };
+  if (hour < 12) return { text: t('greet.morning'), emoji: '', weekday };
+  if (hour < 18) return { text: t('greet.afternoon'), emoji: '', weekday };
+  if (hour < 22) return { text: t('greet.evening'), emoji: '', weekday };
+  return { text: t('greet.night'), emoji: '', weekday };
 }
 
 function formatDate(isoString: string): string {
@@ -82,10 +82,10 @@ function formatDate(isoString: string): string {
   const now = new Date();
   const diffMs = now.getTime() - d.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  if (diffDays === 0) return 'dnes';
-  if (diffDays === 1) return 'včera';
-  if (diffDays < 7) return `před ${diffDays} dny`;
-  return d.toLocaleDateString('cs-CZ');
+  if (diffDays === 0) return t('date.today');
+  if (diffDays === 1) return t('date.yesterday');
+  if (diffDays < 7) return t('date.daysAgo', { n: diffDays });
+  return d.toLocaleDateString(getLocale() === 'cs' ? 'cs-CZ' : 'en-US');
 }
 
 function showAboutDialog(): void {
@@ -94,20 +94,17 @@ function showAboutDialog(): void {
   overlay.className = 'about-overlay';
   overlay.innerHTML = `
     <div class="about-box">
-      <button class="about-close" title="Zavřít">×</button>
+      <button class="about-close" title="${t('settings.close')}">×</button>
       <div class="about-logo"><img src="../assets/icon.svg" alt="LevisIDE"></div>
       <h1>LevisIDE</h1>
-      <div class="about-version">verze 1.0.0</div>
-      <div class="about-tagline">IDE pro webové projekty s Claude Code v jednom okně.</div>
+      <div class="about-version">${t('about.version')}</div>
+      <div class="about-tagline">${t('welcome.tagline')}</div>
       <div class="about-meta">
-        <div><strong>Autor:</strong> Martin Levinger</div>
-        <div><strong>GitHub:</strong> <a href="https://github.com/Levisek/levis-ide" data-extlink>Levisek/levis-ide</a></div>
-        <div><strong>Postaveno na:</strong> Electron, Monaco, xterm.js, node-pty</div>
+        <div><strong>${t('about.author')}:</strong> Martin Levinger</div>
+        <div><strong>${t('about.github')}:</strong> <a href="https://github.com/Levisek/levis-ide" data-extlink>Levisek/levis-ide</a></div>
+        <div><strong>${t('about.builtOn')}:</strong> Electron, Monaco, xterm.js, node-pty</div>
       </div>
-      <div class="about-name-explainer">
-        <strong>„LevisIDE"</strong> je dvojsmysl — <em>IDE</em> (Integrated Development Environment)
-        + ostravské nářečí <em>ide</em> (= „jde, kráčí"). Logo: kráčející postava odcházející z L.
-      </div>
+      <div class="about-name-explainer">${t('about.nameExpl')}</div>
     </div>
   `;
   document.body.appendChild(overlay);
@@ -133,17 +130,18 @@ function escapeHtml(str: string): string {
 function createTileElement(project: HubProjectInfo, onOpen: (p: HubProjectInfo) => void, onTogglePin: (p: HubProjectInfo) => void, onAction: (action: string, p: HubProjectInfo) => void): HTMLElement {
   const tile = document.createElement('div');
   tile.className = 'tile' + (project.pinned ? ' tile-pinned' : '') + ((project as any).isRecent ? ' tile-recent' : '');
+  if ((project as any).isRecent) tile.dataset.recentLabel = t('hub.recentBadge');
   tile.innerHTML = `
-    <button class="tile-pin ${project.pinned ? 'pinned' : ''}" title="${project.pinned ? 'Odepnout' : 'Připnout nahoru'}">${project.pinned ? '\u2605' : '\u2606'}</button>
-    <button class="tile-menu" title="Možnosti projektu">⋯</button>
-    <div class="tile-status ${project.gitStatus}" title="${project.gitStatus === 'clean' ? 'Git: vše commitnuto' : project.gitStatus === 'dirty' ? 'Git: necommitované změny' : 'Git: není repo nebo chyba'}"></div>
+    <button class="tile-pin ${project.pinned ? 'pinned' : ''}" title="${t(project.pinned ? 'hub.unpin' : 'hub.pin')}">${project.pinned ? '\u2605' : '\u2606'}</button>
+    <button class="tile-menu" title="${t('hub.projectOptions')}">⋯</button>
+    <div class="tile-status ${project.gitStatus}" title="${t(project.gitStatus === 'clean' ? 'hub.gitClean' : project.gitStatus === 'dirty' ? 'hub.gitDirty' : 'hub.gitNoRepo')}"></div>
     <div class="tile-name">${escapeHtml(project.name)}</div>
     <div class="tile-domain">${escapeHtml(project.domain || project.path)}</div>
     <div class="tile-meta">
       <span>${formatDate(project.lastModified)}</span>
-      <span>${project.unpushedCount > 0 ? `${project.unpushedCount} nepushnuto` : project.gitStatus === 'clean' ? 'Git OK' : ''}</span>
+      <span>${project.unpushedCount > 0 ? t('hub.unpushed', { n: project.unpushedCount }) : project.gitStatus === 'clean' ? t('hub.gitOk') : ''}</span>
     </div>
-    <button class="tile-open" title="Otevřít projekt ve Workspace">Otevřít</button>
+    <button class="tile-open" title="${t('hub.openInWorkspace')}">${t('hub.tileOpen')}</button>
   `;
   tile.addEventListener('click', (e) => {
     const t = e.target as HTMLElement;
@@ -158,15 +156,16 @@ function createTileElement(project: HubProjectInfo, onOpen: (p: HubProjectInfo) 
     document.querySelectorAll('.tile-context-menu').forEach(m => m.remove());
     const menu = document.createElement('div');
     menu.className = 'tile-context-menu';
+    const Ic = (window as any).icon;
     menu.innerHTML = `
-      <div class="tcm-item" data-act="open">📂 Otevřít projekt</div>
-      <div class="tcm-item" data-act="explorer">🗂 Otevřít ve file exploreru</div>
-      <div class="tcm-item" data-act="copyPath">📋 Kopírovat cestu</div>
+      <div class="tcm-item" data-act="open">${Ic('folder')} ${t('hub.tcm.open')}</div>
+      <div class="tcm-item" data-act="explorer">${Ic('folder')} ${t('hub.tcm.explorer')}</div>
+      <div class="tcm-item" data-act="copyPath">${Ic('file')} ${t('hub.tcm.copyPath')}</div>
       <div class="tcm-sep"></div>
-      <div class="tcm-item" data-act="rename">✏️ Přejmenovat</div>
-      <div class="tcm-item" data-act="duplicate">📑 Duplikovat</div>
+      <div class="tcm-item" data-act="rename">${Ic('editor')} ${t('hub.tcm.rename')}</div>
+      <div class="tcm-item" data-act="duplicate">${Ic('file')} ${t('hub.tcm.duplicate')}</div>
       <div class="tcm-sep"></div>
-      <div class="tcm-item tcm-danger" data-act="delete">🗑 Smazat projekt</div>
+      <div class="tcm-item tcm-danger" data-act="delete">${Ic('close')} ${t('hub.tcm.delete')}</div>
     `;
     menu.style.left = `${x}px`;
     menu.style.top = `${y}px`;
@@ -207,7 +206,7 @@ function createNewProjectTile(onCreateProject: () => void): HTMLElement {
   tile.className = 'tile tile-new';
   tile.innerHTML = `
     <div class="tile-new-icon">+</div>
-    <div class="tile-new-label">Nový projekt</div>
+    <div class="tile-new-label">${t('hub.newProject')}</div>
   `;
   tile.addEventListener('click', onCreateProject);
   return tile;
@@ -223,21 +222,21 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
     <div class="hub">
       <div class="hub-header">
         <div class="hub-greeting">${(() => { const g = getGreeting(); return `${g.text} <span class="hub-greeting-day">· ${g.weekday}</span>`; })()}</div>
-        <div class="hub-subtitle">${escapeHtml(scanPath)} &mdash; načítám projekty...</div>
+        <div class="hub-subtitle">${t('hub.subtitleLoading', { path: escapeHtml(scanPath) })}</div>
         <div class="hub-actions">
-          <button class="hub-btn hub-btn-pull-all" title="Stáhnout vše z GitHubu">${I('download')} Pull vše</button>
-          <button class="hub-btn hub-btn-push-all" title="Odeslat vše na GitHub">${I('upload')} Push vše</button>
-          <button class="hub-btn hub-btn-refresh" title="Obnovit">${I('refresh')} Refresh</button>
-          <button class="hub-btn hub-btn-settings" title="Nastavení">${I('gear')} Nastavení</button>
+          <button class="hub-btn hub-btn-pull-all" title="${t('hub.tooltipPullAll')}">${I('download')} ${t('hub.gitPullAll')}</button>
+          <button class="hub-btn hub-btn-push-all" title="${t('hub.tooltipPushAll')}">${I('upload')} ${t('hub.gitPushAll')}</button>
+          <button class="hub-btn hub-btn-refresh" title="${t('hub.refresh')}">${I('refresh')} ${t('hub.refresh')}</button>
+          <button class="hub-btn hub-btn-settings" title="${t('hub.settings')}">${I('gear')} ${t('hub.settings')}</button>
         </div>
       </div>
       <div class="hub-filter-bar">
-        <input type="text" class="hub-search" placeholder="Hledat projekt...">
+        <input type="text" class="hub-search" placeholder="${t('hub.search')}">
         <div class="hub-filter-chips"></div>
       </div>
       <div class="hub-grid"></div>
       <div class="hub-usage" id="hub-usage"></div>
-      <button class="hub-trademark" type="button" title="O aplikaci">
+      <button class="hub-trademark" type="button" title="${t('hub.tradeTooltip')}">
         <img class="hub-tm-logo" src="../assets/icon.svg" alt="LevisIDE">
         <span class="hub-tm-text">LevisIDE™</span>
         <span class="hub-tm-version">v1.0.0</span>
@@ -255,7 +254,7 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
   btnTrademark?.addEventListener('click', showAboutDialog);
 
   btnPullAll.addEventListener('click', async () => {
-    showToast('Stahuji vše z GitHubu...', 'info');
+    showToast(t('toast.pullingAll'), 'info');
     const projects = await levis.scanProjects(scanPath);
     let ok = 0;
     const failed: string[] = [];
@@ -266,7 +265,7 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
       } catch { failed.push(p.name); }
     }
     if (failed.length === 0) {
-      showToast(`Pull OK: ${ok} projektů`, 'success');
+      showToast(t('hub.pullOkN', { n: ok }), 'success');
     } else {
       const list = failed.slice(0, 5).join(', ') + (failed.length > 5 ? ` +${failed.length - 5}` : '');
       showToast(`Pull: ${ok} OK, selhaly: ${list}`, 'warning');
@@ -275,7 +274,7 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
   });
 
   btnPushAll.addEventListener('click', async () => {
-    showToast('Odesílám vše na GitHub... (jen projekty s remote)', 'info');
+    showToast(t('toast.pushingAll'), 'info');
     const projects = await levis.scanProjects(scanPath);
     let ok = 0, skip = 0;
     for (const p of projects) {
@@ -289,15 +288,15 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
         }
       } catch { skip++; }
     }
-    showToast(`Push: ${ok} projektů zpracováno, ${skip} přeskočeno`, 'success');
+    showToast(t('hub.pushOkN', { ok, skip }), 'success');
   });
 
   async function loadProjects(): Promise<void> {
     grid.innerHTML = '';
-    subtitle.textContent = `${scanPath} — načítám projekty...`;
+    subtitle.textContent = t('hub.subtitleLoading', { path: scanPath });
     try {
       const projects: HubProjectInfo[] = await levis.scanProjects(scanPath);
-      subtitle.textContent = `${scanPath} — ${projects.length} projektů`;
+      subtitle.textContent = `${scanPath} — ${t('hub.nProjects', { n: projects.length })}`;
       const usageHost = container.querySelector('#hub-usage') as HTMLElement;
       if (usageHost) usageHost.style.display = projects.length === 0 ? 'none' : '';
       // Načti "naposledy otevřeno" z prefs
@@ -327,7 +326,7 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
       // Render filter chips dle dostupnych typu
       const types = Array.from(new Set(projects.map(p => p.projectType || 'other')));
       const chipsHost = container.querySelector('.hub-filter-chips') as HTMLElement;
-      const allChip = `<button class="hub-chip hub-chip-active" data-type="all">Vše (${projects.length})</button>`;
+      const allChip = `<button class="hub-chip hub-chip-active" data-type="all">${t('hub.allFilter', { n: projects.length })}</button>`;
       const typeChips = types.map(t => {
         const meta = PROJECT_TYPES[t] || PROJECT_TYPES.other;
         const count = projects.filter(p => p.projectType === t).length;
@@ -353,12 +352,12 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
           empty.innerHTML = `
             <div class="hub-empty-card">
               <div class="hub-empty-icon">${I('home', { size: 40 })}</div>
-              <div class="hub-empty-title">Vítej v LevisIDE</div>
-              <div class="hub-empty-sub">V <code>${escapeHtml(scanPath)}</code> zatím nejsou žádné projekty. Začni jedním z kroků:</div>
+              <div class="hub-empty-title">${t('welcome.title')}</div>
+              <div class="hub-empty-sub">${t('hub.noProjectsTitle', { path: escapeHtml(scanPath) })}</div>
               <ol class="hub-empty-steps">
-                <li><button class="hub-empty-btn" data-action="scan">${I('folder')} Vyber složku s projekty</button></li>
-                <li><button class="hub-empty-btn" data-action="new">${I('plus')} Vytvoř nový projekt</button></li>
-                <li><span>${I('inspect')} Otevři Workspace a vyzkoušej Inspector — klikni na element v náhledu, napiš co změnit, Claude Code to udělá.</span></li>
+                <li><button class="hub-empty-btn" data-action="scan">${I('folder')} ${t('hub.pickFolder')}</button></li>
+                <li><button class="hub-empty-btn" data-action="new">${I('plus')} ${t('hub.newProject')}</button></li>
+                <li><span>${I('inspect')} ${t('welcome.tip3')}</span></li>
               </ol>
             </div>
           `;
@@ -373,8 +372,8 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
           empty.innerHTML = `
             <div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:#82859a;">
               <div style="margin-bottom:12px;opacity:0.6;">${I('search', { size: 40 })}</div>
-              <div style="font-size:15px;color:#f1f2f8;margin-bottom:6px;">Žádné projekty neodpovídají filtru</div>
-              <div style="font-size:12px;">Zkus změnit hledání nebo filtr typu</div>
+              <div style="font-size:15px;color:#f1f2f8;margin-bottom:6px;">${t('hub.noFilterMatch')}</div>
+              <div style="font-size:12px;">${t('hub.noFilterHint')}</div>
             </div>
           `;
           grid.appendChild(empty);
@@ -388,29 +387,29 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
           await levis.shellOpenPath(p.path);
         } else if (action === 'copyPath') {
           levis.clipboardWrite(p.path);
-          showToast('Cesta zkopírována', 'success');
+          showToast(t('toast.pathCopied'), 'success');
         } else if (action === 'rename') {
-          const newName = await askModal('Přejmenovat projekt', 'Nový název:', p.name);
+          const newName = await askModal(t('hub.dialog.rename'), t('hub.dialog.renameLabel'), p.name);
           if (!newName || newName === p.name) return;
           const r = await levis.renameProject(p.path, newName);
-          if (r.error) showToast(`Chyba: ${r.error}`, 'error');
-          else { showToast('Přejmenováno', 'success'); loadProjects(); }
+          if (r.error) showToast(t('hub.toast.error', { msg: r.error }), 'error');
+          else { showToast(t('toast.renamed'), 'success'); loadProjects(); }
         } else if (action === 'duplicate') {
-          const newName = await askModal('Duplikovat projekt', 'Název kopie:', p.name + '-copy');
+          const newName = await askModal(t('hub.dialog.duplicate'), t('hub.dialog.duplicateLabel'), p.name + '-copy');
           if (!newName) return;
-          showToast('Kopíruji...', 'info');
+          showToast(t('toast.copying'), 'info');
           const r = await levis.duplicateProject(p.path, newName);
-          if (r.error) showToast(`Chyba: ${r.error}`, 'error');
-          else { showToast('Duplikováno', 'success'); loadProjects(); }
+          if (r.error) showToast(t('hub.toast.error', { msg: r.error }), 'error');
+          else { showToast(t('toast.duplicated'), 'success'); loadProjects(); }
         } else if (action === 'delete') {
-          const confirm = await askModal('Smazat projekt', `Opravdu smazat "${p.name}"? Tahle akce je NEVRATNÁ. Napiš název projektu pro potvrzení:`);
+          const confirm = await askModal(t('hub.dialog.delete'), t('hub.dialog.deleteConfirm', { name: p.name }));
           if (confirm !== p.name) {
-            if (confirm !== null) showToast('Zrušeno — název nesouhlasí', 'warning');
+            if (confirm !== null) showToast(t('toast.cancelledNameMismatch'), 'warning');
             return;
           }
           const r = await levis.deleteProject(p.path);
-          if (r.error) showToast(`Chyba: ${r.error}`, 'error');
-          else { showToast('Smazáno', 'success'); loadProjects(); }
+          if (r.error) showToast(t('hub.toast.error', { msg: r.error }), 'error');
+          else { showToast(t('toast.deleted'), 'success'); loadProjects(); }
         }
       }
 
@@ -422,7 +421,7 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
           return new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime();
         });
         applyFilter();
-        showToast(nowPinned ? 'Připnuto' : 'Odepnuto', 'info');
+        showToast(t(nowPinned ? 'hub.toast.pinned' : 'hub.toast.unpinned'), 'info');
       }
 
       chipsHost.querySelectorAll('.hub-chip').forEach((chip) => {
@@ -440,8 +439,8 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
 
       applyFilter();
     } catch (err) {
-      subtitle.textContent = `${scanPath} — chyba při načítání`;
-      showToast('Chyba při načítání projektů', 'error');
+      subtitle.textContent = t('hub.subtitleError', { path: scanPath });
+      showToast(t('toast.projectsLoadError'), 'error');
     }
   }
 
@@ -451,13 +450,14 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
       overlay.className = 'template-picker-overlay';
       overlay.innerHTML = `
         <div class="template-picker-box">
-          <h3>Vyber šablonu</h3>
+          <h3>${t('hub.template.title')}</h3>
           <div class="template-picker-list">
-            <button class="template-pick" data-tpl="vitejs/vite/packages/create-vite/template-vanilla">Vite Vanilla <span>JS + Vite dev server</span></button>
-            <button class="template-pick" data-tpl="vitejs/vite/packages/create-vite/template-vanilla-ts">Vite Vanilla TS <span>TypeScript + Vite</span></button>
-            <button class="template-pick" data-tpl="__plain__">Plain HTML <span>index + style + main, žádné deps</span></button>
+            <button class="template-pick" data-tpl="">${t('hub.template.gral')} <span>${t('hub.template.gralDesc')}</span></button>
+            <button class="template-pick" data-tpl="vitejs/vite/packages/create-vite/template-vanilla">${t('hub.template.viteJs')} <span>${t('hub.template.viteJsDesc')}</span></button>
+            <button class="template-pick" data-tpl="vitejs/vite/packages/create-vite/template-vanilla-ts">${t('hub.template.viteTs')} <span>${t('hub.template.viteTsDesc')}</span></button>
+            <button class="template-pick" data-tpl="__plain__">${t('hub.template.plain')} <span>${t('hub.template.plainDesc')}</span></button>
           </div>
-          <button class="template-cancel">Zrušit</button>
+          <button class="template-cancel">${t('hub.template.cancel')}</button>
         </div>
       `;
       document.body.appendChild(overlay);
@@ -476,25 +476,24 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
   }
 
   async function newProjectHandler(): Promise<void> {
-    const name = await askModal('Nový projekt', 'Název projektu:');
+    const name = await askModal(t('hub.dialog.newProject'), t('hub.dialog.newProjectLabel'));
     if (!name) return;
     const tpl = await pickTemplate();
     if (tpl === null) return;
-    showToast('Vytvářím projekt...', 'info');
+    showToast(t('toast.creatingProject'), 'info');
     const result = await levis.scaffoldProject(name, scanPath, tpl || undefined);
     if (result.error) {
-      showToast(`Chyba: ${result.error}`, 'error');
+      showToast(t('hub.toast.error', { msg: result.error }), 'error');
     } else {
-      showToast(`Projekt ${name} vytvořen!`, 'success');
+      showToast(t('hub.toast.projectCreated', { name }), 'success');
       loadProjects();
     }
   }
 
   btnRefresh.addEventListener('click', loadProjects);
 
-  btnSettings.addEventListener('click', () => {
-    // Show settings panel
-    let settingsPanel = container.querySelector('.settings-panel') as HTMLElement;
+  function openSettingsModal(): void {
+    let settingsPanel = document.body.querySelector('.settings-panel') as HTMLElement;
     if (settingsPanel) {
       settingsPanel.remove();
       return;
@@ -503,37 +502,51 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
     settingsPanel.className = 'settings-panel';
     settingsPanel.innerHTML = `
       <div class="settings-box">
-        <h3>Nastavení</h3>
-        <label>Složka projektů:
+        <h3>${t('settings.title')}</h3>
+        <label>${t('settings.scanPath')}:
           <input type="text" class="settings-input" id="set-scan-path" value="${scanPath}">
         </label>
-        <label>Git user.name:
+        <label>${t('settings.gitName')}:
           <input type="text" class="settings-input" id="set-username" value="">
         </label>
-        <label>Git user.email:
+        <label>${t('settings.gitEmail')}:
           <input type="text" class="settings-input" id="set-email" value="">
         </label>
-        <label>Velikost písma (editor):
+        <label>${t('settings.editorFontSize')}:
           <input type="number" class="settings-input" id="set-editor-font" value="14" min="10" max="24">
         </label>
-        <label>Velikost písma (terminál):
+        <label>${t('settings.terminalFontSize')}:
           <input type="number" class="settings-input" id="set-term-font" value="13" min="10" max="24">
+        </label>
+        <label>${t('settings.wedosPwd')}:
+          <input type="password" class="settings-input" id="set-wedos-pwd" value="" autocomplete="off" placeholder="${t('settings.wedosPlaceholder')}">
         </label>
         <label class="settings-checkbox">
           <input type="checkbox" id="set-cc-notifications" checked>
-          <span>OS notifikace když CC v jiném tabu doběhne</span>
+          <span>${t('settings.ccNotifications')}</span>
         </label>
         <label class="settings-checkbox">
           <input type="checkbox" id="set-cc-sound" checked>
-          <span>Zvuk při dokončení CC</span>
+          <span>${t('settings.ccSound')}</span>
+        </label>
+        <label class="settings-checkbox">
+          <input type="checkbox" id="set-autostart-dev" checked>
+          <span>${t('settings.autostartDev')}</span>
+        </label>
+        <label>
+          <span>${t('settings.language')}</span>:
+          <select class="settings-input" id="set-locale">
+            <option value="en">English</option>
+            <option value="cs">Čeština</option>
+          </select>
         </label>
         <div class="settings-actions">
-          <button class="settings-save">Uložit</button>
-          <button class="settings-close">Zavřít</button>
+          <button class="settings-save">${t('settings.save')}</button>
+          <button class="settings-close">${t('settings.close')}</button>
         </div>
       </div>
     `;
-    container.querySelector('.hub')!.appendChild(settingsPanel);
+    document.body.appendChild(settingsPanel);
 
     // Load current values
     levis.storeGetAll().then((all: any) => {
@@ -542,8 +555,11 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
       (settingsPanel.querySelector('#set-email') as HTMLInputElement).value = all.userEmail || '';
       (settingsPanel.querySelector('#set-editor-font') as HTMLInputElement).value = String(all.editorFontSize || 14);
       (settingsPanel.querySelector('#set-term-font') as HTMLInputElement).value = String(all.terminalFontSize || 13);
+      (settingsPanel.querySelector('#set-wedos-pwd') as HTMLInputElement).value = all.deployDefaultPassword || '';
       (settingsPanel.querySelector('#set-cc-notifications') as HTMLInputElement).checked = all.ccNotifications !== false;
       (settingsPanel.querySelector('#set-cc-sound') as HTMLInputElement).checked = all.ccSound !== false;
+      (settingsPanel.querySelector('#set-autostart-dev') as HTMLInputElement).checked = all.autostartDev !== false;
+      (settingsPanel.querySelector('#set-locale') as HTMLSelectElement).value = all.locale || 'en';
     });
 
     settingsPanel.querySelector('.settings-save')!.addEventListener('click', async () => {
@@ -556,15 +572,23 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
       await levis.storeSet('userEmail', (settingsPanel.querySelector('#set-email') as HTMLInputElement).value);
       await levis.storeSet('editorFontSize', parseInt((settingsPanel.querySelector('#set-editor-font') as HTMLInputElement).value));
       await levis.storeSet('terminalFontSize', parseInt((settingsPanel.querySelector('#set-term-font') as HTMLInputElement).value));
+      await levis.storeSet('deployDefaultPassword', (settingsPanel.querySelector('#set-wedos-pwd') as HTMLInputElement).value);
       await levis.storeSet('ccNotifications', (settingsPanel.querySelector('#set-cc-notifications') as HTMLInputElement).checked);
       await levis.storeSet('ccSound', (settingsPanel.querySelector('#set-cc-sound') as HTMLInputElement).checked);
-      showToast('Nastavení uloženo', 'success');
+      await levis.storeSet('autostartDev', (settingsPanel.querySelector('#set-autostart-dev') as HTMLInputElement).checked);
+      const newLocale = (settingsPanel.querySelector('#set-locale') as HTMLSelectElement).value as 'en' | 'cs';
+      await levis.storeSet('locale', newLocale);
+      setLocale(newLocale);
+      showToast(t('settings.saved'), 'success');
       settingsPanel.remove();
       loadProjects();
     });
 
     settingsPanel.querySelector('.settings-close')!.addEventListener('click', () => settingsPanel.remove());
-  });
+  }
+
+  (window as any).openHubSettings = openSettingsModal;
+  btnSettings.addEventListener('click', openSettingsModal);
 
   await loadProjects();
   await renderUsagePanel(container.querySelector('#hub-usage') as HTMLElement);
@@ -635,16 +659,16 @@ async function renderUsagePanel(host: HTMLElement): Promise<void> {
     </div>
     ${ctxPct !== null ? `
     <div class="usage-stat">
-      <div class="usage-stat-label">Kontext</div>
+      <div class="usage-stat-label">${(window as any).t('usage.context')}</div>
       <div class="usage-stat-val">${ctxPct}<span class="usage-stat-pct-unit">%</span></div>
       <div class="usage-progress"><div class="usage-progress-fill" style="width:${ctxPct}%;background:${pctColor(ctxPct)}"></div></div>
       <div class="usage-stat-sub">${realLimits?.model?.display_name || ''}</div>
     </div>` : ''}
   ` : `
     <div class="usage-stat">
-      <div class="usage-stat-label">Real limity</div>
-      <div class="usage-stat-val" style="font-size:11px;color:var(--text-muted)">N/A</div>
-      <div class="usage-stat-sub">pošli zprávu v claude</div>
+      <div class="usage-stat-label">${(window as any).t('usage.realLimits')}</div>
+      <div class="usage-stat-val" style="font-size:11px;color:var(--text-muted)">${(window as any).t('usage.realLimitsNA')}</div>
+      <div class="usage-stat-sub">${(window as any).t('usage.realLimitsSub')}</div>
     </div>
   `;
 
@@ -656,27 +680,27 @@ async function renderUsagePanel(host: HTMLElement): Promise<void> {
     <div class="usage-bar">
       <div class="usage-bar-row">
         <div class="usage-stat">
-          <div class="usage-stat-label">Dnes</div>
+          <div class="usage-stat-label">${(window as any).t('usage.today')}</div>
           <div class="usage-stat-val">${fmtUsd(t.today.cost)}</div>
           <div class="usage-stat-sub">${fmtTok(t.today.i + t.today.cw + t.today.cr)} in &middot; ${fmtTok(t.today.o)} out</div>
         </div>
         ${realCard}
         <div class="usage-stat">
-          <div class="usage-stat-label">Lokální odhad měsíc</div>
+          <div class="usage-stat-label">${(window as any).t('usage.monthEstimate')}</div>
           <div class="usage-stat-val" style="font-size:14px">${fmtUsd(t.month.cost)}</div>
           <div class="usage-stat-sub">5h: ${fmtUsd(t.block5h.cost)}</div>
         </div>
         <div class="usage-stat">
-          <div class="usage-stat-label">Celkem</div>
+          <div class="usage-stat-label">${(window as any).t('usage.total')}</div>
           <div class="usage-stat-val">${fmtUsd(t.all.cost)}</div>
-          <div class="usage-stat-sub">${t.all.count} zpráv</div>
+          <div class="usage-stat-sub">${(window as any).t('usage.messages', { n: t.all.count })}</div>
         </div>
         <div class="usage-stat usage-plan">
-          <div class="usage-stat-label">Plán</div>
+          <div class="usage-stat-label">${(window as any).t('usage.plan')}</div>
           <select class="usage-plan-select">${planOptions}</select>
-          <div class="usage-stat-sub">${account?.emailAddress ? escapeHtml(account.emailAddress) : 'nepřihlášen'}</div>
+          <div class="usage-stat-sub">${account?.emailAddress ? escapeHtml(account.emailAddress) : (window as any).t('usage.notLoggedIn')}</div>
         </div>
-        <button class="usage-toggle" title="Zobrazit detail využití">${(window as any).icon('arrow-down', { size: 14 })}</button>
+        <button class="usage-toggle" title="${(window as any).t('hub.usageDetail')}">${(window as any).icon('arrow-down', { size: 14 })}</button>
       </div>
       <div class="usage-detail" style="display:none"></div>
     </div>
@@ -755,16 +779,16 @@ function renderUsageDetail(data: any): string {
   return `
     <div class="usage-detail-grid">
       <div class="usage-detail-col">
-        <h4>Posledních 14 dní</h4>
+        <h4>${t('usage.last14')}</h4>
         <div class="usage-chart">${dayBars}</div>
       </div>
       <div class="usage-detail-col">
-        <h4>Modely</h4>
-        ${modelRows || '<div class="usage-empty">žádná data</div>'}
+        <h4>${t('usage.models')}</h4>
+        ${modelRows || `<div class="usage-empty">${t('usage.noData')}</div>`}
       </div>
       <div class="usage-detail-col usage-detail-col-wide">
-        <h4>Top projekty (top 20)</h4>
-        ${projRows || '<div class="usage-empty">žádná data</div>'}
+        <h4>${t('hub.topProjects')}</h4>
+        ${projRows || `<div class="usage-empty">${t('usage.noData')}</div>`}
       </div>
     </div>
   `;
@@ -781,8 +805,8 @@ function askModal(title: string, label: string, defaultValue = ''): Promise<stri
         <label class="levis-modal-label"></label>
         <input type="text" class="levis-modal-input">
         <div class="levis-modal-actions">
-          <button class="levis-modal-cancel">Zrušit</button>
-          <button class="levis-modal-ok">OK</button>
+          <button class="levis-modal-cancel">${t('modal.cancel')}</button>
+          <button class="levis-modal-ok">${t('modal.ok')}</button>
         </div>
       </div>
     `;

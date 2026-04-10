@@ -8,7 +8,7 @@
 // "-" pro sbalení prázdné buňky/řádku.
 
 type GridPanelId =
-  | 'terminal' | 'editor' | 'diff' | 'audit' | 'tokens'
+  | 'terminal' | 'editor' | 'diff'
   | 'browser' | 'artifact' | 'mobile';
 
 interface GridRow {
@@ -49,7 +49,7 @@ interface GridApi {
 }
 
 const ALL_GRID_PANELS: GridPanelId[] = [
-  'terminal', 'editor', 'diff', 'audit', 'tokens', 'browser', 'artifact', 'mobile',
+  'terminal', 'editor', 'diff', 'browser', 'artifact', 'mobile',
 ];
 
 function defaultGridState(): GridState {

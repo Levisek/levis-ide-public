@@ -64,6 +64,11 @@ interface LevisAPI {
 }
 
 declare const levis: LevisAPI;
+declare function t(key: string, params?: Record<string, string | number>): string;
+declare function setLocale(loc: 'en' | 'cs'): void;
+declare function getLocale(): 'en' | 'cs';
+declare function applyI18nDom(root: Document | HTMLElement): void;
+declare function initI18n(): Promise<void>;
 
 interface Window {
   renderHub: (container: HTMLElement, onOpenProject: (project: any) => void) => Promise<void>;

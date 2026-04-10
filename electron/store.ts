@@ -24,6 +24,8 @@ interface StoreSchema {
   ccSound: boolean;
   projectLastOpened: Record<string, number>;
   welcomeSeen: boolean;
+  autostartDev: boolean;
+  locale: 'en' | 'cs';
 }
 
 export const store = new Store<StoreSchema>({
@@ -51,5 +53,7 @@ export const store = new Store<StoreSchema>({
     ccSound: true,
     projectLastOpened: {},
     welcomeSeen: false,
+    autostartDev: true,
+    locale: 'cs',
   },
 });

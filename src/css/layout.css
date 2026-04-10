@@ -90,6 +90,17 @@
   display: flex; align-items: center; justify-content: center;
 }
 #btn-help:hover { color: var(--accent); border-color: var(--accent); }
+#btn-settings {
+  -webkit-app-region: no-drag; background: transparent; border: 1px solid rgba(255,255,255,0.12);
+  color: var(--text-muted); font-size: 13px;
+  width: 28px; height: 28px; margin-left: 4px;
+  border-radius: 50%; cursor: pointer;
+  transition: all var(--t-fast) var(--ease);
+  display: flex; align-items: center; justify-content: center;
+  padding: 0;
+}
+#btn-settings:hover { color: var(--accent); border-color: var(--accent); }
+#btn-settings svg { width: 14px; height: 14px; }
 
 #window-controls {
   display: flex; -webkit-app-region: no-drag; margin-left: auto; height: 100%;

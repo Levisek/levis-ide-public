@@ -1,0 +1,806 @@
+// ── i18n: minimalistický překladový systém ──
+// Default 'cs'. Přepnutí přes Settings → uloženo v store.locale.
+// Použití:
+//   t('hub.openProject')                       → "Open project" / "Otevřít projekt"
+//   t('toast.layoutReset')                     → "Layout reset" / "Layout obnoven"
+//   t('settings.title', { name: 'LevisIDE' })  → interpolace přes {name}
+//
+// HTML data-i18n="key" se přeloží automaticky po loadu/přepnutí jazyka.
+
+type Locale = 'en' | 'cs';
+type Dict = Record<string, string>;
+
+const EN: Dict = {
+  // ── Hub ─────────────────────────────
+  'hub.scan':              'Scan',
+  'hub.openProject':       'Open project',
+  'hub.newProject':        'New project',
+  'hub.settings':          'Settings',
+  'hub.recent':            'Recently opened',
+  'hub.pinned':            'Pinned',
+  'hub.allProjects':       'All projects',
+  'hub.search':            'Search projects…',
+  'hub.gitPullAll':        'Pull all',
+  'hub.gitPushAll':        'Push all',
+  'hub.refresh':           'Refresh',
+  'hub.pin':               'Pin to top',
+  'hub.unpin':             'Unpin',
+  'hub.projectOptions':    'Project options',
+  'hub.openInWorkspace':   'Open project in Workspace',
+  'hub.gitClean':          'Git: all committed',
+  'hub.gitDirty':          'Git: uncommitted changes',
+  'hub.gitNoRepo':         'Git: not a repo or error',
+  'hub.tooltipPullAll':    'Pull all from GitHub',
+  'hub.tooltipPushAll':    'Push all to GitHub',
+  'hub.usageDetail':       'Show usage detail',
+
+  // ── Settings modal ──────────────────
+  'settings.title':            'Settings',
+  'settings.scanPath':         'Projects folder',
+  'settings.gitName':          'Git user.name',
+  'settings.gitEmail':         'Git user.email',
+  'settings.editorFontSize':   'Editor font size',
+  'settings.terminalFontSize': 'Terminal font size',
+  'settings.wedosPwd':         'WEDOS FTP password (deploy)',
+  'settings.wedosPlaceholder': 'stored locally, never committed',
+  'settings.ccNotifications':  'OS notification when CC finishes in another tab',
+  'settings.ccSound':          'Sound on CC completion',
+  'settings.autostartDev':     'Automatically start dev server when opening a project',
+  'settings.language':         'Language',
+  'settings.save':             'Save',
+  'settings.close':            'Close',
+  'settings.saved':            'Settings saved',
+
+  // ── Workspace toolbar / panels ──────
+  'ws.terminal':         'Terminal',
+  'ws.editor':           'Editor',
+  'ws.diff':             'Git changes',
+  'ws.browser':          'Browser',
+  'ws.preview':          'Preview',
+  'ws.mobile':           'Mobile',
+  'ws.audit':            'Audit',
+  'ws.tokens':           'Tokens',
+  'ws.toggleSidebar':    'Show/hide files panel',
+  'ws.swapSidebar':      'Move sidebar left/right',
+  'ws.addPanel':         'Add panel to workspace',
+  'ws.resetLayout':      'Reset default panel layout',
+  'ws.equalize':         'Equalize panels',
+  'ws.lockLayout':       'Lock equal layout (disables free resize)',
+  'ws.popout':           'Pop preview out to second monitor',
+  'ws.devLog':           'Dev log',
+  'ws.storybook':        'Storybook',
+  'ws.takjo':            '/takjo — save changes locally (git add + commit)',
+  'ws.jeb':              '/jeb — save and push to GitHub (commit + push)',
+  'ws.gitPull':          'Git pull — fetch changes from GitHub',
+  'ws.deploy':           'Deploy build to WEDOS preview via FTP',
+  'ws.restartCC':        'Quit and restart Claude Code in terminal',
+  'ws.newTerminal':      'Open another terminal next to current (max 3)',
+  'ws.clear':            'Clear',
+  'ws.close':            'Close',
+  'ws.btnSave':          'Save',
+  'ws.btnSend':          'Push',
+  'ws.btnPull':          'Pull',
+  'ws.btnDeploy':        'Deploy',
+  'ws.btnCC':            'CC',
+  'ws.btnTerminal':      'Terminal',
+  'ws.btnDevLog':        'Dev log',
+  'ws.devLogTooltip':    'Dev server log (npm run dev output)',
+
+  // ── Toasts ──────────────────────────
+  'toast.ready':              'LevisIDE ready',
+  'toast.noTerminal':         'No terminal — open a project',
+  'toast.layoutReset':        'Layout reset',
+  'toast.layoutEqualized':    'Panels equalized',
+  'toast.sidebarLeft':        'Files: left',
+  'toast.sidebarRight':       'Files: right',
+  'toast.maxTerminals':       'Max 3 terminals',
+  'toast.lastTerminal':       "Can't close the last terminal",
+  'toast.devStarted':         '{name} running on :{port}',
+  'toast.devTimeout':         "Dev server didn't come up in 30 s — check the log",
+  'toast.devFailed':          'Dev server failed: {msg}',
+  'toast.devError':           'Dev: {line}',
+  'toast.storybookStarting':  'Storybook starting…',
+  'toast.storybookReady':     'Storybook on :6006',
+  'toast.storybookTimeout':   "Storybook didn't come up in 30 s",
+  'toast.storybookFailed':    'Storybook failed: {msg}',
+  'toast.sentToCC':           'Sent to Claude Code',
+  'toast.sentToTerminal':     'Sent to terminal',
+  'toast.sentToCCWithShot':   'Sent to CC + screenshot',
+  'toast.popoutFailed':       'Popout failed',
+  'toast.previewPopout':      'Preview opened in a floating window',
+  'toast.previewReturned':    'Preview returned',
+  'toast.pullOk':             'Pull OK',
+  'toast.pulling':            'Pulling from GitHub…',
+  'toast.pushingAll':         'Pushing all to GitHub… (only repos with remote)',
+  'toast.pullingAll':         'Pulling all from GitHub…',
+  'toast.takjo':              'Sending /takjo…',
+  'toast.jeb':                'Sending /jeb (push)…',
+  'toast.deployUploading':    'Uploading to WEDOS preview…',
+  'toast.deployDone':         'Uploaded {count} files — {url}',
+  'toast.deployError':        'Deploy error: {error}',
+  'toast.claudemdGenerated':  'CLAUDE.md generated',
+  'toast.ccRestarted':        'Claude Code restarted',
+  'toast.pathCopied':         'Path copied',
+  'toast.projectsLoadError':  'Error loading projects',
+  'toast.creatingProject':    'Creating project…',
+  'toast.duplicated':         'Duplicated',
+  'toast.copying':            'Copying…',
+  'toast.renamed':            'Renamed',
+  'toast.deleted':            'Deleted',
+  'toast.cancelledNameMismatch': 'Cancelled — name mismatch',
+  'toast.notInGrid':          '{name} in floating window',
+  'toast.gridNotMounted':     'Failed to attach panel — grid not mounted',
+
+  // ── Browser inspect/annotate ────────
+  'browser.inspect':       'Inspect',
+  'browser.inspectOn':     'Inspect ON',
+  'browser.annotate':      'Mark',
+  'browser.annotateDraw':  'Drawing…',
+  'browser.placeholder':   'What to do with {selector}?',
+  'browser.areaPrompt':    'What to do?',
+  'browser.back':          'Back',
+  'browser.forward':       'Forward',
+  'browser.lasso':         'Mark area (lasso → screenshot)',
+
+  // ── Artifact panel ──────────────────
+  'artifact.inspectTip':   'Inspect element (Alt+I) — click an element in the preview, write what to change, send to Claude Code',
+  'artifact.annotateTip':  'Mark area — circle a part of the preview, describe what to change, send to CC with screenshot',
+  'artifact.refreshTip':   'Refresh preview (Ctrl+Shift+V)',
+  'artifact.watchTip':     'Watch mode — auto-reload on file change',
+  'artifact.loadHtml':     'Load HTML file from disk',
+  'artifact.cancelEsc':    'Cancel (Esc)',
+  'artifact.historyTip':   'Prompt history',
+  'artifact.noHistory':    'No history',
+  'artifact.promptPh':     'What to change?',
+  'artifact.noIndex':      'index.html not found — pick a file from the tree',
+
+  // ── Mobile panel ────────────────────
+  'mobile.loadUrl':        'Load URL',
+  'mobile.deviceSize':     'Device size',
+  'mobile.rotate':         'Rotate (portrait/landscape)',
+  'mobile.touchEm':        'Touch emulation (mouse as finger)',
+  'mobile.lasso':          'Mark area',
+  'mobile.cancel':         'Cancel',
+  'mobile.touchOn':        'Touch emulation enabled',
+  'mobile.touchOff':       'Touch emulation disabled',
+  'mobile.areaPh':         'What to do?',
+
+  // ── Terminal ────────────────────────
+  'terminal.status':       'Terminal status',
+  'terminal.search':       'Search in terminal (Ctrl+F)',
+  'terminal.clear':        'Clear terminal',
+  'terminal.close':        'Close terminal',
+  'terminal.searchPh':     'Search in terminal…',
+
+  // ── Editor ──────────────────────────
+  'editor.save':           'Save (Ctrl+S)',
+  'editor.close':          'Close (Ctrl+W)',
+  'editor.loadFailed':     'Editor failed to load',
+  'editor.binary':         "Can't open file (binary?)",
+  'editor.error':          'Editor: {msg}',
+
+  // ── Popout ──────────────────────────
+  'popout.cancel':         'Cancel',
+  'popout.areaPh':         'What to do with this area?',
+
+  // ── Project search ──────────────────
+  'search.replaceAllTip':  'Replace all matches',
+  'search.replaceAll':     'Replace all',
+  'search.startTyping':    'Start typing to search',
+  'search.close':          'close',
+  'search.noResults':      'No results',
+
+  // ── Quick file open ─────────────────
+  'qfo.searchPh':          'Find file in project… (Esc to cancel)',
+  'qfo.open':              'open',
+  'qfo.close':             'close',
+  'qfo.noFiles':           'No files',
+
+  // ── Hub project tile / context menu ─
+  'hub.tileOpen':          'Open',
+  'hub.unpushed':          '{n} unpushed',
+  'hub.gitOk':             'Git OK',
+  'hub.noFilterMatch':     'No projects match the filter',
+  'hub.noFilterHint':      'Try changing the search or type filter',
+  'hub.subtitleLoading':   '{path} — loading projects…',
+  'hub.subtitleError':     '{path} — load error',
+  'hub.loadingProjects':   'Loading projects…',
+  'hub.tcm.open':          'Open project',
+  'hub.tcm.explorer':      'Open in file explorer',
+  'hub.tcm.copyPath':      'Copy path',
+  'hub.tcm.rename':        'Rename',
+  'hub.tcm.duplicate':     'Duplicate',
+  'hub.tcm.delete':        'Delete project',
+  'hub.dialog.rename':     'Rename project',
+  'hub.dialog.renameLabel':'New name:',
+  'hub.dialog.duplicate':  'Duplicate project',
+  'hub.dialog.duplicateLabel': 'Copy name:',
+  'hub.dialog.delete':     'Delete project',
+  'hub.dialog.deleteConfirm': 'Really delete "{name}"? This action is IRREVERSIBLE. Type the project name to confirm:',
+  'hub.dialog.newProject': 'New project',
+  'hub.dialog.newProjectLabel': 'Project name:',
+  'hub.toast.pinned':      'Pinned',
+  'hub.toast.unpinned':    'Unpinned',
+  'hub.toast.error':       'Error: {msg}',
+  'hub.toast.projectCreated': 'Project {name} created!',
+  'hub.template.title':    'Pick a template',
+  'hub.template.gral':     'GRAL Hubleska',
+  'hub.template.gralDesc': 'vanilla web (recommended)',
+  'hub.template.viteJs':   'Vite Vanilla',
+  'hub.template.viteJsDesc': 'JS + Vite dev server',
+  'hub.template.viteTs':   'Vite Vanilla TS',
+  'hub.template.viteTsDesc': 'TypeScript + Vite',
+  'hub.template.plain':    'Plain HTML',
+  'hub.template.plainDesc': 'index + style + main, no deps',
+  'hub.template.cancel':   'Cancel',
+  'hub.aboutTitle':        'About',
+  'hub.tradeTooltip':      'About this app',
+
+  // ── Greetings ───────────────────────
+  'greet.night':           'Good night',
+  'greet.morning':         'Good morning',
+  'greet.afternoon':       'Good afternoon',
+  'greet.evening':         'Good evening',
+  'day.sun':               'Sunday',
+  'day.mon':               'Monday',
+  'day.tue':               'Tuesday',
+  'day.wed':               'Wednesday',
+  'day.thu':               'Thursday',
+  'day.fri':               'Friday',
+  'day.sat':               'Saturday',
+  'date.today':            'today',
+  'date.yesterday':        'yesterday',
+  'date.daysAgo':          '{n} days ago',
+
+  // ── Modal ──────────────────────────
+  'modal.cancel':          'Cancel',
+  'modal.ok':              'OK',
+
+  // ── Welcome ────────────────────────
+  'welcome.title':         'Welcome to LevisIDE',
+  'welcome.tagline':       'IDE for web projects with Claude Code in one window.',
+  'welcome.tip1':          '<strong>Hub</strong> — all your projects in one place. Pin favorites, scaffold a new one.',
+  'welcome.tip2':          '<strong>Workspace 2×2 grid</strong> — terminal, editor, preview and more panels. Drag & drop to rearrange.',
+  'welcome.tip3':          '<strong>Inspector</strong> — click an element in the preview, write a prompt, send straight to Claude with a screenshot.',
+  'welcome.tip4':          '<strong>F1</strong> — help anytime, <strong>Ctrl+Shift+P</strong> — command palette, <strong>Ctrl+P</strong> — quick file open.',
+  'welcome.start':         "Let's go",
+
+  // ── About dialog ───────────────────
+  'about.version':         'version 1.0.0',
+  'about.author':          'Author',
+  'about.github':          'GitHub',
+  'about.builtOn':         'Built on',
+  'about.nameExpl':        '<strong>"LevisIDE"</strong> is a pun — <em>IDE</em> (Integrated Development Environment) + Ostrava dialect <em>ide</em> (= "goes, walks"). Logo: a walking figure leaving the L.',
+
+  // ── Help overlay ───────────────────
+  'help.title':            'Help · LevisIDE',
+  'help.global':           'Global shortcuts',
+  'help.workspace':        'Workspace',
+  'help.dnd':              'Drag & drop / popout',
+  'help.inspector':        'Inspector → Claude Code',
+  'help.annotation':       'Annotation',
+  'help.hub':              'Hub',
+  'help.popout':           'Pop-out',
+  'help.row.palette':      'Command palette',
+  'help.row.qfo':          'Quick file open (fuzzy)',
+  'help.row.search':       'Search & replace in project',
+  'help.row.toHub':        'Switch to Hub',
+  'help.row.cycleTabs':    'Cycle through tabs',
+  'help.row.closeTab':     'Close tab',
+  'help.row.reload':       'Hard reload',
+  'help.row.settings':     'Settings',
+  'help.row.help':         'This help',
+  'help.row.toggleInspect':'Toggle Inspect mode',
+  'help.row.sendToTerm':   'Send editor selection to terminal',
+  'help.row.refreshArt':   'Refresh artifact preview',
+  'help.row.saveFile':     'Save active file (with format)',
+  'help.row.findReplace':  'Find / Replace in editor',
+  'help.row.shiftEnter':   'Shift+Enter in terminal',
+  'help.row.newline':      'Newline (line continuation)',
+  'help.dnd1':             'Drag a panel header (terminal/editor/preview/browser/mobile) <strong>outside the workspace</strong> → opens in a separate window',
+  'help.dnd2':             'In the floating window, click "Return to workspace" → panel comes back',
+  'help.dnd3':             'Drag between grid slots → panels swap (lock toggle locks)',
+  'help.insp1':            'Press <kbd>Alt</kbd>+<kbd>I</kbd> or click "Inspect" in the toolbar',
+  'help.insp2':            'Click an element in the preview — a prompt input appears',
+  'help.insp3':            'Write what to change and press <kbd>Enter</kbd>',
+  'help.insp4':            'Element + area screenshot are sent to Claude Code in the terminal',
+  'help.ann1':             'Click "Mark" → draw on the preview',
+  'help.ann2':             'Circle an area → a prompt appears',
+  'help.ann3':             'Describe what to change, <kbd>Enter</kbd> → CC gets bbox + screenshot',
+  'help.hub1':             'Right-click a project → menu (delete, rename, duplicate, open in file explorer)',
+  'help.hub2':             '★ icon — pin project to top',
+  'help.hub3':             'Pull all / Push all — bulk git over all projects',
+  'help.hub4':             'Filter chips by project type, fulltext search',
+  'help.popoutText':       'The "Pop out" button opens preview in a separate window (second monitor) with its own inspect and annotations. Prompts are sent back to the main terminal.',
+
+  // ── Search confirm ─────────────────
+  'search.confirmReplace': 'Replace {n} matches in {files} files?',
+
+  // ── Quit confirm ───────────────────
+  'quit.title':            'Really close LevisIDE?',
+  'quit.sub':              "I'll check if everything is committed and pushed.",
+  'quit.cancel':           'Stay',
+  'quit.confirm':          'Yes, check and close',
+  'quit.checking':         'Checking project git status…',
+  'quit.warnTitle':        'Warning — you have unfinished work',
+  'quit.warnSub':          'Found {parts}:',
+  'quit.partRunningCC':    'running Claude Code',
+  'quit.partUncommitted':  'uncommitted changes',
+  'quit.ccWaiting':        'CC waiting for your reply',
+  'quit.ccWorking':        'CC working',
+  'quit.tagDirty':         'uncommitted changes',
+  'quit.tagUnpushed':      '{n} unpushed',
+  'quit.cancelFix':        'Stay (I\'ll fix it)',
+  'quit.confirmAnyway':    'Close anyway',
+  'quit.dirtyTitle':       'Close "{name}"?',
+  'quit.dirtySub':         'You have unsaved changes: {files}',
+  'quit.dirtyCancel':      'Stay',
+  'quit.dirtyConfirm':     'Close without saving',
+  'quit.someFiles':        'some files',
+  'quit.loadingWs':        'Loading workspace…',
+
+  // ── Command palette ────────────────
+  'cp.cat.gral':           'GRAL',
+  'cp.cat.nav':            'Navigation',
+  'cp.cat.app':            'Application',
+  'cp.cat.projects':       'Projects',
+  'cp.gotoHub':            'Go to Hub',
+  'cp.closeTab':           'Close tab',
+  'cp.openSettings':       'Open settings',
+  'cp.gotoProject':        'Go to {name}',
+  'cp.newWeb':             '/new-web — New web from prompt',
+  'cp.vylepsit':           '/vylepsit — Rebuild web',
+  'cp.harvest':            '/harvest — Pattern extraction',
+
+  // ── Notifications ──────────────────
+  'notif.ccDone':          'Claude Code finished',
+  'notif.ccDoneBody':      '{name} — click the tab to continue',
+
+  // ── Hub counts / badges ────────────
+  'hub.allFilter':         'All ({n})',
+  'hub.nProjects':         '{n} projects',
+  'hub.pullOkN':           'Pull OK: {n} projects',
+  'hub.pushOkN':           'Push: {ok} projects processed, {skip} skipped',
+  'hub.noProjectsTitle':   'No projects found in <code>{path}</code>. Start with one of these steps:',
+  'hub.pickFolder':        'Pick a projects folder',
+  'hub.recentBadge':       'Recently',
+  'hub.topProjects':       'Top projects (top 20)',
+
+  // ── Usage panel ────────────────────
+  'usage.today':           'Today',
+  'usage.context':         'Context',
+  'usage.realLimits':      'Real limits',
+  'usage.realLimitsNA':    'N/A',
+  'usage.realLimitsSub':   'send a message in Claude first',
+  'usage.monthEstimate':   'Local month estimate',
+  'usage.total':           'Total',
+  'usage.messages':        '{n} messages',
+  'usage.plan':            'Plan',
+  'usage.notLoggedIn':     'not logged in',
+  'usage.last14':          'Last 14 days',
+  'usage.models':          'Models',
+  'usage.noData':          'no data',
+};
+
+const CS: Dict = {
+  // ── Hub ─────────────────────────────
+  'hub.scan':              'Scan',
+  'hub.openProject':       'Otevřít projekt',
+  'hub.newProject':        'Nový projekt',
+  'hub.settings':          'Nastavení',
+  'hub.recent':            'Naposledy otevřené',
+  'hub.pinned':            'Připnuté',
+  'hub.allProjects':       'Všechny projekty',
+  'hub.search':            'Hledat projekt…',
+  'hub.gitPullAll':        'Pull vše',
+  'hub.gitPushAll':        'Push vše',
+  'hub.refresh':           'Refresh',
+  'hub.pin':               'Připnout nahoru',
+  'hub.unpin':             'Odepnout',
+  'hub.projectOptions':    'Možnosti projektu',
+  'hub.openInWorkspace':   'Otevřít projekt ve Workspace',
+  'hub.gitClean':          'Git: vše commitnuto',
+  'hub.gitDirty':          'Git: necommitované změny',
+  'hub.gitNoRepo':         'Git: není repo nebo chyba',
+  'hub.tooltipPullAll':    'Stáhnout vše z GitHubu',
+  'hub.tooltipPushAll':    'Odeslat vše na GitHub',
+  'hub.usageDetail':       'Zobrazit detail využití',
+
+  // ── Settings modal ──────────────────
+  'settings.title':            'Nastavení',
+  'settings.scanPath':         'Složka projektů',
+  'settings.gitName':          'Git user.name',
+  'settings.gitEmail':         'Git user.email',
+  'settings.editorFontSize':   'Velikost písma (editor)',
+  'settings.terminalFontSize': 'Velikost písma (terminál)',
+  'settings.wedosPwd':         'WEDOS FTP heslo (deploy)',
+  'settings.wedosPlaceholder': 'uloženo lokálně, necommitne se',
+  'settings.ccNotifications':  'OS notifikace když CC v jiném tabu doběhne',
+  'settings.ccSound':          'Zvuk při dokončení CC',
+  'settings.autostartDev':     'Automaticky spouštět dev server při otevření projektu',
+  'settings.language':         'Jazyk',
+  'settings.save':             'Uložit',
+  'settings.close':            'Zavřít',
+  'settings.saved':            'Nastavení uloženo',
+
+  // ── Workspace toolbar / panels ──────
+  'ws.terminal':         'Terminál',
+  'ws.editor':           'Editor',
+  'ws.diff':             'Git změny',
+  'ws.browser':          'Prohlížeč',
+  'ws.preview':          'Náhled',
+  'ws.mobile':           'Mobil',
+  'ws.audit':            'Audit',
+  'ws.tokens':           'Tokeny',
+  'ws.toggleSidebar':    'Skrýt/zobrazit panel souborů',
+  'ws.swapSidebar':      'Přehodit sidebar vlevo/vpravo',
+  'ws.addPanel':         'Přidat panel do workspace',
+  'ws.resetLayout':      'Obnovit výchozí rozložení panelů',
+  'ws.equalize':         'Vyrovnat panely',
+  'ws.lockLayout':       'Zamknout rovnoměrné rozložení (vypne volný resize)',
+  'ws.popout':           'Vysunout náhled na druhý monitor',
+  'ws.devLog':           'Dev log',
+  'ws.storybook':        'Storybook',
+  'ws.takjo':            '/takjo — uložit změny lokálně (git add + commit)',
+  'ws.jeb':              '/jeb — uložit a odeslat na GitHub (commit + push)',
+  'ws.gitPull':          'Git pull — stáhnout změny z GitHubu',
+  'ws.deploy':           'Nahrát build na WEDOS preview přes FTP',
+  'ws.restartCC':        'Ukončit a znovu spustit Claude Code v terminálu',
+  'ws.newTerminal':      'Otevřít další terminál vedle stávajícího (max 3)',
+  'ws.clear':            'Vyčistit',
+  'ws.close':            'Zavřít',
+  'ws.btnSave':          'Uložit',
+  'ws.btnSend':          'Odeslat',
+  'ws.btnPull':          'Stáhnout',
+  'ws.btnDeploy':        'Nasadit',
+  'ws.btnCC':            'CC',
+  'ws.btnTerminal':      'Terminál',
+  'ws.btnDevLog':        'Dev log',
+  'ws.devLogTooltip':    'Log dev serveru (npm run dev output)',
+
+  // ── Toasts ──────────────────────────
+  'toast.ready':              'LevisIDE připraven',
+  'toast.noTerminal':         'Žádný terminál — otevři projekt',
+  'toast.layoutReset':        'Layout obnoven',
+  'toast.layoutEqualized':    'Panely zarovnány',
+  'toast.sidebarLeft':        'Soubory: vlevo',
+  'toast.sidebarRight':       'Soubory: vpravo',
+  'toast.maxTerminals':       'Max 3 terminály',
+  'toast.lastTerminal':       'Poslední terminál nelze zavřít',
+  'toast.devStarted':         '{name} spuštěn na :{port}',
+  'toast.devTimeout':         'Dev server nenaběhl do 30 s — zkontroluj log',
+  'toast.devFailed':          'Dev server selhal: {msg}',
+  'toast.devError':           'Dev: {line}',
+  'toast.storybookStarting':  'Storybook startuje…',
+  'toast.storybookReady':     'Storybook na :6006',
+  'toast.storybookTimeout':   'Storybook nenaběhl do 30 s',
+  'toast.storybookFailed':    'Storybook selhal: {msg}',
+  'toast.sentToCC':           'Odesláno do Claude Code',
+  'toast.sentToTerminal':     'Odesláno do terminálu',
+  'toast.sentToCCWithShot':   'Odesláno do CC + screenshot',
+  'toast.popoutFailed':       'Popout selhal',
+  'toast.previewPopout':      'Preview otevřen v plovoucím okně',
+  'toast.previewReturned':    'Preview obnoven',
+  'toast.pullOk':             'Pull OK',
+  'toast.pulling':            'Stahuji z GitHubu…',
+  'toast.pushingAll':         'Odesílám vše na GitHub… (jen projekty s remote)',
+  'toast.pullingAll':         'Stahuji vše z GitHubu…',
+  'toast.takjo':              'Posílám /takjo…',
+  'toast.jeb':                'Posílám /jeb (push)…',
+  'toast.deployUploading':    'Nahrávám na WEDOS preview…',
+  'toast.deployDone':         'Nahráno {count} souborů — {url}',
+  'toast.deployError':        'Deploy chyba: {error}',
+  'toast.claudemdGenerated':  'CLAUDE.md vygenerován',
+  'toast.ccRestarted':        'Claude Code restartován',
+  'toast.pathCopied':         'Cesta zkopírována',
+  'toast.projectsLoadError':  'Chyba při načítání projektů',
+  'toast.creatingProject':    'Vytvářím projekt…',
+  'toast.duplicated':         'Duplikováno',
+  'toast.copying':            'Kopíruji…',
+  'toast.renamed':            'Přejmenováno',
+  'toast.deleted':            'Smazáno',
+  'toast.cancelledNameMismatch': 'Zrušeno — název nesouhlasí',
+  'toast.notInGrid':          '{name} v plovoucím okně',
+  'toast.gridNotMounted':     'Nepodařilo se připojit panel — grid není mountnutý',
+
+  // ── Browser inspect/annotate ────────
+  'browser.inspect':       'Inspect',
+  'browser.inspectOn':     'Inspect ON',
+  'browser.annotate':      'Označit',
+  'browser.annotateDraw':  'Kreslím…',
+  'browser.placeholder':   'Co udělat s {selector}?',
+  'browser.areaPrompt':    'Co udělat?',
+  'browser.back':          'Zpět',
+  'browser.forward':       'Vpřed',
+  'browser.lasso':         'Označit oblast (lasso → screenshot)',
+
+  // ── Artifact panel ──────────────────
+  'artifact.inspectTip':   'Inspect element (Alt+I) — klikni na prvek v náhledu, napiš co změnit, pošli do Claude Code',
+  'artifact.annotateTip':  'Označit oblast — zakroužkuj část náhledu, popiš co změnit, pošli do CC se screenshotem',
+  'artifact.refreshTip':   'Obnovit náhled (Ctrl+Shift+V)',
+  'artifact.watchTip':     'Watch mode — auto-reload při změně souboru',
+  'artifact.loadHtml':     'Načíst HTML soubor z disku',
+  'artifact.cancelEsc':    'Zrušit (Esc)',
+  'artifact.historyTip':   'Historie promptů',
+  'artifact.noHistory':    'Žádná historie',
+  'artifact.promptPh':     'Co chceš změnit?',
+  'artifact.noIndex':      'Nenalezen index.html — vyber soubor ze stromu',
+
+  // ── Mobile panel ────────────────────
+  'mobile.loadUrl':        'Načíst URL',
+  'mobile.deviceSize':     'Velikost zařízení',
+  'mobile.rotate':         'Otočit (na šířku/výšku)',
+  'mobile.touchEm':        'Touch emulace (myš jako prst)',
+  'mobile.lasso':          'Kroužkovat oblast',
+  'mobile.cancel':         'Zrušit',
+  'mobile.touchOn':        'Touch emulace zapnutá',
+  'mobile.touchOff':       'Touch emulace vypnutá',
+  'mobile.areaPh':         'Co chceš udělat?',
+
+  // ── Terminal ────────────────────────
+  'terminal.status':       'Stav terminálu',
+  'terminal.search':       'Hledat v terminálu (Ctrl+F)',
+  'terminal.clear':        'Vyčistit terminál',
+  'terminal.close':        'Zavřít terminál',
+  'terminal.searchPh':     'Hledat v terminálu…',
+
+  // ── Editor ──────────────────────────
+  'editor.save':           'Uložit (Ctrl+S)',
+  'editor.close':          'Zavřít (Ctrl+W)',
+  'editor.loadFailed':     'Editor se nepodařilo načíst',
+  'editor.binary':         'Soubor nelze otevřít (binární?)',
+  'editor.error':          'Editor: {msg}',
+
+  // ── Popout ──────────────────────────
+  'popout.cancel':         'Zrušit',
+  'popout.areaPh':         'Co chceš udělat s touto oblastí?',
+
+  // ── Project search ──────────────────
+  'search.replaceAllTip':  'Nahradit všechny výskyty',
+  'search.replaceAll':     'Nahradit vše',
+  'search.startTyping':    'Začni psát pro hledání',
+  'search.close':          'zavřít',
+  'search.noResults':      'Žádné výsledky',
+
+  // ── Quick file open ─────────────────
+  'qfo.searchPh':          'Hledat soubor v projektu… (Esc zruší)',
+  'qfo.open':              'otevřít',
+  'qfo.close':             'zavřít',
+  'qfo.noFiles':           'Žádné soubory',
+
+  // ── Hub project tile / context menu ─
+  'hub.tileOpen':          'Otevřít',
+  'hub.unpushed':          '{n} nepushnuto',
+  'hub.gitOk':             'Git OK',
+  'hub.noFilterMatch':     'Žádné projekty neodpovídají filtru',
+  'hub.noFilterHint':      'Zkus změnit hledání nebo filtr typu',
+  'hub.subtitleLoading':   '{path} — načítám projekty…',
+  'hub.subtitleError':     '{path} — chyba při načítání',
+  'hub.loadingProjects':   'Načítám projekty…',
+  'hub.tcm.open':          'Otevřít projekt',
+  'hub.tcm.explorer':      'Otevřít ve file exploreru',
+  'hub.tcm.copyPath':      'Kopírovat cestu',
+  'hub.tcm.rename':        'Přejmenovat',
+  'hub.tcm.duplicate':     'Duplikovat',
+  'hub.tcm.delete':        'Smazat projekt',
+  'hub.dialog.rename':     'Přejmenovat projekt',
+  'hub.dialog.renameLabel':'Nový název:',
+  'hub.dialog.duplicate':  'Duplikovat projekt',
+  'hub.dialog.duplicateLabel': 'Název kopie:',
+  'hub.dialog.delete':     'Smazat projekt',
+  'hub.dialog.deleteConfirm': 'Opravdu smazat "{name}"? Tahle akce je NEVRATNÁ. Napiš název projektu pro potvrzení:',
+  'hub.dialog.newProject': 'Nový projekt',
+  'hub.dialog.newProjectLabel': 'Název projektu:',
+  'hub.toast.pinned':      'Připnuto',
+  'hub.toast.unpinned':    'Odepnuto',
+  'hub.toast.error':       'Chyba: {msg}',
+  'hub.toast.projectCreated': 'Projekt {name} vytvořen!',
+  'hub.template.title':    'Vyber šablonu',
+  'hub.template.gral':     'GRAL Hubleska',
+  'hub.template.gralDesc': 'vanilla web (doporučeno)',
+  'hub.template.viteJs':   'Vite Vanilla',
+  'hub.template.viteJsDesc': 'JS + Vite dev server',
+  'hub.template.viteTs':   'Vite Vanilla TS',
+  'hub.template.viteTsDesc': 'TypeScript + Vite',
+  'hub.template.plain':    'Plain HTML',
+  'hub.template.plainDesc': 'index + style + main, žádné deps',
+  'hub.template.cancel':   'Zrušit',
+  'hub.aboutTitle':        'O aplikaci',
+  'hub.tradeTooltip':      'O aplikaci',
+
+  // ── Greetings ───────────────────────
+  'greet.night':           'Dobrou noc',
+  'greet.morning':         'Dobré ráno',
+  'greet.afternoon':       'Dobré odpoledne',
+  'greet.evening':         'Dobrý večer',
+  'day.sun':               'Neděle',
+  'day.mon':               'Pondělí',
+  'day.tue':               'Úterý',
+  'day.wed':               'Středa',
+  'day.thu':               'Čtvrtek',
+  'day.fri':               'Pátek',
+  'day.sat':               'Sobota',
+  'date.today':            'dnes',
+  'date.yesterday':        'včera',
+  'date.daysAgo':          'před {n} dny',
+
+  // ── Modal ──────────────────────────
+  'modal.cancel':          'Zrušit',
+  'modal.ok':              'OK',
+
+  // ── Welcome ────────────────────────
+  'welcome.title':         'Vítej v LevisIDE',
+  'welcome.tagline':       'IDE pro webové projekty s Claude Code v jednom okně.',
+  'welcome.tip1':          '<strong>Hub</strong> — všechny tvoje projekty na jednom místě. Připni oblíbené, scaffoldni nový.',
+  'welcome.tip2':          '<strong>Workspace 2×2 grid</strong> — terminál, editor, preview a další panely. Drag & drop pro přeuspořádání.',
+  'welcome.tip3':          '<strong>Inspector</strong> — klikni na element v náhledu, napiš prompt, pošli rovnou Claudovi se screenshotem.',
+  'welcome.tip4':          '<strong>F1</strong> — nápověda kdykoli, <strong>Ctrl+Shift+P</strong> — command palette, <strong>Ctrl+P</strong> — quick file open.',
+  'welcome.start':         'Pojď na to',
+
+  // ── About dialog ───────────────────
+  'about.version':         'verze 1.0.0',
+  'about.author':          'Autor',
+  'about.github':          'GitHub',
+  'about.builtOn':         'Postaveno na',
+  'about.nameExpl':        '<strong>„LevisIDE"</strong> je dvojsmysl — <em>IDE</em> (Integrated Development Environment) + ostravské nářečí <em>ide</em> (= „jde, kráčí"). Logo: kráčející postava odcházející z L.',
+
+  // ── Help overlay ───────────────────
+  'help.title':            'Nápověda · LevisIDE',
+  'help.global':           'Globální zkratky',
+  'help.workspace':        'Workspace',
+  'help.dnd':              'Drag & drop / popout',
+  'help.inspector':        'Inspector → Claude Code',
+  'help.annotation':       'Annotace',
+  'help.hub':              'Hub',
+  'help.popout':           'Pop-out',
+  'help.row.palette':      'Command palette',
+  'help.row.qfo':          'Quick file open (fuzzy)',
+  'help.row.search':       'Hledání &amp; nahrazování v projektu',
+  'help.row.toHub':        'Přepnout na Hub',
+  'help.row.cycleTabs':    'Cyklovat mezi taby',
+  'help.row.closeTab':     'Zavřít tab',
+  'help.row.reload':       'Hard reload',
+  'help.row.settings':     'Nastavení',
+  'help.row.help':         'Tato nápověda',
+  'help.row.toggleInspect':'Toggle Inspect mode',
+  'help.row.sendToTerm':   'Pošli výběr z editoru do terminálu',
+  'help.row.refreshArt':   'Refresh artifact preview',
+  'help.row.saveFile':     'Uložit aktivní soubor (s format)',
+  'help.row.findReplace':  'Find / Replace v editoru',
+  'help.row.shiftEnter':   'Shift+Enter v terminálu',
+  'help.row.newline':      'Newline (line continuation)',
+  'help.dnd1':             'Drag header panelu (terminal/editor/náhled/prohlížeč/mobil) <strong>mimo workspace</strong> → otevře v samostatném okně',
+  'help.dnd2':             'V plovoucím okně tlačítko „Vrátit do workspace" → panel se vrátí zpět',
+  'help.dnd3':             'Drag mezi sloty v gridu → panely se prohodí (lock toggle zamyká)',
+  'help.insp1':            'Stiskni <kbd>Alt</kbd>+<kbd>I</kbd> nebo klikni „Inspect" v toolbaru',
+  'help.insp2':            'Klikni na element v náhledu — objeví se prompt input',
+  'help.insp3':            'Napiš co změnit a stiskni <kbd>Enter</kbd>',
+  'help.insp4':            'Element + screenshot oblasti se odešlou Claude Code v terminálu',
+  'help.ann1':             'Klikni „Označit" → kreslí se po náhledu',
+  'help.ann2':             'Zakroužkuj oblast → objeví se prompt',
+  'help.ann3':             'Popiš co změnit, <kbd>Enter</kbd> → CC dostane bbox + screenshot',
+  'help.hub1':             'Pravý klik na projekt → menu (smazat, přejmenovat, duplikovat, otevřít ve file exploreru)',
+  'help.hub2':             '★ ikona — připnout projekt nahoru',
+  'help.hub3':             'Pull vše / Push vše — hromadný git nad všemi projekty',
+  'help.hub4':             'Filtr chips podle typu projektu, fulltext search',
+  'help.popoutText':       'Tlačítko „Pop out" otevře preview v samostatném okně (druhý monitor) s vlastním inspectem a anotacemi. Prompty se posílají zpět do hlavního terminálu.',
+
+  // ── Search confirm ─────────────────
+  'search.confirmReplace': 'Nahradit {n} výskytů ve {files} souborech?',
+
+  // ── Quit confirm ───────────────────
+  'quit.title':            'Opravdu chceš zavřít LevisIDE?',
+  'quit.sub':              'Zkontroluju jestli máš všechno commitnuté a pushnuté.',
+  'quit.cancel':           'Zůstat',
+  'quit.confirm':          'Ano, zkontrolovat a zavřít',
+  'quit.checking':         'Kontroluju git stav projektů…',
+  'quit.warnTitle':        'Pozor — máš nedokončenou práci',
+  'quit.warnSub':          'Našel jsem {parts}:',
+  'quit.partRunningCC':    'běžící Claude Code',
+  'quit.partUncommitted':  'necommitované změny',
+  'quit.ccWaiting':        'CC čeká na tvou odpověď',
+  'quit.ccWorking':        'CC pracuje',
+  'quit.tagDirty':         'necommitované změny',
+  'quit.tagUnpushed':      '{n} nepushnuto',
+  'quit.cancelFix':        'Zůstat (vyřeším to)',
+  'quit.confirmAnyway':    'Stejně zavřít',
+  'quit.dirtyTitle':       'Zavřít „{name}"?',
+  'quit.dirtySub':         'Máš neuložené změny: {files}',
+  'quit.dirtyCancel':      'Zůstat',
+  'quit.dirtyConfirm':     'Zavřít bez uložení',
+  'quit.someFiles':        'některé soubory',
+  'quit.loadingWs':        'Načítám workspace…',
+
+  // ── Command palette ────────────────
+  'cp.cat.gral':           'GRAL',
+  'cp.cat.nav':            'Navigace',
+  'cp.cat.app':            'Aplikace',
+  'cp.cat.projects':       'Projekty',
+  'cp.gotoHub':            'Přejít na Hub',
+  'cp.closeTab':           'Zavřít záložku',
+  'cp.openSettings':       'Otevřít nastavení',
+  'cp.gotoProject':        'Přejít na {name}',
+  'cp.newWeb':             '/new-web — Nový web z promptu',
+  'cp.vylepsit':           '/vylepsit — Přestavba webu',
+  'cp.harvest':            '/harvest — Extrakce patternů',
+
+  // ── Notifications ──────────────────
+  'notif.ccDone':          'Claude Code dokončil',
+  'notif.ccDoneBody':      '{name} — klikni na záložku pro pokračování',
+
+  // ── Hub counts / badges ────────────
+  'hub.allFilter':         'Vše ({n})',
+  'hub.nProjects':         '{n} projektů',
+  'hub.pullOkN':           'Pull OK: {n} projektů',
+  'hub.pushOkN':           'Push: {ok} projektů zpracováno, {skip} přeskočeno',
+  'hub.noProjectsTitle':   'V <code>{path}</code> zatím nejsou žádné projekty. Začni jedním z kroků:',
+  'hub.pickFolder':        'Vyber složku s projekty',
+  'hub.recentBadge':       'Naposledy',
+  'hub.topProjects':       'Top projekty (top 20)',
+
+  // ── Usage panel ────────────────────
+  'usage.today':           'Dnes',
+  'usage.context':         'Kontext',
+  'usage.realLimits':      'Real limity',
+  'usage.realLimitsNA':    'N/A',
+  'usage.realLimitsSub':   'pošli zprávu v Claude',
+  'usage.monthEstimate':   'Lokální odhad měsíc',
+  'usage.total':           'Celkem',
+  'usage.messages':        '{n} zpráv',
+  'usage.plan':            'Plán',
+  'usage.notLoggedIn':     'nepřihlášen',
+  'usage.last14':          'Posledních 14 dní',
+  'usage.models':          'Modely',
+  'usage.noData':          'žádná data',
+};
+
+const DICTS: Record<Locale, Dict> = { en: EN, cs: CS };
+
+let currentLocale: Locale = 'cs';
+
+function t(key: string, params?: Record<string, string | number>): string {
+  const dict = DICTS[currentLocale] || EN;
+  let s = dict[key] || EN[key] || key;
+  if (params) {
+    for (const [k, v] of Object.entries(params)) {
+      s = s.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v));
+    }
+  }
+  return s;
+}
+
+function setLocale(loc: Locale): void {
+  currentLocale = loc;
+  applyI18nDom(document);
+}
+
+function getLocale(): Locale { return currentLocale; }
+
+function applyI18nDom(root: Document | HTMLElement): void {
+  root.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = (el as HTMLElement).dataset.i18n!;
+    el.textContent = t(key);
+  });
+  root.querySelectorAll('[data-i18n-title]').forEach(el => {
+    const key = (el as HTMLElement).dataset.i18nTitle!;
+    (el as HTMLElement).title = t(key);
+  });
+  root.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const key = (el as HTMLElement).dataset.i18nPlaceholder!;
+    (el as HTMLInputElement).placeholder = t(key);
+  });
+}
+
+// Init z přečtené store hodnoty (volá se z app.ts po levis API ready)
+async function initI18n(): Promise<void> {
+  try {
+    const stored = await (window as any).levis?.storeGet('locale');
+    if (stored === 'en' || stored === 'cs') currentLocale = stored;
+  } catch {}
+}
+
+(window as any).t = t;
+(window as any).setLocale = setLocale;
+(window as any).getLocale = getLocale;
+(window as any).applyI18nDom = applyI18nDom;
+(window as any).initI18n = initI18n;

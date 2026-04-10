@@ -35,11 +35,11 @@ function createArtifact(container: HTMLElement, projectPath: string): ArtifactIn
       <button class="artifact-size-btn" data-size="tablet" title="Tablet (768px)">${I('file')}</button>
       <button class="artifact-size-btn artifact-size-active" data-size="full" title="Full width">${I('browser')}</button>
     </div>
-    <button class="artifact-btn artifact-inspect" title="Inspect element (Alt+I) — klikni na prvek v náhledu, napiš co změnit, pošli do Claude Code">${I('inspect')} Inspect</button>
-    <button class="artifact-btn artifact-annotate" title="Označit oblast — zakroužkuj část náhledu, popiš co změnit, pošli do CC se screenshotem">${I('editor')} Označit</button>
-    <button class="artifact-btn artifact-reload" title="Obnovit náhled (Ctrl+Shift+V)">${I('refresh')}</button>
-    <button class="artifact-btn artifact-watch" title="Watch mode — auto-reload při změně souboru">${I('eye')} Watch</button>
-    <button class="artifact-btn artifact-open-file" title="Načíst HTML soubor z disku">${I('folder')} Načíst</button>
+    <button class="artifact-btn artifact-inspect" title="${t('artifact.inspectTip')}">${I('inspect')} ${t('browser.inspect')}</button>
+    <button class="artifact-btn artifact-annotate" title="${t('artifact.annotateTip')}">${I('editor')} ${t('browser.annotate')}</button>
+    <button class="artifact-btn artifact-reload" title="${t('artifact.refreshTip')}">${I('refresh')}</button>
+    <button class="artifact-btn artifact-watch" title="${t('artifact.watchTip')}">${I('eye')} Watch</button>
+    <button class="artifact-btn artifact-open-file" title="${t('artifact.loadHtml')}">${I('folder')} ${t('ws.btnPull')}</button>
   `;
   wrapper.appendChild(toolbar);
 
@@ -86,7 +86,7 @@ function createArtifact(container: HTMLElement, projectPath: string): ArtifactIn
   btnInspect.addEventListener('click', () => {
     inspectActive = !inspectActive;
     btnInspect.classList.toggle('artifact-btn-active', inspectActive);
-    btnInspect.innerHTML = `${I('inspect')} ${inspectActive ? 'Inspect ON' : 'Inspect'}`;
+    btnInspect.innerHTML = `${I('inspect')} ${t(inspectActive ? 'browser.inspectOn' : 'browser.inspect')}`;
     if (inspectActive) {
       inspector.enable(iframe);
       // Mutually exclusive — vypni annotate
@@ -161,12 +161,12 @@ function createArtifact(container: HTMLElement, projectPath: string): ArtifactIn
       <div class="popover-header">
         <span class="popover-icon">${I('inspect')}</span>
         <span class="popover-label">${escapeHtmlA(contextLabel)}</span>
-        <button class="popover-close" title="Zrušit (Esc)">${I('close')}</button>
+        <button class="popover-close" title="${t('artifact.cancelEsc')}">${I('close')}</button>
       </div>
       <div class="popover-body">
-        <input type="text" class="popover-input" placeholder="${escapeHtmlA(opts.placeholder || 'Co chceš změnit?')}">
-        <button class="popover-history" title="Historie promptů">${I('arrow-down')}</button>
-        <button class="popover-send" title="Odeslat do Claude Code (Enter)">${I('play')}</button>
+        <input type="text" class="popover-input" placeholder="${escapeHtmlA(opts.placeholder || t('artifact.promptPh'))}">
+        <button class="popover-history" title="${t('artifact.historyTip')}">${I('arrow-down')}</button>
+        <button class="popover-send" title="${t('toast.sentToCC')}">${I('play')}</button>
       </div>
       <div class="popover-history-dropdown" style="display:none;"></div>
       <div class="popover-arrow"></div>
@@ -253,7 +253,7 @@ function createArtifact(container: HTMLElement, projectPath: string): ArtifactIn
       if (dropdown.style.display === 'block') { dropdown.style.display = 'none'; return; }
       const list = await getPromptHistory();
       if (list.length === 0) {
-        dropdown.innerHTML = `<div class="popover-history-empty">Žádná historie</div>`;
+        dropdown.innerHTML = `<div class="popover-history-empty">${t('artifact.noHistory')}</div>`;
       } else {
         dropdown.innerHTML = list.map(p => `<div class="popover-history-item">${escapeHtmlA(p)}</div>`).join('');
         dropdown.querySelectorAll('.popover-history-item').forEach((el, i) => {
@@ -379,7 +379,7 @@ function createArtifact(container: HTMLElement, projectPath: string): ArtifactIn
   btnAnnotate.addEventListener('click', () => {
     annotating = !annotating;
     btnAnnotate.classList.toggle('artifact-btn-active', annotating);
-    btnAnnotate.innerHTML = `${I('editor')} ${annotating ? 'Kreslím...' : 'Označit'}`;
+    btnAnnotate.innerHTML = `${I('editor')} ${t(annotating ? 'browser.annotateDraw' : 'browser.annotate')}`;
     annotCanvas.style.display = annotating ? 'block' : 'none';
     annotCanvas.style.pointerEvents = annotating ? 'auto' : 'none';
 
@@ -706,7 +706,7 @@ ${html}
     if (typeof content === 'string') {
       loadFile(indexPath.replace(/\//g, '\\'));
     } else {
-      showToast('Nenalezen index.html — vyber soubor ze stromu', 'warning');
+      showToast(t('artifact.noIndex'), 'warning');
     }
   });
 

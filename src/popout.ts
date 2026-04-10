@@ -114,7 +114,7 @@ function initPopout(): void {
   btnInspect.addEventListener('click', () => {
     inspectActive = !inspectActive;
     btnInspect.classList.toggle('artifact-btn-active', inspectActive);
-    btnInspect.textContent = inspectActive ? 'Inspect ON' : 'Inspect';
+    btnInspect.textContent = t(inspectActive ? 'browser.inspectOn' : 'browser.inspect');
     if (inspectActive) {
       inspector.enable(iframe);
     } else {
@@ -187,7 +187,7 @@ function initPopout(): void {
   btnAnnotate.addEventListener('click', () => {
     annotating = !annotating;
     btnAnnotate.classList.toggle('artifact-btn-active', annotating);
-    btnAnnotate.textContent = annotating ? 'Kreslím...' : 'Označit';
+    btnAnnotate.textContent = t(annotating ? 'browser.annotateDraw' : 'browser.annotate');
     annotCanvas.style.display = annotating ? 'block' : 'none';
     annotCanvas.style.pointerEvents = annotating ? 'auto' : 'none';
 
@@ -256,9 +256,9 @@ function initPopout(): void {
     annotPrompt.className = 'annot-prompt';
     annotPrompt.innerHTML = `
       <span class="annot-prompt-label">Označená oblast (${Math.round(maxX - minX)}x${Math.round(maxY - minY)}px)</span>
-      <input type="text" class="annot-prompt-input" placeholder="Co chceš udělat s touto oblastí?">
-      <button class="annot-prompt-send" title="Odeslat (Enter)">›</button>
-      <button class="annot-prompt-clear" title="Zrušit">×</button>
+      <input type="text" class="annot-prompt-input" placeholder="${t('popout.areaPh')}">
+      <button class="annot-prompt-send" title="${t('toast.sentToCC')}">›</button>
+      <button class="annot-prompt-clear" title="${t('popout.cancel')}">×</button>
     `;
     popoutContent.appendChild(annotPrompt);
     const input = annotPrompt.querySelector('.annot-prompt-input') as HTMLInputElement;

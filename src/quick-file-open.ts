@@ -53,13 +53,13 @@ async function showQuickFileOpen(projectPath: string, workspace?: any): Promise<
   modal.className = 'qfo-modal';
   modal.innerHTML = `
     <div class="qfo-input-wrap">
-      <input type="text" class="qfo-input" placeholder="Hledat soubor v projektu... (Esc zruší)" autocomplete="off" spellcheck="false">
+      <input type="text" class="qfo-input" placeholder="${t('qfo.searchPh')}" autocomplete="off" spellcheck="false">
     </div>
     <div class="qfo-list"></div>
     <div class="qfo-footer">
-      <span><kbd>↑↓</kbd> navigace</span>
-      <span><kbd>Enter</kbd> otevřít</span>
-      <span><kbd>Esc</kbd> zavřít</span>
+      <span><kbd>↑↓</kbd></span>
+      <span><kbd>Enter</kbd> ${t('qfo.open')}</span>
+      <span><kbd>Esc</kbd> ${t('qfo.close')}</span>
     </div>
   `;
   backdrop.appendChild(modal);
@@ -85,7 +85,7 @@ async function showQuickFileOpen(projectPath: string, workspace?: any): Promise<
   function renderList(): void {
     listEl.innerHTML = '';
     if (filtered.length === 0) {
-      listEl.innerHTML = '<div class="qfo-empty">Žádné soubory</div>';
+      listEl.innerHTML = `<div class="qfo-empty">${t('qfo.noFiles')}</div>`;
       return;
     }
     const slice = filtered.slice(0, 60);
@@ -178,10 +178,10 @@ async function showQuickFileOpen(projectPath: string, workspace?: any): Promise<
     }
   }
   footer.innerHTML = `
-    <span><kbd>↑↓</kbd> navigace</span>
-    <span><kbd>Enter</kbd> otevřít</span>
-    <span><kbd>Esc</kbd> zavřít</span>
-    <span style="margin-left:auto; opacity:0.5;">${files.length} souborů</span>
+    <span><kbd>↑↓</kbd></span>
+    <span><kbd>Enter</kbd> ${t('qfo.open')}</span>
+    <span><kbd>Esc</kbd> ${t('qfo.close')}</span>
+    <span style="margin-left:auto; opacity:0.5;">${files.length}</span>
   `;
   applyFilter();
 }

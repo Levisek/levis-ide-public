@@ -90,6 +90,26 @@ Kompilace: `npx tsc` — output do `dist/`
 - `shell:openExternal` IPC akceptuje jen http(s) URL.
 - Mobile panel: CDP debugger přes `Emulation.setEmitTouchEventsForMouse`, default **OFF** (opt-in).
 
+## Hotovo v1.0.1
+
+- i18n systém (`src/i18n.ts`) — čeština (default) + angličtina, přepínání v Settings
+- Autostart dev serveru dle typu projektu (AUTOSTART tabulka, port probe, Storybook tlačítko)
+- Browser panel s artifact layoutem — size buttons (Mobile 412px/Tablet/Full), Watch, Inspect, Annotate + lasso screenshot
+- Settings tlačítko v topbaru (gear ikona vedle nápovědy)
+- CC waiting modrá tečka odstraněna (mapuje se na working/oranžová)
+- Sidebar splitter fix pro sidebar vpravo
+- Grid fix: audit/tokens odstraněny z ALL_GRID_PANELS (neexistují v public)
+
+## Bugy / known issues
+
+- **Drag HTML do browser preview** — nefunguje (Electron webview blokuje drag). Workaround: URL bar.
+- **Shift+Enter v CC** — CC limitace, ne naše.
+
+## TODO
+
+- **Témata (color schemes)** — výběr v Settings: aktuální tmavé (oranž akcent), světlejší tmavé, něco mezi (případně light). CSS variables v `src/css/variables.css` přepínat přes `data-theme` na `<html>`. Uložit do storu jako `theme: 'dark' | 'dark-soft' | 'mid' | 'light'`.
+- **Per-projekt barevný tag** — v Hubu vybrat barvu projektu (paleta ~8 barev). Zobrazit v Hub kartě jako chip / levý okraj a v top tab baru jako úzký proužek pod záložkou. Návrh: jen akcent. Storage: `projectColors: Record<string, string>` v `electron/store.ts`.
+
 ## Git
 
 - Autor: Martin Levinger (@Levisek)

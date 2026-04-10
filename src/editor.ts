@@ -78,7 +78,7 @@ async function createEditor(container: HTMLElement): Promise<EditorInstance> {
   tabBar.innerHTML = `
     <div class="editor-tabs"></div>
     <span style="flex:1"></span>
-    <button class="editor-save" title="Uložit (Ctrl+S)">${_I('save')} Uložit</button>
+    <button class="editor-save" title="${t('editor.save')}">${_I('save')} ${t('ws.btnSave')}</button>
   `;
   wrapper.appendChild(tabBar);
 
@@ -115,7 +115,7 @@ async function createEditor(container: HTMLElement): Promise<EditorInstance> {
     if (pendingFile) openFile(pendingFile);
   }).catch((err) => {
     loadingEl.textContent = 'Chyba při načítání editoru: ' + (err?.message || err);
-    showToast('Editor se nepodařilo načíst', 'error');
+    showToast(t('editor.loadFailed'), 'error');
   });
 
   function initMonaco(): void {
@@ -212,7 +212,7 @@ async function createEditor(container: HTMLElement): Promise<EditorInstance> {
       tab.title = path;
       tab.innerHTML = `
         <span class="editor-tab-name">${escapeHtmlE(basename(path))}</span>
-        <button class="editor-tab-close" title="Zavřít (Ctrl+W)">${_I('close', { size: 12 })}</button>
+        <button class="editor-tab-close" title="${t('editor.close')}">${_I('close', { size: 12 })}</button>
       `;
       tab.addEventListener('click', (e) => {
         if ((e.target as HTMLElement).closest('.editor-tab-close')) return;
@@ -270,7 +270,7 @@ async function createEditor(container: HTMLElement): Promise<EditorInstance> {
         return;
       }
       if (typeof content !== 'string') {
-        showToast('Soubor nelze otevřít (binární?)', 'error');
+        showToast(t('editor.binary'), 'error');
         return;
       }
       const lang = await levis.getLanguage(filePath);
@@ -288,7 +288,7 @@ async function createEditor(container: HTMLElement): Promise<EditorInstance> {
       activateFile(filePath);
       notifyFilesChange();
     } catch (err) {
-      showToast('Editor: ' + ((err as any)?.message || String(err)), 'error');
+      showToast(t('editor.error', { msg: (err as any)?.message || String(err) }), 'error');
       console.error('[editor.openFile]', err);
     }
   }
