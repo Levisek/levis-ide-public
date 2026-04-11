@@ -58,9 +58,17 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
   webview.style.position = 'absolute';
   webview.style.top = '0';
   webview.style.left = '0';
+  webview.setAttribute('webpreferences', 'webSecurity=no');
   if (defaultUrl) webview.setAttribute('src', defaultUrl);
   else webview.setAttribute('src', 'about:blank');
-  webview.addEventListener('did-fail-load', () => {});  // Suppress error events
+  webview.addEventListener('did-fail-load', () => {});
+  // Forward console errors z webview jako toast (JS error reporting)
+  webview.addEventListener('console-message', (e: any) => {
+    if (e.level === 3) { // error
+      const msg = e.message?.substring(0, 120) || 'Unknown error';
+      console.warn('[browser webview]', msg);
+    }
+  });
   webviewContainer.appendChild(webview);
 
   // Annotation canvas overlay

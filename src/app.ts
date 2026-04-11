@@ -567,12 +567,6 @@ async function openProject(project: any): Promise<void> {
     <span class="tab-label">${escapeHtmlSafe(project.name)}</span>
     <span class="tab-close">&times;</span>
   `;
-  // Per-projekt barevný proužek pod tabem
-  try {
-    const colors: Record<string, string> = (await levis.storeGet('projectColors')) || {};
-    const c = colors[project.path];
-    if (c) tabEl.style.setProperty('--tab-color', c);
-  } catch {}
   tabsContainer.appendChild(tabEl);
 
   tabEl.addEventListener('click', (e: MouseEvent) => {

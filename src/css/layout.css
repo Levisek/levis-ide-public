@@ -5,10 +5,17 @@
 #tab-bar {
   display: flex; align-items: center; height: 44px;
   background: var(--bg-base);
-  -webkit-app-region: drag; user-select: none; flex-shrink: 0;
+  user-select: none; flex-shrink: 0;
   padding: 0 var(--space-2);
   gap: var(--space-1);
 }
+/* Drag region jen na logo a mezery — ne na tlačítka */
+.tab-logo { -webkit-app-region: drag; }
+#tab-bar::after {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 44px;
+  -webkit-app-region: drag; z-index: 0; pointer-events: none;
+}
+#tab-bar > * { position: relative; z-index: 1; }
 
 .tab-logo {
   font-family: 'Inter', -apple-system, sans-serif; font-weight: 700; font-size: 14px;
@@ -41,15 +48,6 @@
   background: var(--bg-elev-2);
   box-shadow: var(--shadow-sm);
   font-weight: 600;
-}
-/* Per-projekt barva — border kolem celého tabu */
-.tab[style*="--tab-color"] {
-  border: 1.5px solid var(--tab-color);
-  box-shadow: 0 0 8px color-mix(in srgb, var(--tab-color) 40%, transparent);
-}
-.tab[style*="--tab-color"].active {
-  border-color: var(--tab-color);
-  box-shadow: 0 0 14px color-mix(in srgb, var(--tab-color) 50%, transparent), inset 0 0 8px color-mix(in srgb, var(--tab-color) 10%, transparent);
 }
 /* CC pracuje — oranžový pulsující border */
 .tab.tab-cc-working {
