@@ -244,7 +244,6 @@ async function init(): Promise<void> {
   if (btnHelp) btnHelp.addEventListener('click', () => (window as any).showHelpOverlay?.());
   const btnSettings = document.getElementById('btn-settings');
   if (btnSettings) {
-    btnSettings.innerHTML = (window as any).icon('gear', { size: 14 });
     btnSettings.addEventListener('click', () => {
       if ((window as any).openHubSettings) {
         (window as any).openHubSettings();

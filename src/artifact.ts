@@ -69,6 +69,22 @@ function createArtifact(container: HTMLElement, projectPath: string): ArtifactIn
 
   container.appendChild(wrapper);
 
+  // Drag & drop HTML souboru do preview
+  wrapper.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); });
+  wrapper.addEventListener('drop', (e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const textPath = e.dataTransfer?.getData('text/plain');
+    if (textPath && /\.(html?|svg)$/i.test(textPath)) {
+      loadFile(textPath);
+      return;
+    }
+    const file = e.dataTransfer?.files?.[0];
+    if (file && (file as any).path && /\.(html?|svg)$/i.test((file as any).path)) {
+      loadFile((file as any).path);
+    }
+  });
+
   let currentFilePath: string | null = null;
   let currentHtml: string = '';
   let watchInterval: any = null;

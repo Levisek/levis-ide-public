@@ -216,6 +216,13 @@ function createBrowser(container: HTMLElement, defaultUrl: string = 'http://loca
   wrapper.addEventListener('drop', (e: DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    // File tree drag (text/plain s cestou)
+    const textPath = e.dataTransfer?.getData('text/plain');
+    if (textPath && /\.(html?|php)$/i.test(textPath)) {
+      loadUrl('file:///' + textPath.replace(/\\/g, '/'));
+      return;
+    }
+    // OS file drop
     const file = e.dataTransfer?.files?.[0];
     if (file && (file as any).path) {
       loadUrl('file:///' + (file as any).path.replace(/\\/g, '/'));

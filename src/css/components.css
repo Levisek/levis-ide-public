@@ -113,8 +113,9 @@
 
 .panel-browser { display: flex; flex-direction: column; flex: 1; min-width: 30%; background: var(--bg-base); border-radius: inherit; }
 .browser-toolbar {
-  display: flex; align-items: center; gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
+  display: flex; align-items: center; gap: var(--space-1);
+  padding: var(--space-2) var(--space-2);
+  flex-wrap: wrap; min-height: 36px;
 }
 .browser-toolbar button:not(.artifact-btn) {
   background: transparent; border: none; color: var(--text-muted);
@@ -590,6 +591,20 @@
 .file-tree-item:has(.ft-git-modified) .ft-name { color: var(--warning); }
 .file-tree-item:has(.ft-git-untracked) .ft-name { color: var(--info); }
 .file-tree-item:has(.ft-git-added) .ft-name { color: var(--success); }
+
+/* ── File tree context menu ── */
+.ft-context-menu {
+  position: fixed; background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 4px; min-width: 160px; z-index: 10000;
+  box-shadow: var(--shadow-lg); font-size: 13px;
+}
+.ft-context-menu .tcm-item {
+  padding: 7px 12px; border-radius: var(--radius-xs); cursor: pointer; color: var(--text);
+  display: flex; align-items: center; gap: 8px;
+  transition: background var(--t-fast) var(--ease);
+}
+.ft-context-menu .tcm-item:hover { background: var(--bg-elev-3); color: var(--accent); }
 
 /* ── Terminal context menu ── */
 .term-context-menu {

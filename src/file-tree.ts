@@ -96,8 +96,6 @@ async function createFileTree(
   header.innerHTML = `
     <span class="file-tree-title">${t('ws.files')}</span>
     <div class="file-tree-actions">
-      <button class="file-tree-btn file-tree-new-file" title="${t('ws.newFile')}">${I('file', { size: 12 })}</button>
-      <button class="file-tree-btn file-tree-new-folder" title="${t('ws.newFolder')}">${I('folder', { size: 12 })}</button>
       <button class="file-tree-btn file-tree-collapse-all" title="${t('ws.collapseAll')}">${I('chevron-right', { size: 12 })}</button>
       <button class="file-tree-btn file-tree-refresh" title="${t('ws.refreshFiles')}">${I('refresh', { size: 12 })}</button>
     </div>
@@ -254,8 +252,55 @@ async function createFileTree(
         el.classList.add('ft-active');
         onFileOpen(node.path);
       });
+      el.addEventListener('contextmenu', (e: MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        showFileContextMenu(e.clientX, e.clientY, node);
+      });
       return el;
     }
+  }
+
+  function showFileContextMenu(x: number, y: number, node: FileTreeNode): void {
+    document.querySelectorAll('.ft-context-menu').forEach(m => m.remove());
+    const menu = document.createElement('div');
+    menu.className = 'ft-context-menu';
+    menu.innerHTML = `
+      <div class="tcm-item" data-act="rename">${I('editor', { size: 13 })} ${t('hub.tcm.rename')}</div>
+      <div class="tcm-item" data-act="copyPath">${I('file', { size: 13 })} ${t('hub.tcm.copyPath')}</div>
+      <div class="tcm-item" data-act="explorer">${I('folder', { size: 13 })} ${t('hub.tcm.explorer')}</div>
+    `;
+    menu.style.left = `${x}px`;
+    menu.style.top = `${y}px`;
+    document.body.appendChild(menu);
+    const r = menu.getBoundingClientRect();
+    if (r.right > window.innerWidth) menu.style.left = `${window.innerWidth - r.width - 8}px`;
+    if (r.bottom > window.innerHeight) menu.style.top = `${window.innerHeight - r.height - 8}px`;
+    menu.querySelectorAll('.tcm-item').forEach(item => {
+      item.addEventListener('click', async () => {
+        const act = (item as HTMLElement).dataset.act;
+        menu.remove();
+        if (act === 'rename') {
+          const oldName = node.name;
+          const newName = window.prompt(t('hub.tcm.rename'), oldName);
+          if (!newName || newName === oldName) return;
+          try {
+            await levis.renameProject(node.path, newName);
+            await renderTree();
+          } catch {}
+        } else if (act === 'copyPath') {
+          levis.clipboardWrite(node.path);
+        } else if (act === 'explorer') {
+          levis.shellOpenPath(node.isDirectory ? node.path : node.path.substring(0, Math.max(node.path.lastIndexOf('\\'), node.path.lastIndexOf('/'))));
+        }
+      });
+    });
+    setTimeout(() => {
+      const close = (ev: MouseEvent) => {
+        if (!menu.contains(ev.target as Node)) { menu.remove(); document.removeEventListener('click', close); }
+      };
+      document.addEventListener('click', close);
+    }, 0);
   }
 
   function applyGitBadges(): void {
@@ -310,25 +355,6 @@ async function createFileTree(
       ic.innerHTML = I('folder', { size: 14 });
       ic.className = 'ft-icon ft-icon-folder';
     });
-  });
-
-  header.querySelector('.file-tree-new-file')!.addEventListener('click', async () => {
-    const name = prompt(t('ws.newFileName'));
-    if (!name) return;
-    try {
-      await levis.writeFile(rootPath + '\\' + name, '');
-      await renderTree();
-      onFileOpen(rootPath + '\\' + name);
-    } catch {}
-  });
-
-  header.querySelector('.file-tree-new-folder')!.addEventListener('click', async () => {
-    const name = prompt(t('ws.newFolderName'));
-    if (!name) return;
-    try {
-      await levis.createDir(rootPath + '\\' + name);
-      await renderTree();
-    } catch {}
   });
 
   await renderTree();
