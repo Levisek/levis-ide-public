@@ -196,7 +196,7 @@ function createTileElement(project: HubProjectInfo, onOpen: (p: HubProjectInfo) 
     if (r.right > window.innerWidth) menu.style.left = `${window.innerWidth - r.width - 10}px`;
     if (r.bottom > window.innerHeight) menu.style.top = `${window.innerHeight - r.height - 10}px`;
     menu.querySelectorAll('.tcm-item').forEach(item => {
-      if (item.classList.contains('tcm-color-trigger')) return; // handled below
+      if (item.classList.contains('tcm-color-trigger') || item.classList.contains('tcm-status-trigger')) return; // handled below
       item.addEventListener('click', () => {
         const act = item.getAttribute('data-act') || '';
         menu.remove();

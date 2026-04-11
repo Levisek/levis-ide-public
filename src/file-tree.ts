@@ -281,13 +281,37 @@ async function createFileTree(
         const act = (item as HTMLElement).dataset.act;
         menu.remove();
         if (act === 'rename') {
+          // Inline rename — najdi element v tree a nahraď text inputem
+          const itemEl = treeContainer.querySelector(`[data-path="${CSS.escape(node.path)}"]`);
+          if (!itemEl) return;
+          const nameEl = itemEl.querySelector('.ft-name') as HTMLElement;
+          if (!nameEl) return;
           const oldName = node.name;
-          const newName = window.prompt(t('hub.tcm.rename'), oldName);
-          if (!newName || newName === oldName) return;
-          try {
-            await levis.renameProject(node.path, newName);
-            await renderTree();
-          } catch {}
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.value = oldName;
+          input.className = 'ft-rename-input';
+          input.style.cssText = 'background:var(--bg-deep);border:1px solid var(--accent);color:var(--text);padding:1px 4px;font-size:12px;border-radius:3px;width:100%;outline:none;';
+          nameEl.textContent = '';
+          nameEl.appendChild(input);
+          input.focus();
+          input.select();
+          const finish = async () => {
+            const newName = input.value.trim();
+            if (newName && newName !== oldName) {
+              try {
+                await levis.renameProject(node.path, newName);
+                await renderTree();
+              } catch { nameEl.textContent = oldName; }
+            } else {
+              nameEl.textContent = oldName;
+            }
+          };
+          input.addEventListener('blur', finish);
+          input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+            if (e.key === 'Escape') { input.value = oldName; input.blur(); }
+          });
         } else if (act === 'copyPath') {
           levis.clipboardWrite(node.path);
         } else if (act === 'explorer') {

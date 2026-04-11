@@ -8,9 +8,9 @@
 .artifact-panel { display: flex; flex-direction: column; flex: 1; min-height: 0; min-width: 0; }
 
 .artifact-toolbar {
-  display: flex; align-items: center; gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  font-size: 12px;
+  display: flex; align-items: center; gap: var(--space-1);
+  padding: var(--space-2) var(--space-2);
+  font-size: 12px; flex-wrap: wrap; min-height: 36px;
 }
 .artifact-icon { font-size: 16px; }
 .artifact-title { font-weight: 600; color: var(--accent); font-size: 12px; }
