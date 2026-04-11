@@ -5,17 +5,15 @@
 #tab-bar {
   display: flex; align-items: center; height: 44px;
   background: var(--bg-base);
-  user-select: none; flex-shrink: 0;
+  -webkit-app-region: drag; user-select: none; flex-shrink: 0;
   padding: 0 var(--space-2);
   gap: var(--space-1);
 }
-/* Drag region jen na logo a mezery — ne na tlačítka */
-.tab-logo { -webkit-app-region: drag; }
-#tab-bar::after {
-  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 44px;
-  -webkit-app-region: drag; z-index: 0; pointer-events: none;
+/* Všechny interaktivní prvky musí mít no-drag */
+#tabs, #tabs *, #btn-help, #btn-help *, #btn-settings, #btn-settings *,
+#window-controls, #window-controls *, #btn-new-tab {
+  -webkit-app-region: no-drag;
 }
-#tab-bar > * { position: relative; z-index: 1; }
 
 .tab-logo {
   font-family: 'Inter', -apple-system, sans-serif; font-weight: 700; font-size: 14px;
