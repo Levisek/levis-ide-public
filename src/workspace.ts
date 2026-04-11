@@ -12,8 +12,8 @@ interface WorkspaceInstance {
   dispose: () => void;
 }
 
-type RightPanel = 'browser' | 'artifact' | 'mobile' | 'hidden';
-type WsPanelId = 'terminal' | 'editor' | 'diff' | 'browser' | 'artifact' | 'mobile';
+type RightPanel = 'browser' | 'hidden';
+type WsPanelId = 'terminal' | 'editor' | 'diff' | 'browser';
 
 function panelLabel(panel: WsPanelId): { icon: string; text: string } {
   const I = (window as any).icon;
@@ -22,8 +22,6 @@ function panelLabel(panel: WsPanelId): { icon: string; text: string } {
     case 'editor':   return { icon: I('editor'),   text: t('ws.editor') };
     case 'diff':     return { icon: I('git'),      text: t('ws.diff') };
     case 'browser':  return { icon: I('browser'),  text: t('ws.browser') };
-    case 'artifact': return { icon: I('preview'),  text: t('ws.preview') };
-    case 'mobile':   return { icon: I('mobile'),   text: t('ws.mobile') };
   }
 }
 const PANEL_LABELS = new Proxy({} as Record<WsPanelId, { icon: string; text: string }>, {
@@ -34,23 +32,22 @@ type AutostartEntry = {
   cmd: string | null;
   scriptName?: string;
   port: number | null;
-  panel: 'browser' | 'mobile' | 'artifact';
 };
 
 const AUTOSTART: Record<string, AutostartEntry> = {
-  next:     { cmd: 'npm run dev', scriptName: 'dev', port: 3000, panel: 'browser' },
-  vite:     { cmd: 'npm run dev', scriptName: 'dev', port: 5173, panel: 'browser' },
-  react:    { cmd: 'npm run dev', scriptName: 'dev', port: 3000, panel: 'browser' },
-  astro:    { cmd: 'npm run dev', scriptName: 'dev', port: 4321, panel: 'browser' },
-  nuxt:     { cmd: 'npm run dev', scriptName: 'dev', port: 3000, panel: 'browser' },
-  svelte:   { cmd: 'npm run dev', scriptName: 'dev', port: 5173, panel: 'browser' },
-  expo:     { cmd: "$env:BROWSER='none'; npm run web", scriptName: 'web', port: 8081, panel: 'browser' },
-  php:      { cmd: 'php -S localhost:8000', port: 8000, panel: 'browser' },
-  node:     { cmd: 'npm start', scriptName: 'start', port: 3000, panel: 'browser' },
-  static:   { cmd: null, port: null, panel: 'artifact' },
-  electron: { cmd: null, port: null, panel: 'artifact' },
-  tauri:    { cmd: null, port: null, panel: 'artifact' },
-  other:    { cmd: null, port: null, panel: 'artifact' },
+  next:     { cmd: 'npm run dev', scriptName: 'dev', port: 3000 },
+  vite:     { cmd: 'npm run dev', scriptName: 'dev', port: 5173 },
+  react:    { cmd: 'npm run dev', scriptName: 'dev', port: 3000 },
+  astro:    { cmd: 'npm run dev', scriptName: 'dev', port: 4321 },
+  nuxt:     { cmd: 'npm run dev', scriptName: 'dev', port: 3000 },
+  svelte:   { cmd: 'npm run dev', scriptName: 'dev', port: 5173 },
+  expo:     { cmd: "$env:BROWSER='none'; npm run web", scriptName: 'web', port: 8081 },
+  php:      { cmd: 'php -S localhost:8000', port: 8000 },
+  node:     { cmd: 'npm start', scriptName: 'start', port: 3000 },
+  static:   { cmd: null, port: null },
+  electron: { cmd: null, port: null },
+  tauri:    { cmd: null, port: null },
+  other:    { cmd: null, port: null },
 };
 
 async function probePort(port: number, signal: { aborted: boolean }): Promise<boolean> {
@@ -160,21 +157,12 @@ async function createWorkspace(projectPath: string, projectName: string, project
   browserPanel.className = 'panel-browser';
   browserPanel.dataset.rpanel = 'browser';
 
-  const artifactPanel = document.createElement('div');
-  artifactPanel.className = 'panel-artifact';
-  artifactPanel.dataset.rpanel = 'artifact';
-
-  const mobilePanel = document.createElement('div');
-  mobilePanel.className = 'panel-mobile';
-  mobilePanel.dataset.rpanel = 'mobile';
 
   const panelEls: Record<WsPanelId, HTMLElement> = {
     terminal: termPanel,
     editor: editorPanel,
     diff: diffPanel,
     browser: browserPanel,
-    artifact: artifactPanel,
-    mobile: mobilePanel,
   };
 
   // ── Status Bar (replaces CC Bar) ──────
@@ -243,7 +231,7 @@ async function createWorkspace(projectPath: string, projectName: string, project
   }
 
   const autostartEntry: AutostartEntry = AUTOSTART[resolvedType] || AUTOSTART.other;
-  const hasNoPreview = autostartEntry.panel === 'artifact' && autostartEntry.cmd === null && resolvedType !== 'static';
+  const hasNoPreview = autostartEntry.cmd === null && resolvedType !== 'static';
   const hasStorybook = !!pkgScripts.storybook;
 
   // Skript fallback: pokud preferovany script chybi, zkus dev/start/serve a uprav cmd.
@@ -359,29 +347,7 @@ async function createWorkspace(projectPath: string, projectName: string, project
     diffPanel.innerHTML = `<div class="loading">Chyba diff vieweru</div>`;
   }
 
-  const browserInstance = createBrowser(browserPanel, 'http://localhost:8080', projectPath);
-  const artifactInstance = createArtifact(artifactPanel, projectPath);
-  const mobileInstance = createMobile(mobilePanel, projectPath, projectName);
-
-  // Auto-load index.html do náhledu pokud existuje (vanilla weby)
-  // Spouští se po krátkém delayi, aby měl grid čas zmountovat artifact panel.
-  setTimeout(async () => {
-    const sep = projectPath.includes('\\') ? '\\' : '/';
-    const candidates = [
-      projectPath + sep + 'index.html',
-      projectPath + sep + 'public' + sep + 'index.html',
-      projectPath + sep + 'src' + sep + 'index.html',
-    ];
-    for (const candidate of candidates) {
-      try {
-        const content = await levis.readFile(candidate);
-        if (typeof content === 'string') {
-          artifactInstance.loadFile(candidate);
-          break;
-        }
-      } catch {}
-    }
-  }, 200);
+  const browserInstance = createBrowser(browserPanel, '', projectPath);
 
   // Pro web/expo projekty: prepnout na Mobile panel, spustit dev server jako
   // BACKGROUND PTY (zadny xterm slot vedle Claude Code) a po chvili nacist
@@ -484,15 +450,9 @@ async function createWorkspace(projectPath: string, projectName: string, project
     onDragOut: async (panel: WsPanelId, _x: number, _y: number) => {
       // Popout panelu mimo workspace
       try {
-        if (panel === 'artifact') {
-          await popoutArtifact();
-          poppedPanels.add('artifact');
-        } else if (panel === 'browser') {
+        if (panel === 'browser') {
           await levis.popout({ type: 'browser' });
           poppedPanels.add('browser');
-        } else if (panel === 'mobile') {
-          await levis.popout({ type: 'mobile' });
-          poppedPanels.add('mobile');
         } else if (panel === 'editor') {
           const files = editorInstance?.getOpenFiles?.() || [];
           const r = await levis.popoutPanel({ panelType: 'editor', payload: { files, projectPath, projectName } });
@@ -540,10 +500,8 @@ async function createWorkspace(projectPath: string, projectName: string, project
     });
   }
   STAGE('grid: ensurePanel detection');
-  if (autostartEntry.panel !== 'artifact') {
-    grid.ensurePanel(autostartEntry.panel as WsPanelId);
-  } else if (!hasNoPreview) {
-    grid.ensurePanel('artifact');
+  if (!hasNoPreview) {
+    grid.ensurePanel('browser');
   }
   STAGE('grid: done');
 
@@ -555,7 +513,7 @@ async function createWorkspace(projectPath: string, projectName: string, project
   } catch {}
 
   if (autostartEnabled && devCommand && autostartEntry.cmd !== null) {
-    switchRightPanel(autostartEntry.panel as RightPanel);
+    switchRightPanel('browser');
     startBackgroundDevPty(termCwd, devCommand);
     const btnDevLog = statusBar.querySelector('.status-btn-devlog') as HTMLElement;
     if (btnDevLog) btnDevLog.style.display = '';
@@ -572,8 +530,7 @@ async function createWorkspace(projectPath: string, projectName: string, project
         if (m) actualPort = parseInt(m[1], 10);
         const url = `http://localhost:${actualPort}`;
         if (ok || m) {
-          if (autostartEntry.panel === 'browser') browserInstance.setUrl(url);
-          else if (autostartEntry.panel === 'mobile') mobileInstance.loadUrl(url);
+          browserInstance.setUrl(url);
           showToast(t('toast.devStarted', { name: resolvedType, port: actualPort }), 'success');
         } else {
           showToast(t('toast.devTimeout'), 'error');
@@ -666,9 +623,9 @@ async function createWorkspace(projectPath: string, projectName: string, project
   try {
     fileTreeInstance = await createFileTree(sidebarContainer, projectPath, async (filePath: string) => {
       // HTML soubory → preview (artifact), ostatní → editor
-      if (/\.(html?)$/i.test(filePath) && artifactInstance) {
-        switchRightPanel('artifact');
-        artifactInstance.loadFile(filePath);
+      if (/\.(html?)$/i.test(filePath) && browserInstance) {
+        switchRightPanel('browser');
+        browserInstance.loadFile(filePath);
       } else {
         switchLeftPanel('editor');
         if (editorInstance) await editorInstance.openFile(filePath);
@@ -705,7 +662,7 @@ async function createWorkspace(projectPath: string, projectName: string, project
 
   function switchRightPanel(panel: RightPanel): void {
     if (panel === 'hidden') {
-      for (const p of ['browser', 'artifact', 'mobile'] as WsPanelId[]) {
+      for (const p of ['browser'] as WsPanelId[]) {
         grid.removePanel(p);
       }
       refitTerminals();
@@ -738,7 +695,7 @@ async function createWorkspace(projectPath: string, projectName: string, project
   // Reset layout
   const btnResetLayout = wsToolbar.querySelector('.ws-btn-reset-layout') as HTMLElement;
   btnResetLayout?.addEventListener('click', () => {
-    const rightPanel: WsPanelId = hasNoPreview ? 'editor' : (autostartEntry.panel as WsPanelId);
+    const rightPanel: WsPanelId = hasNoPreview ? 'editor' : 'browser';
     grid.setState({
       rows: [{ cells: ['terminal', rightPanel], colSizes: [55, 45] }],
       rowSizes: [100],
@@ -959,7 +916,7 @@ async function createWorkspace(projectPath: string, projectName: string, project
   // Pouze artifact + git branch — file tree a velikosti se obnovuji jen
   // po dojeti commandu (PTY idle) nebo manualnim refreshi z toolbaru.
   const onWindowFocus = () => {
-    artifactInstance.refresh();
+    browserInstance.refresh();
     updateGitStatus();
   };
   window.addEventListener('focus', onWindowFocus);
@@ -968,7 +925,7 @@ async function createWorkspace(projectPath: string, projectName: string, project
   // ── Pop-out button ────────────────────
   let poppedOut = false;
   async function popoutArtifact(): Promise<void> {
-    let filePath = artifactInstance.getFilePath?.() || null;
+    let filePath: string | null = null;
     // Fallback: pokud artifact nemá načtený soubor, najdi index.html v projektu
     if (!filePath) {
       const sep = projectPath.includes('\\') ? '\\' : '/';
@@ -985,12 +942,12 @@ async function createWorkspace(projectPath: string, projectName: string, project
       }
     }
     await levis.popout({
-      type: 'artifact',
+      type: 'browser',
       filePath: filePath || undefined,
     });
-    grid.removePanel('artifact');
+    grid.removePanel('browser');
     poppedOut = true;
-    poppedPanels.add('artifact');
+    poppedPanels.add('browser');
     showToast(t('toast.previewPopout'), 'info');
   }
   wsToolbar.querySelector('.ws-btn-popout')?.addEventListener('click', popoutArtifact);
@@ -1010,7 +967,7 @@ async function createWorkspace(projectPath: string, projectName: string, project
   // When popout window closes, restore panel (singleton artifact/browser/mobile popout)
   const unsubPopoutClosed = levis.onPopoutClosed(() => {
     poppedOut = false;
-    for (const p of ['artifact', 'browser', 'mobile'] as WsPanelId[]) {
+    for (const p of ['browser'] as WsPanelId[]) {
       if (poppedPanels.has(p)) {
         grid.ensurePanel(p);
         poppedPanels.delete(p);
@@ -1074,7 +1031,7 @@ async function createWorkspace(projectPath: string, projectName: string, project
     }
     if (e.ctrlKey && e.shiftKey && e.key === 'V') {
       e.preventDefault();
-      artifactInstance.refresh();
+      browserInstance.refresh();
       levis.popoutRefresh();
       showToast(t('toast.previewReturned'), 'info');
     }
@@ -1170,8 +1127,6 @@ async function createWorkspace(projectPath: string, projectName: string, project
       if (diffInstance) diffInstance.dispose();
       if (fileTreeInstance) fileTreeInstance.dispose();
       browserInstance.dispose();
-      artifactInstance.dispose();
-      mobileInstance.dispose();
       for (const fn of cleanups) fn();
     },
   };

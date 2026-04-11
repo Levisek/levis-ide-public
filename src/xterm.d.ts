@@ -77,13 +77,11 @@ declare function applyTheme(theme: string): void;
 interface Window {
   renderHub: (container: HTMLElement, onOpenProject: (project: any) => void) => Promise<void>;
   createTerminal: (container: HTMLElement, cwd: string, projectName: string) => Promise<any>;
-  createBrowser: (container: HTMLElement, defaultUrl?: string) => any;
+  createBrowser: (container: HTMLElement, defaultUrl?: string, projectPath?: string) => any;
   createWorkspace: (projectPath: string, projectName: string) => Promise<any>;
   createFileTree: (container: HTMLElement, rootPath: string, onFileOpen: (path: string) => void) => any;
   createEditor: (container: HTMLElement) => Promise<any>;
   createDiffViewer: (container: HTMLElement) => any;
-  createArtifact: (container: HTMLElement, projectPath: string) => any;
-  createMobile: (container: HTMLElement, projectPath: string, projectName: string) => any;
   createInspector: () => any;
   showToast: (message: string, type?: 'info' | 'success' | 'warning' | 'error') => void;
   commandPalette: { show: () => void; hide: () => void; registerCommand: (cmd: any) => void };

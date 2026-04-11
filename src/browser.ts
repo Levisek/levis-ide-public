@@ -1,34 +1,65 @@
-// ── Browser Panel (webview) ─────────────
-// Plnohodnotny prohlizec s killer feature: Inspect + lasso screenshot do CC.
+// ── Browser Panel (unified: webview pro file:// i http://) ──
+// Sloučený artifact + browser + mobile do jednoho panelu.
+// Umí: localhost dev server, statické HTML, mobilní emulaci, inspector, lasso, annotation.
+
+interface DevicePreset {
+  id: string;
+  label: string;
+  width: number;
+  height: number;
+}
+
+const DEVICE_PRESETS: DevicePreset[] = [
+  { id: 'full',       label: 'Full',          width: 0,   height: 0 },
+  { id: 'iphone-se',  label: 'iPhone SE',     width: 375, height: 667 },
+  { id: 'iphone-12',  label: 'iPhone 12/13',  width: 390, height: 844 },
+  { id: 'iphone-pro', label: 'iPhone 15 Pro', width: 393, height: 852 },
+  { id: 'pixel',      label: 'Pixel 7',       width: 412, height: 915 },
+  { id: 'galaxy',     label: 'Galaxy S20+',   width: 384, height: 854 },
+  { id: 'ipad-mini',  label: 'iPad Mini',     width: 768, height: 1024 },
+  { id: 'ipad-pro',   label: 'iPad Pro 11"',  width: 834, height: 1194 },
+];
 
 interface BrowserInstance {
+  element: HTMLElement;
   setUrl: (url: string) => void;
   getUrl: () => string;
+  loadFile: (filePath: string) => Promise<void>;
+  refresh: () => void;
   dispose: () => void;
 }
 
-function createBrowser(container: HTMLElement, defaultUrl: string = 'http://localhost:8080', projectPath: string = ''): BrowserInstance {
+function createBrowser(container: HTMLElement, defaultUrl: string = '', projectPath: string = ''): BrowserInstance {
   const I = (window as any).icon;
   const wrapper = document.createElement('div');
   wrapper.className = 'browser-panel';
   wrapper.style.cssText = 'display:flex;flex-direction:column;width:100%;height:100%;position:relative;';
+
+  // Cleanup starých screenshotů
+  if (projectPath) {
+    const sep = projectPath.includes('\\') ? '\\' : '/';
+    levis.captureCleanup(projectPath + sep + '.levis-tmp').catch(() => {});
+  }
+
+  const presetOptions = DEVICE_PRESETS.map(p =>
+    `<option value="${p.id}">${p.label}${p.width ? ` (${p.width}\u00d7${p.height})` : ''}</option>`
+  ).join('');
 
   const toolbar = document.createElement('div');
   toolbar.className = 'browser-toolbar';
   toolbar.innerHTML = `
     <button class="btn-back" title="${t('browser.back')}">‹</button>
     <button class="btn-forward" title="${t('browser.forward')}">›</button>
-    <input type="text" class="browser-url" value="${defaultUrl}" placeholder="URL...">
-    <div class="artifact-size-btns">
-      <button class="artifact-size-btn" data-size="mobile" title="Mobile (412px)">${I('mobile')}</button>
-      <button class="artifact-size-btn" data-size="tablet" title="Tablet (768px)">${I('file')}</button>
-      <button class="artifact-size-btn artifact-size-active" data-size="full" title="Full">${I('browser')}</button>
-    </div>
+    <input type="text" class="browser-url" value="${defaultUrl}" placeholder="URL / file path...">
+    <select class="browser-device-preset" title="${t('mobile.deviceSize')}">${presetOptions}</select>
+    <button class="artifact-btn browser-rotate" title="${t('mobile.rotate')}">${I('refresh')}</button>
+    <button class="artifact-btn browser-touch-toggle" title="${t('mobile.touchEm')}">${I('inspect')} Touch</button>
+    <button class="artifact-btn browser-color-scheme" title="Dark / Light">☀</button>
     <button class="artifact-btn browser-inspect" title="${t('artifact.inspectTip')}">${I('inspect')} ${t('browser.inspect')}</button>
     <button class="artifact-btn browser-annotate" title="${t('artifact.annotateTip')}">${I('editor')} ${t('browser.annotate')}</button>
     <button class="artifact-btn browser-reload" title="${t('artifact.refreshTip')}">${I('refresh')}</button>
     <button class="artifact-btn browser-watch" title="${t('artifact.watchTip')}">${I('eye')} Watch</button>
-    <button class="artifact-btn browser-color-scheme" title="Dark / Light mode">☀</button>
+    <button class="artifact-btn browser-open-file" title="${t('artifact.loadHtml')}">${I('folder')}</button>
     <button class="btn-devtools" title="DevTools">${I('gear')}</button>
   `;
   wrapper.appendChild(toolbar);
@@ -39,27 +70,32 @@ function createBrowser(container: HTMLElement, defaultUrl: string = 'http://loca
   wrapper.appendChild(webviewContainer);
 
   const webview = document.createElement('webview') as any;
-  webview.setAttribute('src', defaultUrl);
   webview.setAttribute('allowpopups', '');
   webview.style.width = '100%';
   webview.style.height = '100%';
   webview.style.position = 'absolute';
   webview.style.top = '0';
   webview.style.left = '0';
+  if (defaultUrl) webview.setAttribute('src', defaultUrl);
   webviewContainer.appendChild(webview);
 
-  // Annotation canvas overlay (nad webview)
+  // Annotation canvas overlay
   const annotCanvas = document.createElement('canvas');
   annotCanvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;display:none;pointer-events:none;z-index:10;';
   webviewContainer.appendChild(annotCanvas);
 
-  // Element ring overlay (floating popover host)
+  // Element ring overlay
   const elementRing = document.createElement('div');
   elementRing.className = 'artifact-element-ring';
   elementRing.style.display = 'none';
   webviewContainer.appendChild(elementRing);
 
   let activePopover: HTMLElement | null = null;
+
+  // Touch cursor overlay
+  const touchCursor = document.createElement('div');
+  touchCursor.className = 'touch-cursor';
+  document.body.appendChild(touchCursor);
 
   container.appendChild(wrapper);
 
@@ -69,104 +105,98 @@ function createBrowser(container: HTMLElement, defaultUrl: string = 'http://loca
   const btnDevtools = toolbar.querySelector('.btn-devtools') as HTMLElement;
   const btnInspect = toolbar.querySelector('.browser-inspect') as HTMLElement;
   const btnAnnotate = toolbar.querySelector('.browser-annotate') as HTMLElement;
+  const presetSelect = toolbar.querySelector('.browser-device-preset') as HTMLSelectElement;
+  const btnRotate = toolbar.querySelector('.browser-rotate') as HTMLElement;
 
-  // ── Responsive size buttons (same as artifact) ──
-  let currentSize = 'full';
+  let currentFilePath: string | null = null;
+  let currentUrl = '';
+
+  // ── Device presets + responsive sizing ──
+  let currentPreset: DevicePreset = DEVICE_PRESETS[0]; // Full
+  let landscape = false;
   let touchWebContentsId: number | null = null;
+  let touchEmulationOn = false;
+
   webview.addEventListener('dom-ready', () => {
     try { touchWebContentsId = (webview as any).getWebContentsId(); } catch {}
-    // Reapply touch state after navigation
-    if (currentSize === 'mobile' && touchWebContentsId != null) {
+    if (touchEmulationOn && touchWebContentsId != null) {
       levis.mobileEnableTouch(touchWebContentsId).catch(() => {});
     }
+    if (inspectActive) setTimeout(() => inspector.enable(webview), 200);
   });
 
-  const sizeBtns = toolbar.querySelectorAll('.artifact-size-btn');
-  sizeBtns.forEach((btn: Element) => {
-    btn.addEventListener('click', async () => {
-      currentSize = btn.getAttribute('data-size') || 'full';
-      sizeBtns.forEach(b => b.classList.remove('artifact-size-active'));
-      btn.classList.add('artifact-size-active');
+  function applyPreset(): void {
+    if (currentPreset.width === 0) {
+      // Full
+      webviewContainer.style.background = '';
+      webviewContainer.style.display = '';
+      webviewContainer.style.alignItems = '';
+      webviewContainer.style.justifyContent = '';
+      webviewContainer.style.overflow = 'hidden';
+      webview.style.position = 'absolute';
+      webview.style.width = '100%';
+      webview.style.height = '100%';
+      webview.style.flex = '';
+      webview.style.margin = '';
+      webview.style.border = '';
+      webview.style.borderRadius = '';
+      webview.style.boxShadow = '';
+      return;
+    }
+    const w = landscape ? currentPreset.height : currentPreset.width;
+    const h = landscape ? currentPreset.width : currentPreset.height;
+    webviewContainer.style.background = '#0a0a0f';
+    webviewContainer.style.display = 'flex';
+    webviewContainer.style.alignItems = 'flex-start';
+    webviewContainer.style.justifyContent = 'center';
+    webviewContainer.style.overflow = 'auto';
+    webview.style.position = 'relative';
+    webview.style.width = w + 'px';
+    webview.style.height = h + 'px';
+    webview.style.flex = '0 0 auto';
+    webview.style.margin = '12px auto';
+    webview.style.border = '1px solid rgba(255,255,255,0.12)';
+    webview.style.borderRadius = '24px';
+    webview.style.boxShadow = '0 8px 40px rgba(0,0,0,0.5)';
+  }
 
-      switch (currentSize) {
-        case 'mobile':
-          webviewContainer.style.background = '#0a0a0f';
-          webviewContainer.style.display = 'flex';
-          webviewContainer.style.alignItems = 'flex-start';
-          webviewContainer.style.justifyContent = 'center';
-          webviewContainer.style.overflow = 'auto';
-          webview.style.position = 'relative';
-          webview.style.width = '412px';
-          webview.style.height = '915px';
-          webview.style.flex = '0 0 auto';
-          webview.style.margin = '12px auto';
-          webview.style.border = '1px solid rgba(255,255,255,0.12)';
-          webview.style.borderRadius = '24px';
-          webview.style.boxShadow = '0 8px 40px rgba(0,0,0,0.5)';
-          if (touchWebContentsId != null) {
-            try { await levis.mobileEnableTouch(touchWebContentsId); } catch {}
-          }
-          break;
-        case 'tablet':
-          resetWebviewFull();
-          webview.style.width = '768px';
-          webview.style.margin = '0 auto';
-          webview.style.position = 'relative';
-          webviewContainer.style.display = 'flex';
-          webviewContainer.style.justifyContent = 'center';
-          webviewContainer.style.overflow = 'auto';
-          webviewContainer.classList.add('artifact-device-frame');
-          if (touchWebContentsId != null) {
-            try { await levis.mobileDisableTouch(touchWebContentsId); } catch {}
-          }
-          break;
-        default: // full
-          resetWebviewFull();
-          webviewContainer.classList.remove('artifact-device-frame');
-          if (touchWebContentsId != null) {
-            try { await levis.mobileDisableTouch(touchWebContentsId); } catch {}
-          }
-      }
-    });
+  presetSelect.addEventListener('change', () => {
+    const p = DEVICE_PRESETS.find(d => d.id === presetSelect.value);
+    if (p) { currentPreset = p; applyPreset(); }
   });
 
-  function resetWebviewFull(): void {
-    webviewContainer.style.background = '';
-    webviewContainer.style.display = '';
-    webviewContainer.style.alignItems = '';
-    webviewContainer.style.justifyContent = '';
-    webviewContainer.style.overflow = 'hidden';
-    webview.style.position = 'absolute';
-    webview.style.width = '100%';
-    webview.style.height = '100%';
-    webview.style.flex = '';
-    webview.style.margin = '';
-    webview.style.border = '';
-    webview.style.borderRadius = '';
-    webview.style.boxShadow = '';
-  }
+  btnRotate.addEventListener('click', () => {
+    landscape = !landscape;
+    applyPreset();
+  });
 
-  // ── Watch mode (auto-reload) — defaultně ON pro localhost ──
-  let watching = false;
-  let watchInterval: any = null;
-  const watchBtn = toolbar.querySelector('.browser-watch') as HTMLElement;
+  // ── Touch emulation ──
+  const btnTouchToggle = toolbar.querySelector('.browser-touch-toggle') as HTMLElement;
 
-  function startWatch(): void {
-    if (watchInterval) return;
-    watchInterval = setInterval(() => {
-      if (webview.src && webview.src !== 'about:blank') {
-        try { if (typeof (webview as any).reloadIgnoringCache === 'function') (webview as any).reloadIgnoringCache(); } catch {}
-      }
-    }, 2000);
-  }
-  function stopWatch(): void {
-    if (watchInterval) { clearInterval(watchInterval); watchInterval = null; }
-  }
-  watchBtn.addEventListener('click', () => {
-    watching = !watching;
-    watchBtn.classList.toggle('artifact-watch-active', watching);
-    watchBtn.innerHTML = `${I('eye')} ${watching ? 'Watching' : 'Watch'}`;
-    if (watching) startWatch(); else stopWatch();
+  document.addEventListener('mousemove', (e: MouseEvent) => {
+    if (!touchEmulationOn) return;
+    const rect = webviewContainer.getBoundingClientRect();
+    const over = e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom;
+    touchCursor.style.left = e.clientX + 'px';
+    touchCursor.style.top = e.clientY + 'px';
+    if (over) touchCursor.classList.add('visible');
+    else touchCursor.classList.remove('visible', 'pressed');
+  });
+  document.addEventListener('mousedown', () => {
+    if (touchEmulationOn && touchCursor.classList.contains('visible')) touchCursor.classList.add('pressed');
+  });
+  document.addEventListener('mouseup', () => { touchCursor.classList.remove('pressed'); });
+
+  btnTouchToggle.addEventListener('click', async () => {
+    touchEmulationOn = !touchEmulationOn;
+    btnTouchToggle.classList.toggle('artifact-btn-active', touchEmulationOn);
+    if (!touchEmulationOn) touchCursor.classList.remove('visible', 'pressed');
+    webviewContainer.style.cursor = touchEmulationOn ? 'none' : '';
+    if (touchWebContentsId != null) {
+      if (touchEmulationOn) await levis.mobileEnableTouch(touchWebContentsId);
+      else await levis.mobileDisableTouch(touchWebContentsId);
+    }
+    showToast(t(touchEmulationOn ? 'mobile.touchOn' : 'mobile.touchOff'), 'info');
   });
 
   // ── Dark/Light mode simulace ──
@@ -182,52 +212,109 @@ function createBrowser(container: HTMLElement, defaultUrl: string = 'http://loca
     showToast(`prefers-color-scheme: ${colorScheme}`, 'info');
   });
 
-  // ── Reload button ──
+  // ── Watch mode ──
+  let watching = false;
+  let watchInterval: any = null;
+  const watchBtn = toolbar.querySelector('.browser-watch') as HTMLElement;
+
+  function startWatch(): void {
+    if (watchInterval) return;
+    watchInterval = setInterval(() => {
+      if (currentFilePath) {
+        // File mode — reload file
+        loadFile(currentFilePath);
+      } else if (webview.src && webview.src !== 'about:blank') {
+        try { if (typeof (webview as any).reloadIgnoringCache === 'function') (webview as any).reloadIgnoringCache(); } catch {}
+      }
+    }, 2000);
+  }
+  function stopWatch(): void {
+    if (watchInterval) { clearInterval(watchInterval); watchInterval = null; }
+  }
+  watchBtn.addEventListener('click', () => {
+    watching = !watching;
+    watchBtn.classList.toggle('artifact-watch-active', watching);
+    watchBtn.innerHTML = `${I('eye')} ${watching ? 'Watching' : 'Watch'}`;
+    if (watching) startWatch(); else stopWatch();
+  });
+
+  // ── Reload ──
   toolbar.querySelector('.browser-reload')!.addEventListener('click', () => {
+    if (currentFilePath) { loadFile(currentFilePath); return; }
     if (typeof (webview as any).reloadIgnoringCache === 'function') {
       try { (webview as any).reloadIgnoringCache(); } catch {}
     }
   });
 
+  // ── Load URL ──
   function loadUrl(url: string): void {
     if (!url) return;
-    // Podporuje file://, http://, https://
     if (!/^(https?|file):\/\//i.test(url)) {
       if (url.includes('\\') || url.includes('/')) {
-        // Vypadá jako cesta k souboru
         url = 'file:///' + url.replace(/\\/g, '/');
       } else {
         url = 'http://' + url;
       }
     }
+    currentFilePath = null;
+    currentUrl = url;
     webview.src = url;
     urlInput.value = url;
   }
 
+  // ── Load file (z artifact) ──
+  async function loadFile(filePath: string): Promise<void> {
+    currentFilePath = filePath;
+    const fileUrl = 'file:///' + filePath.replace(/\\/g, '/');
+    currentUrl = fileUrl;
+    webview.src = fileUrl;
+    urlInput.value = filePath;
+  }
+
   urlInput.addEventListener('keydown', (e: KeyboardEvent) => {
-    if (e.key === 'Enter') loadUrl(urlInput.value.trim());
+    if (e.key === 'Enter') {
+      const val = urlInput.value.trim();
+      if (/\.(html?|svg|php)$/i.test(val) && !val.startsWith('http')) {
+        loadFile(val);
+      } else {
+        loadUrl(val);
+      }
+    }
   });
 
   btnBack.addEventListener('click', () => { if (webview.canGoBack()) webview.goBack(); });
   btnForward.addEventListener('click', () => { if (webview.canGoForward()) webview.goForward(); });
 
-  // ── Drag & drop HTML soubor do preview ──
+  // ── File dialog ──
+  toolbar.querySelector('.browser-open-file')!.addEventListener('click', async () => {
+    const files = await levis.openFileDialog(false);
+    if (!files || files.length === 0) return;
+    const fp = files[0];
+    if (/\.(html?|svg)$/i.test(fp)) {
+      await loadFile(fp);
+    } else {
+      showToast(t('artifact.notHtml'), 'warning');
+    }
+  });
+
+  // ── Drag & drop ──
   wrapper.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); });
   wrapper.addEventListener('drop', (e: DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    // File tree drag (text/plain s cestou)
     const textPath = e.dataTransfer?.getData('text/plain');
-    if (textPath && /\.(html?|php)$/i.test(textPath)) {
-      loadUrl('file:///' + textPath.replace(/\\/g, '/'));
+    if (textPath && /\.(html?|php|svg)$/i.test(textPath)) {
+      loadFile(textPath);
       return;
     }
-    // OS file drop
     const file = e.dataTransfer?.files?.[0];
     if (file && (file as any).path) {
-      loadUrl('file:///' + (file as any).path.replace(/\\/g, '/'));
+      const fp = (file as any).path;
+      if (/\.(html?|php|svg)$/i.test(fp)) loadFile(fp);
+      else loadUrl('file:///' + fp.replace(/\\/g, '/'));
     }
   });
+
   btnDevtools.addEventListener('click', () => {
     if (webview.isDevToolsOpened()) webview.closeDevTools();
     else webview.openDevTools();
@@ -245,7 +332,7 @@ function createBrowser(container: HTMLElement, defaultUrl: string = 'http://loca
   webview.addEventListener('did-navigate-in-page', (e: any) => { urlInput.value = e.url; updateNavButtons(); });
   webview.addEventListener('did-finish-load', updateNavButtons);
 
-  // ── Inspector ─────────────────────────
+  // ── Inspector ──
   const inspector = createInspector();
   let inspectActive = false;
 
@@ -259,10 +346,6 @@ function createBrowser(container: HTMLElement, defaultUrl: string = 'http://loca
     } else {
       inspector.disable();
     }
-  });
-
-  webview.addEventListener('dom-ready', () => {
-    if (inspectActive) setTimeout(() => inspector.enable(webview), 200);
   });
 
   let selectedElement: any = null;
@@ -308,7 +391,6 @@ function createBrowser(container: HTMLElement, defaultUrl: string = 'http://loca
     webviewContainer.appendChild(popover);
     activePopover = popover;
 
-    // Smart placement
     const containerRect = webviewContainer.getBoundingClientRect();
     const pop = popover.getBoundingClientRect();
     const popW = pop.width || 380;
@@ -367,7 +449,7 @@ function createBrowser(container: HTMLElement, defaultUrl: string = 'http://loca
     );
   });
 
-  // ── Lasso screenshot (capturePage cesta) ──
+  // ── Lasso screenshot ──
   async function captureLasso(rect: { x: number; y: number; width: number; height: number }, useWebviewOffset: boolean): Promise<{ rel: string; abs: string } | null> {
     if (!projectPath) return null;
     try {
@@ -397,11 +479,13 @@ function createBrowser(container: HTMLElement, defaultUrl: string = 'http://loca
 
   async function sendElementPrompt(userText: string) {
     if (!selectedElement) return;
-    const url = urlInput.value;
+    const label = currentFilePath
+      ? currentFilePath.replace(/\\/g, '/').split('/').pop() || ''
+      : urlInput.value;
     let shot: { rel: string; abs: string } | null = null;
     if (selectedElement.rect) shot = await captureLasso(selectedElement.rect, true);
 
-    let prompt = `V prohlížeči (${url}) uprav element ${selectedElement.selector}` +
+    let prompt = `V prohlížeči (${label}) uprav element ${selectedElement.selector}` +
       (selectedElement.text ? ` (obsah: "${selectedElement.text.substring(0, 50)}")` : '') +
       (userText ? ` — ${userText}` : '');
     if (shot) prompt += ` (screenshot: ${shot.rel})`;
@@ -410,13 +494,14 @@ function createBrowser(container: HTMLElement, defaultUrl: string = 'http://loca
     if (shot) scheduleCleanup(shot.abs);
     showToast(t(shot ? 'toast.sentToCCWithShot' : 'toast.sentToCC'), 'success');
     closePopover();
+    selectedElement = null;
     if (inspectActive) {
       inspector.disable();
       setTimeout(() => inspector.enable(webview), 300);
     }
   }
 
-  // ── Annotation (freehand lasso) ───────
+  // ── Annotation (freehand lasso) ──
   let annotating = false;
   let annotCtx: CanvasRenderingContext2D | null = null;
   let drawing = false;
@@ -429,12 +514,11 @@ function createBrowser(container: HTMLElement, defaultUrl: string = 'http://loca
     btnAnnotate.innerHTML = `${I('editor')} ${t(annotating ? 'browser.annotateDraw' : 'browser.annotate')}`;
     annotCanvas.style.display = annotating ? 'block' : 'none';
     annotCanvas.style.pointerEvents = annotating ? 'auto' : 'none';
-
     if (annotating) {
       if (inspectActive) {
         inspectActive = false;
         btnInspect.classList.remove('artifact-btn-active');
-        btnInspect.innerHTML = `${I('inspect')} Inspect`;
+        btnInspect.innerHTML = `${I('inspect')} ${t('browser.inspect')}`;
         inspector.disable();
       }
       const rect = webviewContainer.getBoundingClientRect();
@@ -452,7 +536,6 @@ function createBrowser(container: HTMLElement, defaultUrl: string = 'http://loca
     const rect = annotCanvas.getBoundingClientRect();
     currentStroke = [{ x: e.clientX - rect.left, y: e.clientY - rect.top }];
   });
-
   annotCanvas.addEventListener('mousemove', (e: MouseEvent) => {
     if (!drawing || !annotCtx) return;
     const rect = annotCanvas.getBoundingClientRect();
@@ -460,7 +543,6 @@ function createBrowser(container: HTMLElement, defaultUrl: string = 'http://loca
     redrawAll();
     drawStroke(annotCtx, currentStroke, '#ff6a00', 3);
   });
-
   function endStroke() {
     if (drawing && currentStroke.length > 2) {
       currentStroke.push({ x: currentStroke[0].x, y: currentStroke[0].y });
@@ -484,6 +566,9 @@ function createBrowser(container: HTMLElement, defaultUrl: string = 'http://loca
     const minX = Math.min(...xs), maxX = Math.max(...xs);
     const minY = Math.min(...ys), maxY = Math.max(...ys);
     const w = maxX - minX, h = maxY - minY;
+    const label = currentFilePath
+      ? currentFilePath.replace(/\\/g, '/').split('/').pop() || ''
+      : urlInput.value;
 
     showFloatingPopover(
       { x: minX, y: minY, width: w, height: h },
@@ -491,7 +576,7 @@ function createBrowser(container: HTMLElement, defaultUrl: string = 'http://loca
       async (text) => {
         if (!text) return;
         const shot = await captureLasso({ x: minX, y: minY, width: w, height: h }, false);
-        let prompt = `V prohlížeči (${urlInput.value}) v oblasti (${Math.round(minX)},${Math.round(minY)} → ${Math.round(maxX)},${Math.round(maxY)}) udělej: ${text}`;
+        let prompt = `V prohlížeči (${label}) v oblasti (${Math.round(minX)},${Math.round(minY)} → ${Math.round(maxX)},${Math.round(maxY)}) udělej: ${text}`;
         if (shot) prompt += ` (screenshot: ${shot.rel})`;
         wrapper.dispatchEvent(new CustomEvent('send-to-pty', { detail: prompt, bubbles: true }));
         if (shot) scheduleCleanup(shot.abs);
@@ -511,27 +596,19 @@ function createBrowser(container: HTMLElement, defaultUrl: string = 'http://loca
       Math.abs(pts[0].y - pts[pts.length - 1].y) < 5;
     if (isClosed) {
       ctx.fillStyle = 'rgba(255,106,0,0.12)';
-      ctx.beginPath();
-      ctx.moveTo(pts[0].x, pts[0].y);
+      ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
       for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-      ctx.closePath();
-      ctx.fill();
+      ctx.closePath(); ctx.fill();
     }
     ctx.strokeStyle = 'rgba(255,106,0,0.25)';
-    ctx.lineWidth = width + 6;
-    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    ctx.beginPath();
-    ctx.moveTo(pts[0].x, pts[0].y);
+    ctx.lineWidth = width + 6; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
     for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-    if (isClosed) ctx.closePath();
-    ctx.stroke();
-    ctx.strokeStyle = color;
-    ctx.lineWidth = width;
-    ctx.beginPath();
-    ctx.moveTo(pts[0].x, pts[0].y);
+    if (isClosed) ctx.closePath(); ctx.stroke();
+    ctx.strokeStyle = color; ctx.lineWidth = width;
+    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
     for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-    if (isClosed) ctx.closePath();
-    ctx.stroke();
+    if (isClosed) ctx.closePath(); ctx.stroke();
   }
 
   function redrawAll() {
@@ -540,11 +617,58 @@ function createBrowser(container: HTMLElement, defaultUrl: string = 'http://loca
     for (const s of strokes) drawStroke(annotCtx, s, '#ff6a00', 3);
   }
 
+  // ── Initial load ──
+  if (!defaultUrl && projectPath) {
+    // Statický projekt — zkus najít index.html
+    (async () => {
+      const sep = projectPath.includes('\\') ? '\\' : '/';
+      const candidates = [
+        projectPath + sep + 'index.html',
+        projectPath + sep + 'public' + sep + 'index.html',
+        projectPath + sep + 'src' + sep + 'index.html',
+      ];
+      for (const c of candidates) {
+        try {
+          const content = await levis.readFile(c);
+          if (typeof content === 'string') { await loadFile(c); return; }
+        } catch {}
+      }
+    })();
+  }
+
+  // ── Drag-to-pan (middle mouse / Shift+click) ──
+  let panActive = false;
+  let panStartX = 0, panStartY = 0, panScrollX = 0, panScrollY = 0;
+  webviewContainer.addEventListener('mousedown', (e: MouseEvent) => {
+    if (e.button === 1 || (e.button === 0 && e.shiftKey)) {
+      e.preventDefault();
+      panActive = true;
+      panStartX = e.clientX; panStartY = e.clientY;
+      panScrollX = webviewContainer.scrollLeft; panScrollY = webviewContainer.scrollTop;
+    }
+  });
+  window.addEventListener('mousemove', (e: MouseEvent) => {
+    if (!panActive) return;
+    webviewContainer.scrollLeft = panScrollX - (e.clientX - panStartX);
+    webviewContainer.scrollTop = panScrollY - (e.clientY - panStartY);
+  });
+  window.addEventListener('mouseup', () => { panActive = false; });
+
   return {
+    element: wrapper,
     setUrl: (url: string) => loadUrl(url),
     getUrl: () => urlInput.value,
+    loadFile,
+    refresh: () => {
+      if (currentFilePath) loadFile(currentFilePath);
+      else if (typeof (webview as any).reloadIgnoringCache === 'function') {
+        try { (webview as any).reloadIgnoringCache(); } catch {}
+      }
+    },
     dispose: () => {
+      stopWatch();
       inspector.dispose();
+      touchCursor.remove();
       wrapper.remove();
     },
   };
