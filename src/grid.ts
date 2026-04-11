@@ -9,7 +9,7 @@
 
 type GridPanelId =
   | 'terminal' | 'editor' | 'diff'
-  | 'browser' | 'artifact' | 'mobile';
+  | 'browser';
 
 interface GridRow {
   cells: (GridPanelId | null)[];  // length 1 nebo 2
@@ -49,7 +49,7 @@ interface GridApi {
 }
 
 const ALL_GRID_PANELS: GridPanelId[] = [
-  'terminal', 'editor', 'diff', 'browser', 'artifact', 'mobile',
+  'terminal', 'editor', 'diff', 'browser',
 ];
 
 function defaultGridState(): GridState {

@@ -2,23 +2,6 @@
 // Sloučený artifact + browser + mobile do jednoho panelu.
 // Umí: localhost dev server, statické HTML, mobilní emulaci, inspector, lasso, annotation.
 
-interface DevicePreset {
-  id: string;
-  label: string;
-  width: number;
-  height: number;
-}
-
-const DEVICE_PRESETS: DevicePreset[] = [
-  { id: 'full',       label: 'Full',          width: 0,   height: 0 },
-  { id: 'iphone-se',  label: 'iPhone SE',     width: 375, height: 667 },
-  { id: 'iphone-12',  label: 'iPhone 12/13',  width: 390, height: 844 },
-  { id: 'iphone-pro', label: 'iPhone 15 Pro', width: 393, height: 852 },
-  { id: 'pixel',      label: 'Pixel 7',       width: 412, height: 915 },
-  { id: 'galaxy',     label: 'Galaxy S20+',   width: 384, height: 854 },
-  { id: 'ipad-mini',  label: 'iPad Mini',     width: 768, height: 1024 },
-  { id: 'ipad-pro',   label: 'iPad Pro 11"',  width: 834, height: 1194 },
-];
 
 interface BrowserInstance {
   element: HTMLElement;
@@ -41,19 +24,18 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
     levis.captureCleanup(projectPath + sep + '.levis-tmp').catch(() => {});
   }
 
-  const presetOptions = DEVICE_PRESETS.map(p =>
-    `<option value="${p.id}">${p.label}${p.width ? ` (${p.width}\u00d7${p.height})` : ''}</option>`
-  ).join('');
-
   const toolbar = document.createElement('div');
   toolbar.className = 'browser-toolbar';
   toolbar.innerHTML = `
     <button class="btn-back" title="${t('browser.back')}">‹</button>
     <button class="btn-forward" title="${t('browser.forward')}">›</button>
     <input type="text" class="browser-url" value="${defaultUrl}" placeholder="URL / file path...">
-    <select class="browser-device-preset" title="${t('mobile.deviceSize')}">${presetOptions}</select>
-    <button class="artifact-btn browser-rotate" title="${t('mobile.rotate')}">${I('refresh')}</button>
-    <button class="artifact-btn browser-touch-toggle" title="${t('mobile.touchEm')}">${I('inspect')} Touch</button>
+    <div class="artifact-size-btns">
+      <button class="artifact-size-btn" data-size="mobile" title="Mobile (412px)">${I('mobile')}</button>
+      <button class="artifact-size-btn" data-size="tablet" title="Tablet (768px)">${I('file')}</button>
+      <button class="artifact-size-btn artifact-size-active" data-size="full" title="Full">${I('browser')}</button>
+    </div>
+    <button class="artifact-btn browser-touch-toggle" title="${t('mobile.touchEm')}">${I('mobile')} Touch</button>
     <button class="artifact-btn browser-color-scheme" title="Dark / Light">☀</button>
     <button class="artifact-btn browser-inspect" title="${t('artifact.inspectTip')}">${I('inspect')} ${t('browser.inspect')}</button>
     <button class="artifact-btn browser-annotate" title="${t('artifact.annotateTip')}">${I('editor')} ${t('browser.annotate')}</button>
@@ -77,6 +59,8 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
   webview.style.top = '0';
   webview.style.left = '0';
   if (defaultUrl) webview.setAttribute('src', defaultUrl);
+  else webview.setAttribute('src', 'about:blank');
+  webview.addEventListener('did-fail-load', () => {});  // Suppress error events
   webviewContainer.appendChild(webview);
 
   // Annotation canvas overlay
@@ -105,15 +89,9 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
   const btnDevtools = toolbar.querySelector('.btn-devtools') as HTMLElement;
   const btnInspect = toolbar.querySelector('.browser-inspect') as HTMLElement;
   const btnAnnotate = toolbar.querySelector('.browser-annotate') as HTMLElement;
-  const presetSelect = toolbar.querySelector('.browser-device-preset') as HTMLSelectElement;
-  const btnRotate = toolbar.querySelector('.browser-rotate') as HTMLElement;
-
   let currentFilePath: string | null = null;
   let currentUrl = '';
-
-  // ── Device presets + responsive sizing ──
-  let currentPreset: DevicePreset = DEVICE_PRESETS[0]; // Full
-  let landscape = false;
+  let currentSize = 'full';
   let touchWebContentsId: number | null = null;
   let touchEmulationOn = false;
 
@@ -125,49 +103,60 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
     if (inspectActive) setTimeout(() => inspector.enable(webview), 200);
   });
 
-  function applyPreset(): void {
-    if (currentPreset.width === 0) {
-      // Full
-      webviewContainer.style.background = '';
-      webviewContainer.style.display = '';
-      webviewContainer.style.alignItems = '';
-      webviewContainer.style.justifyContent = '';
-      webviewContainer.style.overflow = 'hidden';
-      webview.style.position = 'absolute';
-      webview.style.width = '100%';
-      webview.style.height = '100%';
-      webview.style.flex = '';
-      webview.style.margin = '';
-      webview.style.border = '';
-      webview.style.borderRadius = '';
-      webview.style.boxShadow = '';
-      return;
-    }
-    const w = landscape ? currentPreset.height : currentPreset.width;
-    const h = landscape ? currentPreset.width : currentPreset.height;
-    webviewContainer.style.background = '#0a0a0f';
-    webviewContainer.style.display = 'flex';
-    webviewContainer.style.alignItems = 'flex-start';
-    webviewContainer.style.justifyContent = 'center';
-    webviewContainer.style.overflow = 'auto';
-    webview.style.position = 'relative';
-    webview.style.width = w + 'px';
-    webview.style.height = h + 'px';
-    webview.style.flex = '0 0 auto';
-    webview.style.margin = '12px auto';
-    webview.style.border = '1px solid rgba(255,255,255,0.12)';
-    webview.style.borderRadius = '24px';
-    webview.style.boxShadow = '0 8px 40px rgba(0,0,0,0.5)';
+  function resetWebviewFull(): void {
+    webviewContainer.style.background = '';
+    webviewContainer.style.display = '';
+    webviewContainer.style.alignItems = '';
+    webviewContainer.style.justifyContent = '';
+    webviewContainer.style.overflow = 'hidden';
+    webview.style.position = 'absolute';
+    webview.style.width = '100%';
+    webview.style.height = '100%';
+    webview.style.flex = '';
+    webview.style.margin = '';
+    webview.style.border = '';
+    webview.style.borderRadius = '';
+    webview.style.boxShadow = '';
   }
 
-  presetSelect.addEventListener('change', () => {
-    const p = DEVICE_PRESETS.find(d => d.id === presetSelect.value);
-    if (p) { currentPreset = p; applyPreset(); }
-  });
-
-  btnRotate.addEventListener('click', () => {
-    landscape = !landscape;
-    applyPreset();
+  const sizeBtns = toolbar.querySelectorAll('.artifact-size-btn');
+  sizeBtns.forEach((btn: Element) => {
+    btn.addEventListener('click', async () => {
+      currentSize = btn.getAttribute('data-size') || 'full';
+      sizeBtns.forEach(b => b.classList.remove('artifact-size-active'));
+      btn.classList.add('artifact-size-active');
+      switch (currentSize) {
+        case 'mobile':
+          webviewContainer.style.background = '#0a0a0f';
+          webviewContainer.style.display = 'flex';
+          webviewContainer.style.alignItems = 'flex-start';
+          webviewContainer.style.justifyContent = 'center';
+          webviewContainer.style.overflow = 'auto';
+          webview.style.position = 'relative';
+          webview.style.width = '412px';
+          webview.style.height = '915px';
+          webview.style.flex = '0 0 auto';
+          webview.style.margin = '12px auto';
+          webview.style.border = '1px solid rgba(255,255,255,0.12)';
+          webview.style.borderRadius = '24px';
+          webview.style.boxShadow = '0 8px 40px rgba(0,0,0,0.5)';
+          if (touchWebContentsId != null) try { await levis.mobileEnableTouch(touchWebContentsId); } catch {}
+          break;
+        case 'tablet':
+          resetWebviewFull();
+          webview.style.width = '768px';
+          webview.style.margin = '0 auto';
+          webview.style.position = 'relative';
+          webviewContainer.style.display = 'flex';
+          webviewContainer.style.justifyContent = 'center';
+          webviewContainer.style.overflow = 'auto';
+          if (touchWebContentsId != null) try { await levis.mobileDisableTouch(touchWebContentsId); } catch {}
+          break;
+        default:
+          resetWebviewFull();
+          if (touchWebContentsId != null) try { await levis.mobileDisableTouch(touchWebContentsId); } catch {}
+      }
+    });
   });
 
   // ── Touch emulation ──

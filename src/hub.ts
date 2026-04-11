@@ -424,8 +424,8 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
         const paused = filtered.filter(p => projectStatuses[p.path] === 'paused');
         const finished = filtered.filter(p => projectStatuses[p.path] === 'finished');
 
-        function renderGroup(label: string, projects: HubProjectInfo[], collapsed?: boolean): void {
-          if (projects.length === 0) return;
+        function renderGroup(label: string, projects: HubProjectInfo[], collapsed?: boolean, addNewTile?: boolean): void {
+          if (projects.length === 0 && !addNewTile) return;
           const header = document.createElement('div');
           header.className = 'hub-group-header' + (collapsed ? ' hub-group-collapsed' : '');
           header.innerHTML = `<span class="hub-group-chevron">▾</span> ${label} <span class="hub-group-count">${projects.length}</span>`;
@@ -434,6 +434,7 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
           groupGrid.className = 'hub-group-grid';
           if (collapsed) groupGrid.style.display = 'none';
           for (const project of projects) groupGrid.appendChild(createTileElement(project, onOpenProject, onTogglePin, onTileAction, projectColors[project.path]));
+          if (addNewTile) groupGrid.appendChild(createNewProjectTile(newProjectHandler));
           grid.appendChild(groupGrid);
           header.addEventListener('click', () => {
             const hidden = groupGrid.style.display === 'none';
@@ -445,12 +446,12 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
         // Aktivní bez hlavičky pokud jsou jediné
         if (paused.length === 0 && finished.length === 0) {
           for (const project of active) grid.appendChild(createTileElement(project, onOpenProject, onTogglePin, onTileAction, projectColors[project.path]));
+          grid.appendChild(createNewProjectTile(newProjectHandler));
         } else {
-          renderGroup(t('hub.groupActive'), active);
+          renderGroup(t('hub.groupActive'), active, false, true);
           renderGroup(t('hub.groupPaused'), paused, true);
           renderGroup(t('hub.groupFinished'), finished, true);
         }
-        grid.appendChild(createNewProjectTile(newProjectHandler));
       }
 
       async function onTileAction(action: string, p: HubProjectInfo): Promise<void> {

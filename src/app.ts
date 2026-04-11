@@ -241,10 +241,14 @@ async function init(): Promise<void> {
     }, 150);
   });
   const btnHelp = document.getElementById('btn-help');
-  if (btnHelp) btnHelp.addEventListener('click', () => (window as any).showHelpOverlay?.());
+  if (btnHelp) {
+    btnHelp.style.cssText += ';-webkit-app-region:no-drag;pointer-events:auto;position:relative;z-index:10;';
+    btnHelp.addEventListener('click', (e) => { e.stopPropagation(); showHelpOverlay(); });
+  }
   const btnSettings = document.getElementById('btn-settings');
   if (btnSettings) {
-    btnSettings.addEventListener('click', () => {
+    btnSettings.style.cssText += ';-webkit-app-region:no-drag;pointer-events:auto;position:relative;z-index:10;';
+    btnSettings.addEventListener('click', (e) => { e.stopPropagation();
       if ((window as any).openHubSettings) {
         (window as any).openHubSettings();
       } else {
