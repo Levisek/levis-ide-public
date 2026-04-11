@@ -51,6 +51,7 @@ function createMobile(container: HTMLElement, projectPath: string, _projectName:
     <button class="artifact-btn mobile-rotate" title="${t('mobile.rotate')}">${I('refresh')}</button>
     <span style="flex:1"></span>
     <button class="artifact-btn mobile-touch-toggle" title="${t('mobile.touchEm')}">${I('inspect')} Touch</button>
+    <button class="artifact-btn mobile-color-scheme" title="Dark / Light mode">☀</button>
     <button class="artifact-btn artifact-inspect" title="${t('browser.inspect')}">${I('inspect')} ${t('browser.inspect')}</button>
     <button class="artifact-btn artifact-annotate" title="${t('mobile.lasso')}">${I('editor')} ${t('browser.annotate')}</button>
     <button class="artifact-btn artifact-reload" title="${t('artifact.refreshTip')}">${I('refresh')}</button>
@@ -85,17 +86,13 @@ function createMobile(container: HTMLElement, projectPath: string, _projectName:
   annotCanvas.className = 'artifact-annot-canvas';
   previewContainer.appendChild(annotCanvas);
 
-  // Mini-prompt bar (inspector select)
-  const infoBar = document.createElement('div');
-  infoBar.className = 'artifact-info-bar';
-  infoBar.style.display = 'none';
-  infoBar.innerHTML = `
-    <span class="info-selector"></span>
-    <input type="text" class="info-prompt" placeholder="${t('artifact.promptPh')}">
-    <button class="info-send" title="${t('toast.sentToCC')}">${I('play')}</button>
-    <button class="info-clear" title="${t('mobile.cancel')}">${I('close')}</button>
-  `;
-  wrapper.appendChild(infoBar);
+  // Element ring + floating popover
+  const elementRing = document.createElement('div');
+  elementRing.className = 'artifact-element-ring';
+  elementRing.style.display = 'none';
+  previewContainer.appendChild(elementRing);
+
+  let activePopover: HTMLElement | null = null;
 
   container.appendChild(wrapper);
 
@@ -222,7 +219,7 @@ function createMobile(container: HTMLElement, projectPath: string, _projectName:
     if (!currentUrl) return;
     // webview ma reload() metodu — spolehlivejsi nez src= re-assign
     if (typeof (iframe as any).reload === 'function') {
-      try { (iframe as any).reload(); return; } catch {}
+      try { (iframe as any).reloadIgnoringCache(); return; } catch {}
     }
     iframe.src = currentUrl;
   });
@@ -274,49 +271,157 @@ function createMobile(container: HTMLElement, projectPath: string, _projectName:
     if (inspectActive) setTimeout(() => inspector.enable(iframe), 300);
   });
 
+  // ── Touch cursor overlay ──
+  const touchCursor = document.createElement('div');
+  touchCursor.className = 'touch-cursor';
+  document.body.appendChild(touchCursor);
+
+  // Touch cursor tracking — webview pochytí mousemove, proto trackujeme na document
+  // a kontrolujeme jestli je myš nad previewContainer
+  document.addEventListener('mousemove', (e: MouseEvent) => {
+    if (!touchEmulationOn) return;
+    const rect = previewContainer.getBoundingClientRect();
+    const over = e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom;
+    touchCursor.style.left = e.clientX + 'px';
+    touchCursor.style.top = e.clientY + 'px';
+    if (over) touchCursor.classList.add('visible');
+    else touchCursor.classList.remove('visible', 'pressed');
+  });
+  document.addEventListener('mousedown', () => {
+    if (touchEmulationOn && touchCursor.classList.contains('visible')) touchCursor.classList.add('pressed');
+  });
+  document.addEventListener('mouseup', () => {
+    touchCursor.classList.remove('pressed');
+  });
+
   const btnTouchToggle = toolbar.querySelector('.mobile-touch-toggle') as HTMLElement;
   btnTouchToggle.addEventListener('click', async () => {
     touchEmulationOn = !touchEmulationOn;
     btnTouchToggle.classList.toggle('artifact-btn-active', touchEmulationOn);
+    if (!touchEmulationOn) touchCursor.classList.remove('visible', 'pressed');
+    previewContainer.style.cursor = touchEmulationOn ? 'none' : 'grab';
     await applyTouchEmulation();
     showToast(t(touchEmulationOn ? 'mobile.touchOn' : 'mobile.touchOff'), 'info');
   });
 
-  const infoPromptInput = infoBar.querySelector('.info-prompt') as HTMLInputElement;
-  const infoSelectorLabel = infoBar.querySelector('.info-selector') as HTMLElement;
+  // ── Dark/Light mode simulace ──
+  let colorScheme: 'dark' | 'light' = 'light';
+  const btnColorScheme = toolbar.querySelector('.mobile-color-scheme') as HTMLElement;
+  btnColorScheme.addEventListener('click', async () => {
+    colorScheme = colorScheme === 'light' ? 'dark' : 'light';
+    btnColorScheme.textContent = colorScheme === 'dark' ? '☾' : '☀';
+    btnColorScheme.classList.toggle('artifact-btn-active', colorScheme === 'dark');
+    if (webContentsId != null) {
+      await levis.mobileSetColorScheme(webContentsId, colorScheme);
+    }
+    showToast(`prefers-color-scheme: ${colorScheme}`, 'info');
+  });
+
+  function closePopover(): void {
+    if (activePopover) { activePopover.remove(); activePopover = null; }
+    elementRing.style.display = 'none';
+  }
+
+  function getElementRectInContainer(iframeRect: { x: number; y: number; width: number; height: number }): { x: number; y: number; width: number; height: number } {
+    const ifRect = iframe.getBoundingClientRect();
+    const ctRect = previewContainer.getBoundingClientRect();
+    return {
+      x: (ifRect.left - ctRect.left) + iframeRect.x,
+      y: (ifRect.top - ctRect.top) + iframeRect.y,
+      width: iframeRect.width,
+      height: iframeRect.height,
+    };
+  }
+
+  function showFloatingPopover(rect: { x: number; y: number; width: number; height: number }, contextLabel: string, onSubmit: (text: string) => void, onCancel?: () => void): void {
+    closePopover();
+    elementRing.style.display = 'block';
+    elementRing.style.left = `${rect.x - 4}px`;
+    elementRing.style.top = `${rect.y - 4}px`;
+    elementRing.style.width = `${rect.width + 8}px`;
+    elementRing.style.height = `${rect.height + 8}px`;
+
+    const popover = document.createElement('div');
+    popover.className = 'artifact-popover';
+    popover.innerHTML = `
+      <div class="popover-header">
+        <span class="popover-icon">${I('inspect')}</span>
+        <span class="popover-label">${contextLabel}</span>
+        <button class="popover-close" title="Esc">${I('close')}</button>
+      </div>
+      <div class="popover-body">
+        <input type="text" class="popover-input" placeholder="Co udělat s ${contextLabel}?">
+        <button class="popover-send" title="${t('toast.sentToCC')}">${I('play')}</button>
+      </div>
+      <div class="popover-arrow"></div>
+    `;
+    previewContainer.appendChild(popover);
+    activePopover = popover;
+
+    const containerRect = previewContainer.getBoundingClientRect();
+    const pop = popover.getBoundingClientRect();
+    const popW = pop.width || 380;
+    const popH = pop.height || 80;
+    const pad = 12;
+    const cx = rect.x + rect.width / 2;
+    const cy = rect.y + rect.height / 2;
+    type Side = 'bottom' | 'top' | 'right' | 'left';
+    const candidates: Array<{ side: Side; x: number; y: number }> = [
+      { side: 'bottom', x: cx - popW / 2, y: rect.y + rect.height + pad },
+      { side: 'top',    x: cx - popW / 2, y: rect.y - popH - pad },
+      { side: 'right',  x: rect.x + rect.width + pad, y: cy - popH / 2 },
+      { side: 'left',   x: rect.x - popW - pad, y: cy - popH / 2 },
+    ];
+    let chosen: { side: Side; x: number; y: number } | null = null;
+    for (const c of candidates) {
+      if (c.x >= 4 && c.y >= 4 && c.x + popW <= containerRect.width - 4 && c.y + popH <= containerRect.height - 4) {
+        chosen = c; break;
+      }
+    }
+    if (!chosen) chosen = { side: 'bottom', x: cx - popW / 2, y: rect.y + rect.height + pad };
+    chosen.x = Math.max(8, Math.min(chosen.x, containerRect.width - popW - 8));
+    chosen.y = Math.max(8, Math.min(chosen.y, containerRect.height - popH - 8));
+    popover.style.left = `${chosen.x}px`;
+    popover.style.top = `${chosen.y}px`;
+    popover.dataset.side = chosen.side;
+
+    const arrow = popover.querySelector('.popover-arrow') as HTMLElement;
+    if (chosen.side === 'bottom') { arrow.style.left = `${Math.max(12, Math.min(cx - chosen.x, popW - 12))}px`; arrow.style.top = '-6px'; }
+    else if (chosen.side === 'top') { arrow.style.left = `${Math.max(12, Math.min(cx - chosen.x, popW - 12))}px`; arrow.style.bottom = '-6px'; }
+    else if (chosen.side === 'right') { arrow.style.top = `${Math.max(12, Math.min(cy - chosen.y, popH - 12))}px`; arrow.style.left = '-6px'; }
+    else { arrow.style.top = `${Math.max(12, Math.min(cy - chosen.y, popH - 12))}px`; arrow.style.right = '-6px'; }
+
+    const input = popover.querySelector('.popover-input') as HTMLInputElement;
+    const sendBtn = popover.querySelector('.popover-send') as HTMLElement;
+    const closeBtn = popover.querySelector('.popover-close') as HTMLElement;
+    function submit() { onSubmit(input.value.trim()); }
+    function cancel() { if (onCancel) onCancel(); closePopover(); }
+    sendBtn.addEventListener('click', submit);
+    closeBtn.addEventListener('click', cancel);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); submit(); }
+      if (e.key === 'Escape') { e.preventDefault(); cancel(); }
+    });
+    setTimeout(() => input.focus(), 50);
+  }
 
   inspector.onSelect((info) => {
     selectedElement = info;
-    infoBar.style.display = 'flex';
-    infoSelectorLabel.textContent = info.selector;
-    infoPromptInput.value = '';
-    infoPromptInput.placeholder = `Co udělat s ${info.selector}?`;
-    infoPromptInput.focus();
-  });
-
-  function sendElementPrompt(): void {
-    if (!selectedElement) return;
-    const userText = infoPromptInput.value.trim();
-    const fullPrompt = `V mobile preview (${currentUrl}) uprav element ${selectedElement.selector}` +
-      (selectedElement.text ? ` (obsah: "${selectedElement.text.substring(0, 50)}")` : '') +
-      (userText ? ` — ${userText}` : '');
-    wrapper.dispatchEvent(new CustomEvent('send-to-pty', { detail: fullPrompt, bubbles: true }));
-    showToast(t('toast.sentToCC'), 'success');
-    infoPromptInput.value = '';
-    selectedElement = null;
-    infoBar.style.display = 'none';
-    // Drive jsme tu inspector vypinali a zase zapinali — zpusobovalo to flash/cernou.
-    // Inspector zustava aktivni, jen vycistime selection.
-  }
-
-  infoBar.querySelector('.info-send')!.addEventListener('click', sendElementPrompt);
-  infoPromptInput.addEventListener('keydown', (e: KeyboardEvent) => {
-    if (e.key === 'Enter') { e.preventDefault(); sendElementPrompt(); }
-    if (e.key === 'Escape') { selectedElement = null; infoBar.style.display = 'none'; }
-  });
-  infoBar.querySelector('.info-clear')!.addEventListener('click', () => {
-    selectedElement = null;
-    infoBar.style.display = 'none';
+    if (!info.rect) return;
+    showFloatingPopover(
+      getElementRectInContainer(info.rect),
+      info.selector,
+      (text) => {
+        const fullPrompt = `V mobile preview (${currentUrl}) uprav element ${selectedElement.selector}` +
+          (selectedElement.text ? ` (obsah: "${selectedElement.text.substring(0, 50)}")` : '') +
+          (text ? ` — ${text}` : '');
+        wrapper.dispatchEvent(new CustomEvent('send-to-pty', { detail: fullPrompt, bubbles: true }));
+        showToast(t('toast.sentToCC'), 'success');
+        selectedElement = null;
+        closePopover();
+      },
+      () => { selectedElement = null; },
+    );
   });
 
   // ── Annotation (freehand pen) ────────
@@ -379,53 +484,27 @@ function createMobile(container: HTMLElement, projectPath: string, _projectName:
   annotCanvas.addEventListener('mouseup', endStroke);
   annotCanvas.addEventListener('mouseleave', endStroke);
 
-  let annotPrompt: HTMLElement | null = null;
-
   function showAnnotPrompt(pts: Array<{x: number; y: number}>): void {
     const xs = pts.map(p => p.x);
     const ys = pts.map(p => p.y);
     const minX = Math.min(...xs), maxX = Math.max(...xs);
     const minY = Math.min(...ys), maxY = Math.max(...ys);
+    const w = maxX - minX, h = maxY - minY;
 
-    if (annotPrompt) annotPrompt.remove();
-    annotPrompt = document.createElement('div');
-    annotPrompt.className = 'annot-prompt';
-    annotPrompt.innerHTML = `
-      <span class="annot-prompt-label">Oblast (${Math.round(maxX - minX)}x${Math.round(maxY - minY)}px) @ ${currentPreset.label}</span>
-      <input type="text" class="annot-prompt-input" placeholder="${t('mobile.areaPh')}">
-      <button class="annot-prompt-send">${I('play')}</button>
-      <button class="annot-prompt-clear">${I('close')}</button>
-    `;
-    previewContainer.appendChild(annotPrompt);
-
-    const input = annotPrompt.querySelector('.annot-prompt-input') as HTMLInputElement;
-    input.focus();
-
-    function sendAnnot(): void {
-      const text = input.value.trim();
-      if (!text) return;
-      const prompt = `V mobile preview (${currentUrl}, ${currentPreset.label}${landscape ? ' landscape' : ''}) v oblasti (${Math.round(minX)},${Math.round(minY)} → ${Math.round(maxX)},${Math.round(maxY)}) udělej: ${text}`;
-      wrapper.dispatchEvent(new CustomEvent('send-to-pty', { detail: prompt, bubbles: true }));
-      showToast(t('toast.sentToCC'), 'success');
-      if (annotPrompt) { annotPrompt.remove(); annotPrompt = null; }
-      strokes.pop();
-      redrawAll();
-    }
-
-    annotPrompt.querySelector('.annot-prompt-send')!.addEventListener('click', sendAnnot);
-    input.addEventListener('keydown', (e: KeyboardEvent) => {
-      if (e.key === 'Enter') sendAnnot();
-      if (e.key === 'Escape') {
+    showFloatingPopover(
+      { x: minX, y: minY, width: w, height: h },
+      `${Math.round(w)}×${Math.round(h)}px @ ${currentPreset.label}`,
+      (text) => {
+        if (!text) return;
+        const prompt = `V mobile preview (${currentUrl}, ${currentPreset.label}${landscape ? ' landscape' : ''}) v oblasti (${Math.round(minX)},${Math.round(minY)} → ${Math.round(maxX)},${Math.round(maxY)}) udělej: ${text}`;
+        wrapper.dispatchEvent(new CustomEvent('send-to-pty', { detail: prompt, bubbles: true }));
+        showToast(t('toast.sentToCC'), 'success');
+        closePopover();
         strokes.pop();
         redrawAll();
-        if (annotPrompt) { annotPrompt.remove(); annotPrompt = null; }
-      }
-    });
-    annotPrompt.querySelector('.annot-prompt-clear')!.addEventListener('click', () => {
-      strokes.pop();
-      redrawAll();
-      if (annotPrompt) { annotPrompt.remove(); annotPrompt = null; }
-    });
+      },
+      () => { strokes.pop(); redrawAll(); },
+    );
   }
 
   annotCanvas.addEventListener('contextmenu', (e: MouseEvent) => {
@@ -492,6 +571,7 @@ function createMobile(container: HTMLElement, projectPath: string, _projectName:
     loadUrl: (url: string) => { urlInput.value = url; loadUrl(url); },
     dispose: () => {
       inspector.dispose();
+      touchCursor.remove();
       wrapper.remove();
     },
   };

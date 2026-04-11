@@ -41,12 +41,26 @@
   background: var(--bg-elev-2);
   box-shadow: var(--shadow-xs);
 }
+/* Per-projekt barva — border kolem celého tabu */
+.tab[style*="--tab-color"] {
+  border: 1px solid var(--tab-color);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--tab-color) 30%, transparent);
+}
 .tab.active::after {
   content: ''; position: absolute;
   bottom: 4px; left: 50%; transform: translateX(-50%);
-  width: 16px; height: 2px; background: var(--accent);
+  width: 16px; height: 2px; background: var(--tab-color, var(--accent));
   border-radius: var(--radius-pill);
-  box-shadow: 0 0 8px var(--accent-glow);
+  box-shadow: 0 0 8px var(--tab-color, var(--accent-glow));
+}
+/* CC pracuje — oranžový pulsující border */
+.tab.tab-cc-working {
+  border: 1px solid var(--accent);
+  animation: tab-working-pulse 1.2s ease-in-out infinite;
+}
+@keyframes tab-working-pulse {
+  0%, 100% { border-color: var(--accent); box-shadow: 0 0 4px var(--accent-glow); }
+  50% { border-color: var(--accent-soft); box-shadow: 0 0 12px var(--accent-glow); }
 }
 /* CC dokončilo na neaktivním tabu — pulsující puntík */
 .tab.tab-has-badge::before {

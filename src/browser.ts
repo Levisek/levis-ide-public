@@ -19,7 +19,6 @@ function createBrowser(container: HTMLElement, defaultUrl: string = 'http://loca
     <button class="btn-back" title="${t('browser.back')}">‹</button>
     <button class="btn-forward" title="${t('browser.forward')}">›</button>
     <input type="text" class="browser-url" value="${defaultUrl}" placeholder="URL...">
-    <span style="flex:1"></span>
     <div class="artifact-size-btns">
       <button class="artifact-size-btn" data-size="mobile" title="Mobile (412px)">${I('mobile')}</button>
       <button class="artifact-size-btn" data-size="tablet" title="Tablet (768px)">${I('file')}</button>
@@ -29,6 +28,7 @@ function createBrowser(container: HTMLElement, defaultUrl: string = 'http://loca
     <button class="artifact-btn browser-annotate" title="${t('artifact.annotateTip')}">${I('editor')} ${t('browser.annotate')}</button>
     <button class="artifact-btn browser-reload" title="${t('artifact.refreshTip')}">${I('refresh')}</button>
     <button class="artifact-btn browser-watch" title="${t('artifact.watchTip')}">${I('eye')} Watch</button>
+    <button class="artifact-btn browser-color-scheme" title="Dark / Light mode">☀</button>
     <button class="btn-devtools" title="DevTools">${I('gear')}</button>
   `;
   wrapper.appendChild(toolbar);
@@ -52,6 +52,14 @@ function createBrowser(container: HTMLElement, defaultUrl: string = 'http://loca
   const annotCanvas = document.createElement('canvas');
   annotCanvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;display:none;pointer-events:none;z-index:10;';
   webviewContainer.appendChild(annotCanvas);
+
+  // Element ring overlay (floating popover host)
+  const elementRing = document.createElement('div');
+  elementRing.className = 'artifact-element-ring';
+  elementRing.style.display = 'none';
+  webviewContainer.appendChild(elementRing);
+
+  let activePopover: HTMLElement | null = null;
 
   container.appendChild(wrapper);
 
@@ -147,7 +155,7 @@ function createBrowser(container: HTMLElement, defaultUrl: string = 'http://loca
     if (watchInterval) return;
     watchInterval = setInterval(() => {
       if (webview.src && webview.src !== 'about:blank') {
-        try { if (typeof (webview as any).reload === 'function') (webview as any).reload(); } catch {}
+        try { if (typeof (webview as any).reloadIgnoringCache === 'function') (webview as any).reloadIgnoringCache(); } catch {}
       }
     }, 2000);
   }
@@ -161,10 +169,23 @@ function createBrowser(container: HTMLElement, defaultUrl: string = 'http://loca
     if (watching) startWatch(); else stopWatch();
   });
 
+  // ── Dark/Light mode simulace ──
+  let colorScheme: 'dark' | 'light' = 'light';
+  const btnColorScheme = toolbar.querySelector('.browser-color-scheme') as HTMLElement;
+  btnColorScheme.addEventListener('click', async () => {
+    colorScheme = colorScheme === 'light' ? 'dark' : 'light';
+    btnColorScheme.textContent = colorScheme === 'dark' ? '☾' : '☀';
+    btnColorScheme.classList.toggle('artifact-btn-active', colorScheme === 'dark');
+    if (touchWebContentsId != null) {
+      await levis.mobileSetColorScheme(touchWebContentsId, colorScheme);
+    }
+    showToast(`prefers-color-scheme: ${colorScheme}`, 'info');
+  });
+
   // ── Reload button ──
   toolbar.querySelector('.browser-reload')!.addEventListener('click', () => {
-    if (typeof (webview as any).reload === 'function') {
-      try { (webview as any).reload(); } catch {}
+    if (typeof (webview as any).reloadIgnoringCache === 'function') {
+      try { (webview as any).reloadIgnoringCache(); } catch {}
     }
   });
 
@@ -238,43 +259,106 @@ function createBrowser(container: HTMLElement, defaultUrl: string = 'http://loca
   });
 
   let selectedElement: any = null;
-  let infoBar: HTMLElement | null = null;
+
+  function closePopover(): void {
+    if (activePopover) { activePopover.remove(); activePopover = null; }
+    elementRing.style.display = 'none';
+  }
+
+  function getElementRectInContainer(iframeRect: { x: number; y: number; width: number; height: number }): { x: number; y: number; width: number; height: number } {
+    const ifRect = webview.getBoundingClientRect();
+    const ctRect = webviewContainer.getBoundingClientRect();
+    return {
+      x: (ifRect.left - ctRect.left) + iframeRect.x,
+      y: (ifRect.top - ctRect.top) + iframeRect.y,
+      width: iframeRect.width,
+      height: iframeRect.height,
+    };
+  }
+
+  function showFloatingPopover(rect: { x: number; y: number; width: number; height: number }, contextLabel: string, onSubmit: (text: string) => void, onCancel?: () => void): void {
+    closePopover();
+    elementRing.style.display = 'block';
+    elementRing.style.left = `${rect.x - 4}px`;
+    elementRing.style.top = `${rect.y - 4}px`;
+    elementRing.style.width = `${rect.width + 8}px`;
+    elementRing.style.height = `${rect.height + 8}px`;
+
+    const popover = document.createElement('div');
+    popover.className = 'artifact-popover';
+    popover.innerHTML = `
+      <div class="popover-header">
+        <span class="popover-icon">${I('inspect')}</span>
+        <span class="popover-label">${contextLabel}</span>
+        <button class="popover-close" title="Esc">${I('close')}</button>
+      </div>
+      <div class="popover-body">
+        <input type="text" class="popover-input" placeholder="${t('browser.placeholder', { selector: contextLabel })}">
+        <button class="popover-send" title="${t('toast.sentToCC')}">${I('play')}</button>
+      </div>
+      <div class="popover-arrow"></div>
+    `;
+    webviewContainer.appendChild(popover);
+    activePopover = popover;
+
+    // Smart placement
+    const containerRect = webviewContainer.getBoundingClientRect();
+    const pop = popover.getBoundingClientRect();
+    const popW = pop.width || 380;
+    const popH = pop.height || 80;
+    const pad = 12;
+    const cx = rect.x + rect.width / 2;
+    const cy = rect.y + rect.height / 2;
+    type Side = 'bottom' | 'top' | 'right' | 'left';
+    const candidates: Array<{ side: Side; x: number; y: number }> = [
+      { side: 'bottom', x: cx - popW / 2, y: rect.y + rect.height + pad },
+      { side: 'top',    x: cx - popW / 2, y: rect.y - popH - pad },
+      { side: 'right',  x: rect.x + rect.width + pad, y: cy - popH / 2 },
+      { side: 'left',   x: rect.x - popW - pad, y: cy - popH / 2 },
+    ];
+    let chosen: { side: Side; x: number; y: number } | null = null;
+    for (const c of candidates) {
+      if (c.x >= 4 && c.y >= 4 && c.x + popW <= containerRect.width - 4 && c.y + popH <= containerRect.height - 4) {
+        chosen = c; break;
+      }
+    }
+    if (!chosen) chosen = { side: 'bottom', x: cx - popW / 2, y: rect.y + rect.height + pad };
+    chosen.x = Math.max(8, Math.min(chosen.x, containerRect.width - popW - 8));
+    chosen.y = Math.max(8, Math.min(chosen.y, containerRect.height - popH - 8));
+    popover.style.left = `${chosen.x}px`;
+    popover.style.top = `${chosen.y}px`;
+    popover.dataset.side = chosen.side;
+
+    const arrow = popover.querySelector('.popover-arrow') as HTMLElement;
+    if (chosen.side === 'bottom') { arrow.style.left = `${Math.max(12, Math.min(cx - chosen.x, popW - 12))}px`; arrow.style.top = '-6px'; }
+    else if (chosen.side === 'top') { arrow.style.left = `${Math.max(12, Math.min(cx - chosen.x, popW - 12))}px`; arrow.style.bottom = '-6px'; }
+    else if (chosen.side === 'right') { arrow.style.top = `${Math.max(12, Math.min(cy - chosen.y, popH - 12))}px`; arrow.style.left = '-6px'; }
+    else { arrow.style.top = `${Math.max(12, Math.min(cy - chosen.y, popH - 12))}px`; arrow.style.right = '-6px'; }
+
+    const input = popover.querySelector('.popover-input') as HTMLInputElement;
+    const sendBtn = popover.querySelector('.popover-send') as HTMLElement;
+    const closeBtn = popover.querySelector('.popover-close') as HTMLElement;
+    function submit() { onSubmit(input.value.trim()); }
+    function cancel() { if (onCancel) onCancel(); closePopover(); }
+    sendBtn.addEventListener('click', submit);
+    closeBtn.addEventListener('click', cancel);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); submit(); }
+      if (e.key === 'Escape') { e.preventDefault(); cancel(); }
+    });
+    setTimeout(() => input.focus(), 50);
+  }
 
   inspector.onSelect((info) => {
     selectedElement = info;
-    showInfoBar(info.selector, async (text) => {
-      await sendElementPrompt(text);
-    });
+    if (!info.rect) return;
+    showFloatingPopover(
+      getElementRectInContainer(info.rect),
+      info.selector,
+      (text) => sendElementPrompt(text),
+      () => { selectedElement = null; },
+    );
   });
-
-  function showInfoBar(selector: string, onSubmit: (text: string) => void) {
-    if (infoBar) infoBar.remove();
-    infoBar = document.createElement('div');
-    infoBar.className = 'artifact-info-bar';
-    infoBar.style.cssText = 'position:absolute;left:8px;right:8px;bottom:8px;display:flex;gap:6px;background:#14141c;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:6px;z-index:20;';
-    infoBar.innerHTML = `
-      <span class="info-selector" style="color:#ff6a00;font:12px monospace;align-self:center;max-width:30%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
-      <input type="text" class="info-prompt" placeholder="${t('browser.placeholder', { selector })}" style="flex:1;background:#0a0a0f;border:1px solid #2a2a3a;color:#e8e8f0;padding:4px 8px;border-radius:4px;">
-      <button class="info-send artifact-btn">${I('play')}</button>
-      <button class="info-clear artifact-btn">${I('close')}</button>
-    `;
-    (infoBar.querySelector('.info-selector') as HTMLElement).textContent = selector;
-    webviewContainer.appendChild(infoBar);
-    const input = infoBar.querySelector('.info-prompt') as HTMLInputElement;
-    input.focus();
-    const send = () => { onSubmit(input.value.trim()); };
-    infoBar.querySelector('.info-send')!.addEventListener('click', send);
-    input.addEventListener('keydown', (e: KeyboardEvent) => {
-      if (e.key === 'Enter') { e.preventDefault(); send(); }
-      if (e.key === 'Escape') closeInfoBar();
-    });
-    infoBar.querySelector('.info-clear')!.addEventListener('click', closeInfoBar);
-  }
-
-  function closeInfoBar() {
-    if (infoBar) { infoBar.remove(); infoBar = null; }
-    selectedElement = null;
-  }
 
   // ── Lasso screenshot (capturePage cesta) ──
   async function captureLasso(rect: { x: number; y: number; width: number; height: number }, useWebviewOffset: boolean): Promise<{ rel: string; abs: string } | null> {
@@ -318,7 +402,7 @@ function createBrowser(container: HTMLElement, defaultUrl: string = 'http://loca
     wrapper.dispatchEvent(new CustomEvent('send-to-pty', { detail: prompt, bubbles: true }));
     if (shot) scheduleCleanup(shot.abs);
     showToast(t(shot ? 'toast.sentToCCWithShot' : 'toast.sentToCC'), 'success');
-    closeInfoBar();
+    closePopover();
     if (inspectActive) {
       inspector.disable();
       setTimeout(() => inspector.enable(webview), 300);
@@ -388,53 +472,29 @@ function createBrowser(container: HTMLElement, defaultUrl: string = 'http://loca
     if (annotCtx) annotCtx.clearRect(0, 0, annotCanvas.width, annotCanvas.height);
   });
 
-  let annotPrompt: HTMLElement | null = null;
   function showAnnotPrompt(pts: Array<{x: number; y: number}>) {
     const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
     const minX = Math.min(...xs), maxX = Math.max(...xs);
     const minY = Math.min(...ys), maxY = Math.max(...ys);
     const w = maxX - minX, h = maxY - minY;
 
-    if (annotPrompt) annotPrompt.remove();
-    annotPrompt = document.createElement('div');
-    annotPrompt.className = 'annot-prompt';
-    annotPrompt.style.cssText = `position:absolute;left:${Math.max(8, minX)}px;top:${Math.min(maxY + 8, annotCanvas.height - 50)}px;display:flex;gap:6px;background:#14141c;border:1px solid #ff6a00;border-radius:6px;padding:6px;z-index:30;`;
-    annotPrompt.innerHTML = `
-      <span style="color:#ff6a00;font:11px monospace;align-self:center;">${Math.round(w)}×${Math.round(h)}px</span>
-      <input type="text" class="annot-prompt-input" placeholder="${t('browser.areaPrompt')}" style="flex:1;background:#0a0a0f;border:1px solid #2a2a3a;color:#e8e8f0;padding:4px 8px;border-radius:4px;min-width:200px;">
-      <button class="annot-prompt-send artifact-btn">${I('play')}</button>
-      <button class="annot-prompt-clear artifact-btn">${I('close')}</button>
-    `;
-    webviewContainer.appendChild(annotPrompt);
-    const input = annotPrompt.querySelector('.annot-prompt-input') as HTMLInputElement;
-    input.focus();
-
-    const sendAnnot = async () => {
-      const text = input.value.trim();
-      if (!text) return;
-      const shot = await captureLasso({ x: minX, y: minY, width: w, height: h }, false);
-      let prompt = `V prohlížeči (${urlInput.value}) v oblasti (${Math.round(minX)},${Math.round(minY)} → ${Math.round(maxX)},${Math.round(maxY)}) udělej: ${text}`;
-      if (shot) prompt += ` (screenshot: ${shot.rel})`;
-      wrapper.dispatchEvent(new CustomEvent('send-to-pty', { detail: prompt, bubbles: true }));
-      if (shot) scheduleCleanup(shot.abs);
-      showToast(t(shot ? 'toast.sentToCCWithShot' : 'toast.sentToCC'), 'success');
-      if (annotPrompt) { annotPrompt.remove(); annotPrompt = null; }
-      strokes.pop();
-      redrawAll();
-    };
-
-    annotPrompt.querySelector('.annot-prompt-send')!.addEventListener('click', sendAnnot);
-    input.addEventListener('keydown', (e: KeyboardEvent) => {
-      if (e.key === 'Enter') sendAnnot();
-      if (e.key === 'Escape') {
-        strokes.pop(); redrawAll();
-        if (annotPrompt) { annotPrompt.remove(); annotPrompt = null; }
-      }
-    });
-    annotPrompt.querySelector('.annot-prompt-clear')!.addEventListener('click', () => {
-      strokes.pop(); redrawAll();
-      if (annotPrompt) { annotPrompt.remove(); annotPrompt = null; }
-    });
+    showFloatingPopover(
+      { x: minX, y: minY, width: w, height: h },
+      `${Math.round(w)}×${Math.round(h)}px`,
+      async (text) => {
+        if (!text) return;
+        const shot = await captureLasso({ x: minX, y: minY, width: w, height: h }, false);
+        let prompt = `V prohlížeči (${urlInput.value}) v oblasti (${Math.round(minX)},${Math.round(minY)} → ${Math.round(maxX)},${Math.round(maxY)}) udělej: ${text}`;
+        if (shot) prompt += ` (screenshot: ${shot.rel})`;
+        wrapper.dispatchEvent(new CustomEvent('send-to-pty', { detail: prompt, bubbles: true }));
+        if (shot) scheduleCleanup(shot.abs);
+        showToast(t(shot ? 'toast.sentToCCWithShot' : 'toast.sentToCC'), 'success');
+        closePopover();
+        strokes.pop();
+        redrawAll();
+      },
+      () => { strokes.pop(); redrawAll(); },
+    );
   }
 
   function drawStroke(ctx: CanvasRenderingContext2D, pts: Array<{x: number; y: number}>, color: string, width: number) {

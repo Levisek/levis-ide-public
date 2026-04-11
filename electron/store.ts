@@ -11,7 +11,9 @@ interface StoreSchema {
   scanPath: string;
   userName: string;
   userEmail: string;
-  theme: 'dark' | 'light';
+  theme: 'dark' | 'dark-soft' | 'mid' | 'light';
+  projectColors: Record<string, string>;
+  projectStatuses: Record<string, 'active' | 'paused' | 'finished'>;
   recentProjects: string[];
   splitRatios: Record<string, number>;
   projectUrls: Record<string, string>;
@@ -41,6 +43,8 @@ export const store = new Store<StoreSchema>({
     userName: '',
     userEmail: '',
     theme: 'dark',
+    projectColors: {},
+    projectStatuses: {},
     recentProjects: [],
     splitRatios: {},
     projectUrls: {},

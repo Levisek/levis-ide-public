@@ -209,6 +209,55 @@
 .tcm-danger:hover { background: rgba(239, 68, 68, 0.12); color: var(--error); }
 .tcm-sep { height: 1px; background: var(--border); margin: 4px 0; }
 
+/* ── Color tag palette v context menu ── */
+.tcm-color-trigger { position: relative; flex-wrap: wrap; }
+.tcm-color-palette {
+  display: flex; gap: 6px; align-items: center;
+  margin-left: auto; padding-left: 10px;
+}
+.tcm-color-swatch {
+  width: 16px; height: 16px; border-radius: 50%; cursor: pointer;
+  border: 2px solid transparent; transition: transform var(--t-fast) var(--ease);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 9px; color: var(--text-muted);
+}
+.tcm-color-swatch:hover { transform: scale(1.3); border-color: rgba(255,255,255,0.4); }
+.tcm-color-clear { background: var(--bg-elev-1); border-color: var(--border); }
+
+/* ── Status submenu v context menu ── */
+.tcm-status-trigger { position: relative; flex-wrap: wrap; }
+.tcm-status-options {
+  display: flex; gap: 4px; align-items: center;
+  margin-left: auto; padding-left: 10px; font-size: 12px;
+}
+.tcm-status-opt {
+  padding: 3px 8px; border-radius: var(--radius-xs); cursor: pointer;
+  transition: background var(--t-fast) var(--ease); white-space: nowrap;
+}
+.tcm-status-opt:hover { background: var(--bg-elev-3); color: var(--accent); }
+
+/* ── Hub group headers ── */
+.hub-group-header {
+  grid-column: 1 / -1;
+  font-size: 12px; font-weight: 600; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.5px;
+  padding: 16px 4px 6px; cursor: pointer; user-select: none;
+  display: flex; align-items: center; gap: 6px;
+  transition: color var(--t-fast) var(--ease);
+}
+.hub-group-header:first-child { padding-top: 0; }
+.hub-group-header:hover { color: var(--text); }
+.hub-group-chevron { transition: transform var(--t-fast) var(--ease); font-size: 10px; }
+.hub-group-collapsed .hub-group-chevron { transform: rotate(-90deg); }
+.hub-group-count {
+  font-size: 10px; color: var(--text-faint);
+  background: var(--bg-elev-2); padding: 1px 6px; border-radius: var(--radius-pill);
+}
+.hub-group-grid {
+  grid-column: 1 / -1;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px;
+}
+
 /* ── Hub trademark v rohu (button — klikem otevře About) ── */
 .hub-trademark {
   position: fixed;
@@ -286,6 +335,13 @@
 }
 .tile-pin.pinned { opacity: 1; color: var(--accent); text-shadow: 0 0 8px var(--accent-glow); }
 .tile-pinned { border-color: var(--accent-ring); }
+
+/* ── Per-projekt barevný tag ── */
+.tile-colored { border-left-width: 3px; border-left-style: solid; }
+.tile-color-dot {
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  margin-right: 6px; vertical-align: middle; flex-shrink: 0;
+}
 
 /* Recent — projekty otevřené v posledních 7 dnech */
 .tile-recent::after {

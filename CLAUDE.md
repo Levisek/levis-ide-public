@@ -100,15 +100,28 @@ Kompilace: `npx tsc` — output do `dist/`
 - Sidebar splitter fix pro sidebar vpravo
 - Grid fix: audit/tokens odstraněny z ALL_GRID_PANELS (neexistují v public)
 
+## Hotovo v1.1.0
+
+- Témata (4 color schemes) — Dark / Dark Soft / Mid / Light
+- Per-projekt barevný tag — paleta 8 barev, border kolem tabu
+- Per-projekt status — Aktivní / Pozastavený / Ukončený, skupiny v Hubu
+- Attach externích souborů do CC, drag souboru z file tree do terminálu
+- Vylepšený file tree — ikony per typ, šipky, New File/Folder
+- Floating popover sjednocen v browser i mobile (smart placement)
+- Dark/Light mode simulace v preview (CDP prefers-color-scheme)
+- Touch kurzor (oranžový), prompt fronta, CC working indikátor v tabu
+- Pravý klik v terminálu (Copy/Paste), auto-scroll, hard reload
+- Scrollbar redesign, Settings gear fix, URL bar fix, Ctrl+V fix, Shift+Enter fix
+
 ## Bugy / known issues
 
-- **Drag HTML do browser preview** — nefunguje (Electron webview blokuje drag). Workaround: URL bar.
-- **Shift+Enter v CC** — CC limitace, ne naše.
+- **Popout terminal občas černé okno** — race condition. Workaround: zavři a otevři znovu.
 
 ## TODO
 
-- **Témata (color schemes)** — výběr v Settings: aktuální tmavé (oranž akcent), světlejší tmavé, něco mezi (případně light). CSS variables v `src/css/variables.css` přepínat přes `data-theme` na `<html>`. Uložit do storu jako `theme: 'dark' | 'dark-soft' | 'mid' | 'light'`.
-- **Per-projekt barevný tag** — v Hubu vybrat barvu projektu (paleta ~8 barev). Zobrazit v Hub kartě jako chip / levý okraj a v top tab baru jako úzký proužek pod záložkou. Návrh: jen akcent. Storage: `projectColors: Record<string, string>` v `electron/store.ts`.
+- Cross-platform build (macOS, Linux)
+- Drag-back gesture (popout → workspace)
+- Editor model handshake (cross-window dirty stav)
 
 ## Git
 

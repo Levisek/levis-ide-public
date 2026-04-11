@@ -206,6 +206,16 @@ export function registerFsHandlers(mainWindow: BrowserWindow): void {
     }
   });
 
+  ipcMain.handle('fs:createDir', async (_event, dirPath: string) => {
+    if (!isPathAllowed(dirPath)) return { error: 'Path not allowed' };
+    try {
+      fs.mkdirSync(dirPath, { recursive: true });
+      return { success: true };
+    } catch (err) {
+      return { error: String(err) };
+    }
+  });
+
   ipcMain.handle('fs:getLanguage', async (_event, filePath: string) => {
     const ext = path.extname(filePath).toLowerCase();
     const langMap: Record<string, string> = {
@@ -224,6 +234,13 @@ export function registerFsHandlers(mainWindow: BrowserWindow): void {
       properties: ['openDirectory'],
     });
     return result.canceled ? null : result.filePaths[0];
+  });
+
+  ipcMain.handle('dialog:openFile', async (_event, multi?: boolean) => {
+    const props: ('openFile' | 'multiSelections')[] = ['openFile'];
+    if (multi) props.push('multiSelections');
+    const result = await dialog.showOpenDialog(mainWindow, { properties: props });
+    return result.canceled ? null : result.filePaths;
   });
 
   // Project management — destrukivní operace, vždy přes safe-path check

@@ -4,6 +4,7 @@ interface LevisAPI {
   clipboardWrite: (text: string) => void;
   mobileEnableTouch: (webContentsId: number) => Promise<boolean>;
   mobileDisableTouch: (webContentsId: number) => Promise<boolean>;
+  mobileSetColorScheme: (webContentsId: number, scheme: 'dark' | 'light') => Promise<boolean>;
   mobileTouch: (webContentsId: number, type: 'touchStart' | 'touchMove' | 'touchEnd' | 'touchCancel', x: number, y: number) => void;
   minimize: () => void;
   maximize: () => void;
@@ -49,7 +50,9 @@ interface LevisAPI {
   readFile: (filePath: string) => Promise<string | { error: string }>;
   writeFile: (filePath: string, content: string) => Promise<{ success?: boolean; error?: string }>;
   getLanguage: (filePath: string) => Promise<string>;
+  createDir: (dirPath: string) => Promise<{ success?: boolean; error?: string }>;
   openFolderDialog: () => Promise<string | null>;
+  openFileDialog: (multi?: boolean) => Promise<string[] | null>;
   createPty: (cwd: string) => Promise<string>;
   writePty: (id: string, data: string) => void;
   resizePty: (id: string, cols: number, rows: number) => void;
@@ -69,6 +72,7 @@ declare function setLocale(loc: 'en' | 'cs'): void;
 declare function getLocale(): 'en' | 'cs';
 declare function applyI18nDom(root: Document | HTMLElement): void;
 declare function initI18n(): Promise<void>;
+declare function applyTheme(theme: string): void;
 
 interface Window {
   renderHub: (container: HTMLElement, onOpenProject: (project: any) => void) => Promise<void>;

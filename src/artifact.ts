@@ -39,7 +39,7 @@ function createArtifact(container: HTMLElement, projectPath: string): ArtifactIn
     <button class="artifact-btn artifact-annotate" title="${t('artifact.annotateTip')}">${I('editor')} ${t('browser.annotate')}</button>
     <button class="artifact-btn artifact-reload" title="${t('artifact.refreshTip')}">${I('refresh')}</button>
     <button class="artifact-btn artifact-watch" title="${t('artifact.watchTip')}">${I('eye')} Watch</button>
-    <button class="artifact-btn artifact-open-file" title="${t('artifact.loadHtml')}">${I('folder')} ${t('ws.btnPull')}</button>
+    <button class="artifact-btn artifact-open-file" title="${t('artifact.loadHtml')}">${I('folder')}</button>
   `;
   wrapper.appendChild(toolbar);
 
@@ -698,15 +698,15 @@ ${html}
     if (watching) startWatch(); else stopWatch();
   });
 
-  // ── Open file button ──────────────────
+  // ── Open file button — file dialog pro výběr HTML souboru ──
   toolbar.querySelector('.artifact-open-file')!.addEventListener('click', async () => {
-    // Look for index.html in project
-    const indexPath = projectPath.replace(/\\/g, '/') + '/index.html';
-    const content = await levis.readFile(indexPath);
-    if (typeof content === 'string') {
-      loadFile(indexPath.replace(/\//g, '\\'));
+    const files = await levis.openFileDialog(false);
+    if (!files || files.length === 0) return;
+    const filePath = files[0];
+    if (/\.(html?|svg)$/i.test(filePath)) {
+      await loadFile(filePath);
     } else {
-      showToast(t('artifact.noIndex'), 'warning');
+      showToast(t('artifact.notHtml'), 'warning');
     }
   });
 

@@ -15,6 +15,72 @@ interface FileTreeInstance {
   dispose: () => void;
 }
 
+// Mapování přípony → ikona + CSS třída pro barvu
+const FILE_ICON_MAP: Record<string, { icon: string; cls: string }> = {
+  // Code
+  ts:    { icon: 'file-code', cls: 'ft-ext-ts' },
+  tsx:   { icon: 'file-code', cls: 'ft-ext-ts' },
+  js:    { icon: 'file-code', cls: 'ft-ext-js' },
+  jsx:   { icon: 'file-code', cls: 'ft-ext-js' },
+  mjs:   { icon: 'file-code', cls: 'ft-ext-js' },
+  vue:   { icon: 'file-code', cls: 'ft-ext-vue' },
+  svelte:{ icon: 'file-code', cls: 'ft-ext-svelte' },
+  py:    { icon: 'file-code', cls: 'ft-ext-py' },
+  rs:    { icon: 'file-code', cls: 'ft-ext-rs' },
+  go:    { icon: 'file-code', cls: 'ft-ext-go' },
+  php:   { icon: 'file-code', cls: 'ft-ext-php' },
+  rb:    { icon: 'file-code', cls: 'ft-ext-rb' },
+  java:  { icon: 'file-code', cls: 'ft-ext-java' },
+  c:     { icon: 'file-code', cls: 'ft-ext-c' },
+  cpp:   { icon: 'file-code', cls: 'ft-ext-c' },
+  h:     { icon: 'file-code', cls: 'ft-ext-c' },
+  cs:    { icon: 'file-code', cls: 'ft-ext-cs' },
+  html:  { icon: 'file-code', cls: 'ft-ext-html' },
+  htm:   { icon: 'file-code', cls: 'ft-ext-html' },
+  css:   { icon: 'file-code', cls: 'ft-ext-css' },
+  scss:  { icon: 'file-code', cls: 'ft-ext-css' },
+  less:  { icon: 'file-code', cls: 'ft-ext-css' },
+  // Data
+  json:  { icon: 'file-json', cls: 'ft-ext-json' },
+  yaml:  { icon: 'file-text', cls: 'ft-ext-yaml' },
+  yml:   { icon: 'file-text', cls: 'ft-ext-yaml' },
+  toml:  { icon: 'file-text', cls: 'ft-ext-yaml' },
+  xml:   { icon: 'file-code', cls: 'ft-ext-html' },
+  sql:   { icon: 'file-code', cls: 'ft-ext-sql' },
+  // Images
+  png:   { icon: 'file-image', cls: 'ft-ext-img' },
+  jpg:   { icon: 'file-image', cls: 'ft-ext-img' },
+  jpeg:  { icon: 'file-image', cls: 'ft-ext-img' },
+  gif:   { icon: 'file-image', cls: 'ft-ext-img' },
+  svg:   { icon: 'file-image', cls: 'ft-ext-svg' },
+  webp:  { icon: 'file-image', cls: 'ft-ext-img' },
+  ico:   { icon: 'file-image', cls: 'ft-ext-img' },
+  // Text / docs
+  md:    { icon: 'file-text', cls: 'ft-ext-md' },
+  txt:   { icon: 'file-text', cls: 'ft-ext-txt' },
+  log:   { icon: 'file-text', cls: 'ft-ext-txt' },
+  env:   { icon: 'file-text', cls: 'ft-ext-env' },
+  sh:    { icon: 'terminal',  cls: 'ft-ext-sh' },
+  bat:   { icon: 'terminal',  cls: 'ft-ext-sh' },
+  ps1:   { icon: 'terminal',  cls: 'ft-ext-sh' },
+};
+
+// Speciální soubory podle názvu
+const FILE_NAME_MAP: Record<string, { icon: string; cls: string }> = {
+  'package.json':   { icon: 'file-json', cls: 'ft-ext-npm' },
+  'tsconfig.json':  { icon: 'file-json', cls: 'ft-ext-ts' },
+  '.gitignore':     { icon: 'file-text', cls: 'ft-ext-git' },
+  'Dockerfile':     { icon: 'file-text', cls: 'ft-ext-docker' },
+  'CLAUDE.md':      { icon: 'file-text', cls: 'ft-ext-claude' },
+  '.env':           { icon: 'file-text', cls: 'ft-ext-env' },
+  '.env.local':     { icon: 'file-text', cls: 'ft-ext-env' },
+};
+
+function getFileExt(name: string): string {
+  const dot = name.lastIndexOf('.');
+  return dot > 0 ? name.slice(dot + 1).toLowerCase() : '';
+}
+
 async function createFileTree(
   container: HTMLElement,
   rootPath: string,
@@ -23,11 +89,18 @@ async function createFileTree(
   const wrapper = document.createElement('div');
   wrapper.className = 'file-tree';
 
+  const I = (window as any).icon;
+
   const header = document.createElement('div');
   header.className = 'file-tree-header';
   header.innerHTML = `
-    <span class="file-tree-title">SOUBORY</span>
-    <button class="file-tree-refresh" title="Obnovit (zahrne i git status)">${(window as any).icon('refresh')}</button>
+    <span class="file-tree-title">${t('ws.files')}</span>
+    <div class="file-tree-actions">
+      <button class="file-tree-btn file-tree-new-file" title="${t('ws.newFile')}">${I('file', { size: 12 })}</button>
+      <button class="file-tree-btn file-tree-new-folder" title="${t('ws.newFolder')}">${I('folder', { size: 12 })}</button>
+      <button class="file-tree-btn file-tree-collapse-all" title="${t('ws.collapseAll')}">${I('chevron-right', { size: 12 })}</button>
+      <button class="file-tree-btn file-tree-refresh" title="${t('ws.refreshFiles')}">${I('refresh', { size: 12 })}</button>
+    </div>
   `;
   wrapper.appendChild(header);
 
@@ -36,20 +109,22 @@ async function createFileTree(
   wrapper.appendChild(treeContainer);
   container.appendChild(wrapper);
 
-  const _IFT = (window as any).icon;
-  const folderOpenSvg = _IFT('folder', { size: 13 });
-  const folderClosedSvg = _IFT('folder', { size: 13 });
-  const fileSvg = _IFT('file', { size: 13 });
-
-  function getIcon(node: FileTreeNode): string {
-    if (node.isDirectory) return node.expanded ? folderOpenSvg : folderClosedSvg;
-    return fileSvg;
+  function getFileIcon(node: FileTreeNode): { svg: string; cls: string } {
+    if (node.isDirectory) {
+      return node.expanded
+        ? { svg: I('folder-open', { size: 14 }), cls: 'ft-icon-folder-open' }
+        : { svg: I('folder', { size: 14 }), cls: 'ft-icon-folder' };
+    }
+    const byName = FILE_NAME_MAP[node.name];
+    if (byName) return { svg: I(byName.icon, { size: 14 }), cls: byName.cls };
+    const ext = getFileExt(node.name);
+    const byExt = FILE_ICON_MAP[ext];
+    if (byExt) return { svg: I(byExt.icon, { size: 14 }), cls: byExt.cls };
+    return { svg: I('file', { size: 14 }), cls: '' };
   }
 
-  // ── Git status mapa: relativní cesta (forward slashes) → status code ──
-  // Status: 'M' modified, 'A' added, 'D' deleted, '?' untracked, 'R' renamed, 'C' conflict
+  // ── Git status mapa ──
   const gitStatusMap = new Map<string, string>();
-  // Cache map kterýkoli adresář obsahuje dirty soubory (pro indikaci na složkách)
   const gitDirtyDirs = new Set<string>();
 
   function pathToRel(fullPath: string): string {
@@ -65,17 +140,14 @@ async function createFileTree(
       const addEntry = (filePath: string, code: string) => {
         const rel = filePath.replace(/\\/g, '/');
         gitStatusMap.set(rel, code);
-        // Označit i všechny rodičovské adresáře jako dirty
         let dir = rel;
         while (dir.includes('/')) {
           dir = dir.substring(0, dir.lastIndexOf('/'));
           gitDirtyDirs.add(dir);
         }
       };
-      // simple-git status: files = [{path, index, working_dir}]
       if (Array.isArray(status.files)) {
         for (const f of status.files) {
-          // Priorita: index char, fallback working_dir
           const code = (f.index && f.index !== ' ') ? f.index : (f.working_dir || '?');
           addEntry(f.path, code);
         }
@@ -111,6 +183,11 @@ async function createFileTree(
       expanded: false,
       loaded: false,
     }));
+    // Sort: dirs first, then alpha
+    node.children.sort((a, b) => {
+      if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1;
+      return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+    });
     node.loaded = true;
   }
 
@@ -118,12 +195,17 @@ async function createFileTree(
     const el = document.createElement('div');
     el.className = 'file-tree-item';
     el.dataset.path = node.path;
-    el.style.paddingLeft = `${12 + depth * 16}px`;
+    el.style.paddingLeft = `${8 + depth * 18}px`;
 
-    const icon = getIcon(node);
+    const fileIcon = getFileIcon(node);
     const gitBadge = getGitBadge(node);
+    const chevron = node.isDirectory
+      ? `<span class="ft-chevron">${I(node.expanded ? 'chevron-down' : 'chevron-right', { size: 12 })}</span>`
+      : '<span class="ft-chevron-spacer"></span>';
+
     el.innerHTML = `
-      <span class="ft-icon">${icon}</span>
+      ${chevron}
+      <span class="ft-icon ${fileIcon.cls}">${fileIcon.svg}</span>
       <span class="ft-name">${node.name}</span>
       ${gitBadge}
     `;
@@ -145,17 +227,19 @@ async function createFileTree(
           }
         }
         childContainer.style.display = node.expanded ? 'block' : 'none';
-        el.querySelector('.ft-icon')!.innerHTML = getIcon(node);
+        // Update chevron + icon
+        const chev = el.querySelector('.ft-chevron');
+        if (chev) chev.innerHTML = I(node.expanded ? 'chevron-down' : 'chevron-right', { size: 12 });
+        const ic = getFileIcon(node);
+        const iconEl = el.querySelector('.ft-icon');
+        if (iconEl) { iconEl.innerHTML = ic.svg; iconEl.className = 'ft-icon ' + ic.cls; }
       });
 
-      const fragment = document.createDocumentFragment();
-      fragment.appendChild(el);
-      fragment.appendChild(childContainer);
-
-      const wrapper = document.createElement('div');
-      wrapper.appendChild(el);
-      wrapper.appendChild(childContainer);
-      return wrapper;
+      const nodeWrapper = document.createElement('div');
+      nodeWrapper.className = 'ft-node';
+      nodeWrapper.appendChild(el);
+      nodeWrapper.appendChild(childContainer);
+      return nodeWrapper;
     } else {
       el.classList.add('ft-file');
       el.draggable = true;
@@ -166,7 +250,6 @@ async function createFileTree(
       });
       el.addEventListener('click', (e: MouseEvent) => {
         e.stopPropagation();
-        // Remove previous selection
         treeContainer.querySelectorAll('.ft-active').forEach(n => n.classList.remove('ft-active'));
         el.classList.add('ft-active');
         onFileOpen(node.path);
@@ -202,17 +285,55 @@ async function createFileTree(
       expanded: false,
       loaded: false,
     }));
+    // Sort: dirs first, then alpha
+    rootNodes.sort((a, b) => {
+      if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1;
+      return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+    });
     for (const node of rootNodes) {
       treeContainer.appendChild(renderNode(node, 0));
     }
-    // Git status načti na pozadí, neblokuj render — když dorazí, applyne badges
     loadGitStatus().then(applyGitBadges).catch(() => {});
   }
 
+  // ── Header actions ──
   header.querySelector('.file-tree-refresh')!.addEventListener('click', renderTree);
+
+  header.querySelector('.file-tree-collapse-all')!.addEventListener('click', () => {
+    treeContainer.querySelectorAll('.ft-children').forEach((c) => {
+      (c as HTMLElement).style.display = 'none';
+    });
+    treeContainer.querySelectorAll('.ft-chevron').forEach((c) => {
+      c.innerHTML = I('chevron-right', { size: 12 });
+    });
+    treeContainer.querySelectorAll('.ft-icon-folder-open').forEach((ic) => {
+      ic.innerHTML = I('folder', { size: 14 });
+      ic.className = 'ft-icon ft-icon-folder';
+    });
+  });
+
+  header.querySelector('.file-tree-new-file')!.addEventListener('click', async () => {
+    const name = prompt(t('ws.newFileName'));
+    if (!name) return;
+    try {
+      await levis.writeFile(rootPath + '\\' + name, '');
+      await renderTree();
+      onFileOpen(rootPath + '\\' + name);
+    } catch {}
+  });
+
+  header.querySelector('.file-tree-new-folder')!.addEventListener('click', async () => {
+    const name = prompt(t('ws.newFolderName'));
+    if (!name) return;
+    try {
+      await levis.createDir(rootPath + '\\' + name);
+      await renderTree();
+    } catch {}
+  });
+
   await renderTree();
 
-  // Auto-refresh git status každých 6 s — non-blocking
+  // Auto-refresh git status
   const gitPoll = setInterval(() => {
     loadGitStatus().then(applyGitBadges).catch(() => {});
   }, 6000);

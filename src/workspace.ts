@@ -4,6 +4,7 @@ interface WorkspaceInstance {
   element: HTMLElement;
   getActiveTerminals: () => Array<{ label: string; state: 'idle' | 'working' | 'waiting' }>;
   onCCDone: (cb: () => void) => () => void;
+  onCCStateChange: (cb: (state: string) => void) => () => void;
   hasUnsavedChanges: () => boolean;
   getDirtyFiles: () => string[];
   // Otevřít soubor v editoru (pro Ctrl+P quick file open)
@@ -188,6 +189,7 @@ async function createWorkspace(projectPath: string, projectName: string, project
     <button class="status-btn status-btn-push" title="${t('ws.jeb')}">${I('upload')} ${t('ws.btnSend')}</button>
     <button class="status-btn status-btn-pull" title="${t('ws.gitPull')}">${I('download')} ${t('ws.btnPull')}</button>
     <button class="status-btn status-btn-restart" title="${t('ws.restartCC')}">${I('restart')} ${t('ws.btnCC')}</button>
+    <button class="status-btn status-btn-attach" title="${t('ws.attachFile')}">${I('attach')} ${t('ws.btnAttach')}</button>
     <button class="status-btn status-btn-split" title="${t('ws.newTerminal')}">${I('plus')} ${t('ws.btnTerminal')}</button>
     <button class="status-btn status-btn-devlog" title="${t('ws.devLogTooltip')}" style="display:none">${I('file')} ${t('ws.btnDevLog')}</button>
   `;
@@ -663,9 +665,14 @@ async function createWorkspace(projectPath: string, projectName: string, project
   let fileTreeInstance: any = null;
   try {
     fileTreeInstance = await createFileTree(sidebarContainer, projectPath, async (filePath: string) => {
-      // Klik v file tree → vždy jen editor. Náhled / prohlížeč si user otevře sám.
-      switchLeftPanel('editor');
-      if (editorInstance) await editorInstance.openFile(filePath);
+      // HTML soubory → preview (artifact), ostatní → editor
+      if (/\.(html?)$/i.test(filePath) && artifactInstance) {
+        switchRightPanel('artifact');
+        artifactInstance.loadFile(filePath);
+      } else {
+        switchLeftPanel('editor');
+        if (editorInstance) await editorInstance.openFile(filePath);
+      }
     });
   } catch (err) {
     sidebarContainer.innerHTML = `<div class="loading">Chyba file tree</div>`;
@@ -834,12 +841,47 @@ async function createWorkspace(projectPath: string, projectName: string, project
   });
 
   // ── Status bar actions ────────────────
+  // ── Fronta promptů pro CC ──
+  const promptQueue: string[] = [];
+  let queueWatcherAttached = false;
+
+  function drainQueue(): void {
+    const first = termInstances[0];
+    if (!first || promptQueue.length === 0) return;
+    const state = first.getState ? first.getState() : 'idle';
+    if (state !== 'idle') return;
+    const next = promptQueue.shift()!;
+    levis.writePty(first.ptyId, next + '\r');
+    if (promptQueue.length > 0) {
+      showToast(t('toast.queueRemaining', { n: promptQueue.length }), 'info');
+    }
+  }
+
+  function attachQueueWatcher(): void {
+    if (queueWatcherAttached) return;
+    const first = termInstances[0];
+    if (!first || typeof first.onStateChange !== 'function') return;
+    first.onStateChange((s: string) => {
+      if (s === 'idle' && promptQueue.length > 0) {
+        setTimeout(drainQueue, 500);
+      }
+    });
+    queueWatcherAttached = true;
+  }
+
   function sendToFirstTerminal(text: string): void {
     const first = termInstances[0];
-    if (first) {
+    if (!first) return;
+    const state = first.getState ? first.getState() : 'idle';
+    if (state !== 'idle') {
+      promptQueue.push(text);
+      attachQueueWatcher();
+      showToast(t('toast.ccBusyQueued', { n: promptQueue.length }), 'info');
       switchLeftPanel('terminal');
-      levis.writePty(first.ptyId, text + '\r');
+      return;
     }
+    switchLeftPanel('terminal');
+    levis.writePty(first.ptyId, text + '\r');
   }
 
   const btnRestart = statusBar.querySelector('.status-btn-restart') as HTMLButtonElement;
@@ -861,6 +903,14 @@ async function createWorkspace(projectPath: string, projectName: string, project
       }, 300);
     }, 400);
     showToast(t('toast.ccRestarted'), 'info');
+  });
+
+  statusBar.querySelector('.status-btn-attach')!.addEventListener('click', async () => {
+    const files = await levis.openFileDialog(true);
+    if (!files || files.length === 0) return;
+    const paths = files.map((f: string) => `"${f}"`).join(' ');
+    sendToFirstTerminal(paths);
+    showToast(t('toast.filesAttached', { n: files.length }), 'info');
   });
 
   statusBar.querySelector('.status-btn-split')!.addEventListener('click', () => {
@@ -1040,8 +1090,9 @@ async function createWorkspace(projectPath: string, projectName: string, project
   window.addEventListener('keydown', onWorkspaceKeys);
   cleanups.push(() => window.removeEventListener('keydown', onWorkspaceKeys));
 
-  // CC done event — pro tab badge v app.ts
+  // CC done event + live state — pro tab badge/indikátor v app.ts
   const ccDoneCallbacks: Array<() => void> = [];
+  const ccStateCallbacks: Array<(state: string) => void> = [];
   // Hook do termInstances — když některý terminál přejde z working → idle
   function attachTermStateWatcher(): void {
     for (const t of termInstances) {
@@ -1050,11 +1101,10 @@ async function createWorkspace(projectPath: string, projectName: string, project
       let prevState = t.getState ? t.getState() : 'idle';
       let workingSince = 0;
       t.onStateChange((s: string) => {
+        for (const cb of ccStateCallbacks) try { cb(s); } catch {}
         if (s === 'working' && prevState !== 'working') {
           workingSince = Date.now();
         }
-        // CC dokončil práci: working → (idle nebo waiting na input).
-        // Vyžaduj minimálně 1.5s working ať nepípáme na krátké blicky.
         if (prevState === 'working' && (s === 'idle' || s === 'waiting')) {
           const elapsed = Date.now() - workingSince;
           if (elapsed > 1500) {
@@ -1083,6 +1133,13 @@ async function createWorkspace(projectPath: string, projectName: string, project
       return () => {
         const i = ccDoneCallbacks.indexOf(cb);
         if (i !== -1) ccDoneCallbacks.splice(i, 1);
+      };
+    },
+    onCCStateChange: (cb: (state: string) => void) => {
+      ccStateCallbacks.push(cb);
+      return () => {
+        const i = ccStateCallbacks.indexOf(cb);
+        if (i !== -1) ccStateCallbacks.splice(i, 1);
       };
     },
     hasUnsavedChanges: (): boolean => {

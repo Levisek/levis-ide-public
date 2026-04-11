@@ -12,9 +12,21 @@ interface TabInfo {
 const tabs: TabInfo[] = [];
 let activeTabId: string = 'hub';
 
+function applyTheme(theme: string): void {
+  if (theme === 'dark') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', theme);
+}
+(window as any).applyTheme = applyTheme;
+
 async function init(): Promise<void> {
   await initI18n();
   applyI18nDom(document);
+
+  // Apply saved theme
+  try {
+    const savedTheme = await levis.storeGet('theme');
+    if (savedTheme && savedTheme !== 'dark') applyTheme(savedTheme);
+  } catch {}
   document.getElementById('btn-min')!.addEventListener('click', () => levis.minimize());
   document.getElementById('btn-max')!.addEventListener('click', () => levis.maximize());
   document.getElementById('btn-close')!.addEventListener('click', () => levis.close());
@@ -232,7 +244,7 @@ async function init(): Promise<void> {
   if (btnHelp) btnHelp.addEventListener('click', () => (window as any).showHelpOverlay?.());
   const btnSettings = document.getElementById('btn-settings');
   if (btnSettings) {
-    btnSettings.textContent = '\u2699';
+    btnSettings.innerHTML = (window as any).icon('gear', { size: 14 });
     btnSettings.addEventListener('click', () => {
       if ((window as any).openHubSettings) {
         (window as any).openHubSettings();
@@ -552,6 +564,12 @@ async function openProject(project: any): Promise<void> {
     <span class="tab-label">${escapeHtmlSafe(project.name)}</span>
     <span class="tab-close">&times;</span>
   `;
+  // Per-projekt barevný proužek pod tabem
+  try {
+    const colors: Record<string, string> = (await levis.storeGet('projectColors')) || {};
+    const c = colors[project.path];
+    if (c) tabEl.style.setProperty('--tab-color', c);
+  } catch {}
   tabsContainer.appendChild(tabEl);
 
   tabEl.addEventListener('click', (e: MouseEvent) => {
@@ -589,6 +607,12 @@ async function openProject(project: any): Promise<void> {
     contentEl.innerHTML = '';
     contentEl.appendChild(workspace.element);
     tabInfo.workspace = workspace;
+    // Tab: CC working indikátor — živá animace dokud CC pracuje
+    if (typeof workspace.onCCStateChange === 'function') {
+      workspace.onCCStateChange((state: string) => {
+        tabEl.classList.toggle('tab-cc-working', state === 'working');
+      });
+    }
     // Tab badge: když CC v tomto workspace doběhne a tab není aktivní, ukaž puntík
     if (typeof workspace.onCCDone === 'function') {
       workspace.onCCDone(async () => {

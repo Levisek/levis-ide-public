@@ -68,6 +68,21 @@ export function registerTouchInputHandlers(): void {
     }
   });
 
+  ipcMain.handle('mobile:setColorScheme', async (_e, id: number, scheme: 'dark' | 'light') => {
+    if (!(await ensureAttached(id))) return false;
+    const wc = webContents.fromId(id);
+    if (!wc) return false;
+    try {
+      await wc.debugger.sendCommand('Emulation.setEmulatedMedia', {
+        features: [{ name: 'prefers-color-scheme', value: scheme }],
+      });
+      return true;
+    } catch (err) {
+      log.warn('[touch] setColorScheme failed:', (err as any)?.message || err);
+      return false;
+    }
+  });
+
   ipcMain.on('mobile:touch', async (_e, id: number, type: string, x: number, y: number) => {
     if (!(await ensureAttached(id))) return;
     const wc = webContents.fromId(id);

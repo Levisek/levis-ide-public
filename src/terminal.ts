@@ -110,10 +110,20 @@ async function createTerminal(
   let earlyBuffer: string[] = [];
   let termReady = false;
 
+  // Auto-scroll: pokud je uživatel na konci (nebo blízko), scrollneme při novém výstupu
+  let userScrolledUp = false;
+  term.onScroll(() => {
+    const buf = term.buffer.active;
+    userScrolledUp = buf.viewportY < buf.baseY - 3;
+  });
+
   // Subscribni listener PRED createPty, jinak ztratime prvni vypisy (banner, chyby)
   const unsubData = levis.onPtyData((id: string, data: string) => {
     if (id !== ptyId) return;
-    if (termReady) term.write(data);
+    if (termReady) {
+      term.write(data);
+      if (!userScrolledUp) term.scrollToBottom();
+    }
     else earlyBuffer.push(data);
     // CC state — feed do detektoru, debounce a vyhodnoť skutečný stav z bufferu.
     // Žádné brute force "data → working → idle" které dělalo notifikace na každý burst.
@@ -141,6 +151,8 @@ async function createTerminal(
   term.attachCustomKeyEventHandler((e: KeyboardEvent) => {
     if (e.type !== 'keydown') return true;
     if ((e.ctrlKey || e.metaKey) && (e.key === 'v' || e.key === 'V')) {
+      e.preventDefault();
+      e.stopPropagation();
       levis.clipboardRead().then((text) => {
         if (text) levis.writePty(ptyId, text);
       }).catch(() => {});
@@ -150,9 +162,9 @@ async function createTerminal(
       levis.clipboardWrite(term.getSelection());
       return false;
     }
-    // Shift+Enter — backslash + newline (CC i mnoho REPL apps to bere jako line continuation)
+    // Shift+Enter — prostý newline (CC to interpretuje jako pokračování vstupu)
     if (e.shiftKey && !e.ctrlKey && !e.altKey && e.key === 'Enter') {
-      levis.writePty(ptyId, '\\\r\n');
+      levis.writePty(ptyId, '\n');
       return false;
     }
     return true;
@@ -183,6 +195,54 @@ async function createTerminal(
   }
   requestAnimationFrame(tryFit);
 
+  // ── Drag & drop souborů z file tree do terminálu ──
+  termContainer.addEventListener('dragover', (e: DragEvent) => {
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+  });
+  termContainer.addEventListener('drop', (e: DragEvent) => {
+    e.preventDefault();
+    const path = e.dataTransfer?.getData('text/plain');
+    if (path && ptyId) {
+      levis.writePty(ptyId, `"${path}" `);
+    }
+  });
+
+  // ── Pravý klik context menu (Copy / Paste) ──
+  termContainer.addEventListener('contextmenu', (e: MouseEvent) => {
+    e.preventDefault();
+    // Odstraň starý menu
+    document.querySelectorAll('.term-context-menu').forEach(m => m.remove());
+    const menu = document.createElement('div');
+    menu.className = 'term-context-menu';
+    const hasSel = term.hasSelection();
+    menu.innerHTML = `
+      <div class="tcm-item${hasSel ? '' : ' tcm-disabled'}" data-act="copy">${t('ws.copy')}</div>
+      <div class="tcm-item" data-act="paste">${t('ws.paste')}</div>
+    `;
+    menu.style.left = `${e.clientX}px`;
+    menu.style.top = `${e.clientY}px`;
+    document.body.appendChild(menu);
+    menu.querySelectorAll('.tcm-item:not(.tcm-disabled)').forEach(item => {
+      item.addEventListener('click', async () => {
+        const act = (item as HTMLElement).dataset.act;
+        menu.remove();
+        if (act === 'copy' && hasSel) {
+          levis.clipboardWrite(term.getSelection());
+        } else if (act === 'paste') {
+          const text = await levis.clipboardRead();
+          if (text && ptyId) levis.writePty(ptyId, text);
+        }
+      });
+    });
+    setTimeout(() => {
+      const close = (ev: MouseEvent) => {
+        if (!menu.contains(ev.target as Node)) { menu.remove(); document.removeEventListener('click', close); }
+      };
+      document.addEventListener('click', close);
+    }, 0);
+  });
+
   // Create PTY
   ptyId = await levis.createPty(cwd);
 
@@ -200,7 +260,12 @@ async function createTerminal(
   });
 
   // Connect xterm <-> pty
-  term.onData((data: string) => levis.writePty(ptyId, data));
+  term.onData((data: string) => {
+    levis.writePty(ptyId, data);
+    // Uživatel píše → scroll dolů
+    userScrolledUp = false;
+    term.scrollToBottom();
+  });
 
   // Handle resize — debounced to avoid rapid fire
   let resizeTimer: any = null;

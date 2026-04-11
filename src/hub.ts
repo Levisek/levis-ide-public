@@ -1,5 +1,10 @@
 // ── Hub View (project tiles) ────────────
 
+const PROJECT_COLOR_PALETTE = [
+  '#ef4444', '#f97316', '#eab308', '#22c55e',
+  '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899',
+];
+
 interface HubProjectInfo {
   name: string;
   path: string;
@@ -127,15 +132,17 @@ function escapeHtml(str: string): string {
   return div.innerHTML;
 }
 
-function createTileElement(project: HubProjectInfo, onOpen: (p: HubProjectInfo) => void, onTogglePin: (p: HubProjectInfo) => void, onAction: (action: string, p: HubProjectInfo) => void): HTMLElement {
+function createTileElement(project: HubProjectInfo, onOpen: (p: HubProjectInfo) => void, onTogglePin: (p: HubProjectInfo) => void, onAction: (action: string, p: HubProjectInfo) => void, color?: string): HTMLElement {
   const tile = document.createElement('div');
   tile.className = 'tile' + (project.pinned ? ' tile-pinned' : '') + ((project as any).isRecent ? ' tile-recent' : '');
   if ((project as any).isRecent) tile.dataset.recentLabel = t('hub.recentBadge');
+  if (color) tile.style.borderLeftColor = color;
+  if (color) tile.classList.add('tile-colored');
   tile.innerHTML = `
     <button class="tile-pin ${project.pinned ? 'pinned' : ''}" title="${t(project.pinned ? 'hub.unpin' : 'hub.pin')}">${project.pinned ? '\u2605' : '\u2606'}</button>
     <button class="tile-menu" title="${t('hub.projectOptions')}">⋯</button>
     <div class="tile-status ${project.gitStatus}" title="${t(project.gitStatus === 'clean' ? 'hub.gitClean' : project.gitStatus === 'dirty' ? 'hub.gitDirty' : 'hub.gitNoRepo')}"></div>
-    <div class="tile-name">${escapeHtml(project.name)}</div>
+    <div class="tile-name">${color ? `<span class="tile-color-dot" style="background:${color}"></span>` : ''}${escapeHtml(project.name)}</div>
     <div class="tile-domain">${escapeHtml(project.domain || project.path)}</div>
     <div class="tile-meta">
       <span>${formatDate(project.lastModified)}</span>
@@ -165,6 +172,20 @@ function createTileElement(project: HubProjectInfo, onOpen: (p: HubProjectInfo) 
       <div class="tcm-item" data-act="rename">${Ic('editor')} ${t('hub.tcm.rename')}</div>
       <div class="tcm-item" data-act="duplicate">${Ic('file')} ${t('hub.tcm.duplicate')}</div>
       <div class="tcm-sep"></div>
+      <div class="tcm-item tcm-status-trigger">${Ic('check')} ${t('hub.tcm.status')}
+        <div class="tcm-status-options">
+          <span class="tcm-status-opt" data-status="active">● ${t('hub.tcm.statusActive')}</span>
+          <span class="tcm-status-opt" data-status="paused">◐ ${t('hub.tcm.statusPaused')}</span>
+          <span class="tcm-status-opt" data-status="finished">✓ ${t('hub.tcm.statusFinished')}</span>
+        </div>
+      </div>
+      <div class="tcm-item tcm-color-trigger" data-act="color">${Ic('palette')} ${t('hub.tcm.color')}
+        <div class="tcm-color-palette">
+          ${PROJECT_COLOR_PALETTE.map(c => `<span class="tcm-color-swatch" data-color="${c}" style="background:${c}"></span>`).join('')}
+          <span class="tcm-color-swatch tcm-color-clear" data-color="" title="${t('hub.tcm.colorClear')}">✕</span>
+        </div>
+      </div>
+      <div class="tcm-sep"></div>
       <div class="tcm-item tcm-danger" data-act="delete">${Ic('close')} ${t('hub.tcm.delete')}</div>
     `;
     menu.style.left = `${x}px`;
@@ -175,11 +196,28 @@ function createTileElement(project: HubProjectInfo, onOpen: (p: HubProjectInfo) 
     if (r.right > window.innerWidth) menu.style.left = `${window.innerWidth - r.width - 10}px`;
     if (r.bottom > window.innerHeight) menu.style.top = `${window.innerHeight - r.height - 10}px`;
     menu.querySelectorAll('.tcm-item').forEach(item => {
+      if (item.classList.contains('tcm-color-trigger')) return; // handled below
       item.addEventListener('click', () => {
         const act = item.getAttribute('data-act') || '';
         menu.remove();
         if (act === 'open') onOpen(project);
         else onAction(act, project);
+      });
+    });
+    menu.querySelectorAll('.tcm-color-swatch').forEach(sw => {
+      sw.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const c = (sw as HTMLElement).dataset.color || '';
+        menu.remove();
+        onAction('setColor:' + c, project);
+      });
+    });
+    menu.querySelectorAll('.tcm-status-opt').forEach(opt => {
+      opt.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const s = (opt as HTMLElement).dataset.status || 'active';
+        menu.remove();
+        onAction('setStatus:' + s, project);
       });
     });
     setTimeout(() => {
@@ -299,6 +337,9 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
       subtitle.textContent = `${scanPath} — ${t('hub.nProjects', { n: projects.length })}`;
       const usageHost = container.querySelector('#hub-usage') as HTMLElement;
       if (usageHost) usageHost.style.display = projects.length === 0 ? 'none' : '';
+      // Načti barvy a statusy projektů
+      const projectColors: Record<string, string> = (await levis.storeGet('projectColors')) || {};
+      const projectStatuses: Record<string, string> = (await levis.storeGet('projectStatuses')) || {};
       // Načti "naposledy otevřeno" z prefs
       const lastOpened: Record<string, number> = (await levis.storeGet('projectLastOpened')) || {};
       // Pinned nahoře, pak podle "naposledy otevřeno" (pokud je), jinak fallback na lastModified
@@ -378,11 +419,57 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
           `;
           grid.appendChild(empty);
         }
-        for (const project of filtered) grid.appendChild(createTileElement(project, onOpenProject, onTogglePin, onTileAction));
+        // Rozděl do skupin podle statusu
+        const active = filtered.filter(p => !projectStatuses[p.path] || projectStatuses[p.path] === 'active');
+        const paused = filtered.filter(p => projectStatuses[p.path] === 'paused');
+        const finished = filtered.filter(p => projectStatuses[p.path] === 'finished');
+
+        function renderGroup(label: string, projects: HubProjectInfo[], collapsed?: boolean): void {
+          if (projects.length === 0) return;
+          const header = document.createElement('div');
+          header.className = 'hub-group-header' + (collapsed ? ' hub-group-collapsed' : '');
+          header.innerHTML = `<span class="hub-group-chevron">▾</span> ${label} <span class="hub-group-count">${projects.length}</span>`;
+          grid.appendChild(header);
+          const groupGrid = document.createElement('div');
+          groupGrid.className = 'hub-group-grid';
+          if (collapsed) groupGrid.style.display = 'none';
+          for (const project of projects) groupGrid.appendChild(createTileElement(project, onOpenProject, onTogglePin, onTileAction, projectColors[project.path]));
+          grid.appendChild(groupGrid);
+          header.addEventListener('click', () => {
+            const hidden = groupGrid.style.display === 'none';
+            groupGrid.style.display = hidden ? '' : 'none';
+            header.classList.toggle('hub-group-collapsed', !hidden);
+          });
+        }
+
+        // Aktivní bez hlavičky pokud jsou jediné
+        if (paused.length === 0 && finished.length === 0) {
+          for (const project of active) grid.appendChild(createTileElement(project, onOpenProject, onTogglePin, onTileAction, projectColors[project.path]));
+        } else {
+          renderGroup(t('hub.groupActive'), active);
+          renderGroup(t('hub.groupPaused'), paused, true);
+          renderGroup(t('hub.groupFinished'), finished, true);
+        }
         grid.appendChild(createNewProjectTile(newProjectHandler));
       }
 
       async function onTileAction(action: string, p: HubProjectInfo): Promise<void> {
+        if (action.startsWith('setStatus:')) {
+          const status = action.slice('setStatus:'.length) as 'active' | 'paused' | 'finished';
+          if (status === 'active') delete projectStatuses[p.path];
+          else projectStatuses[p.path] = status;
+          await levis.storeSet('projectStatuses', { ...projectStatuses });
+          applyFilter();
+          return;
+        }
+        if (action.startsWith('setColor:')) {
+          const color = action.slice('setColor:'.length);
+          if (color) projectColors[p.path] = color;
+          else delete projectColors[p.path];
+          await levis.storeSet('projectColors', { ...projectColors });
+          applyFilter();
+          return;
+        }
         if (action === 'explorer') {
           await levis.shellOpenPath(p.path);
         } else if (action === 'copyPath') {
@@ -534,6 +621,15 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
           <span>${t('settings.autostartDev')}</span>
         </label>
         <label>
+          <span>${t('settings.theme')}</span>:
+          <select class="settings-input" id="set-theme">
+            <option value="dark">${t('settings.theme.dark')}</option>
+            <option value="dark-soft">${t('settings.theme.dark-soft')}</option>
+            <option value="mid">${t('settings.theme.mid')}</option>
+            <option value="light">${t('settings.theme.light')}</option>
+          </select>
+        </label>
+        <label>
           <span>${t('settings.language')}</span>:
           <select class="settings-input" id="set-locale">
             <option value="en">English</option>
@@ -559,6 +655,7 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
       (settingsPanel.querySelector('#set-cc-notifications') as HTMLInputElement).checked = all.ccNotifications !== false;
       (settingsPanel.querySelector('#set-cc-sound') as HTMLInputElement).checked = all.ccSound !== false;
       (settingsPanel.querySelector('#set-autostart-dev') as HTMLInputElement).checked = all.autostartDev !== false;
+      (settingsPanel.querySelector('#set-theme') as HTMLSelectElement).value = all.theme || 'dark';
       (settingsPanel.querySelector('#set-locale') as HTMLSelectElement).value = all.locale || 'en';
     });
 
@@ -576,6 +673,9 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
       await levis.storeSet('ccNotifications', (settingsPanel.querySelector('#set-cc-notifications') as HTMLInputElement).checked);
       await levis.storeSet('ccSound', (settingsPanel.querySelector('#set-cc-sound') as HTMLInputElement).checked);
       await levis.storeSet('autostartDev', (settingsPanel.querySelector('#set-autostart-dev') as HTMLInputElement).checked);
+      const newTheme = (settingsPanel.querySelector('#set-theme') as HTMLSelectElement).value;
+      await levis.storeSet('theme', newTheme);
+      applyTheme(newTheme);
       const newLocale = (settingsPanel.querySelector('#set-locale') as HTMLSelectElement).value as 'en' | 'cs';
       await levis.storeSet('locale', newLocale);
       setLocale(newLocale);

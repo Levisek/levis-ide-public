@@ -54,6 +54,7 @@ const api = {
   // Touch input do webview pres CDP
   mobileEnableTouch: (webContentsId: number) => ipcRenderer.invoke('mobile:enableTouch', webContentsId),
   mobileDisableTouch: (webContentsId: number) => ipcRenderer.invoke('mobile:disableTouch', webContentsId),
+  mobileSetColorScheme: (webContentsId: number, scheme: 'dark' | 'light') => ipcRenderer.invoke('mobile:setColorScheme', webContentsId, scheme),
   mobileTouch: (webContentsId: number, type: 'touchStart' | 'touchMove' | 'touchEnd' | 'touchCancel', x: number, y: number) =>
     ipcRenderer.send('mobile:touch', webContentsId, type, x, y),
 
@@ -99,8 +100,10 @@ const api = {
   projectReplace: (rootPath: string, query: string, replacement: string, opts: any) => ipcRenderer.invoke('fs:projectReplace', rootPath, query, replacement, opts),
   readFile: (filePath: string) => ipcRenderer.invoke('fs:readFile', filePath),
   writeFile: (filePath: string, content: string) => ipcRenderer.invoke('fs:writeFile', filePath, content),
+  createDir: (dirPath: string) => ipcRenderer.invoke('fs:createDir', dirPath),
   getLanguage: (filePath: string) => ipcRenderer.invoke('fs:getLanguage', filePath),
   openFolderDialog: () => ipcRenderer.invoke('dialog:openFolder'),
+  openFileDialog: (multi?: boolean) => ipcRenderer.invoke('dialog:openFile', multi),
 
   // PTY
   createPty: (cwd: string) => ipcRenderer.invoke('pty:create', cwd),

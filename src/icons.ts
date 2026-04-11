@@ -16,7 +16,10 @@ type IconName =
   | 'lock' | 'unlock' | 'equalize' | 'refresh' | 'sidebar' | 'swap'
   | 'split' | 'eye' | 'search' | 'clear' | 'info' | 'warning' | 'error'
   | 'check' | 'play' | 'stop' | 'folder' | 'file' | 'gear' | 'menu'
-  | 'inspect' | 'pin' | 'help' | 'logout' | 'home' | 'arrow-up' | 'arrow-down';
+  | 'inspect' | 'pin' | 'help' | 'logout' | 'home' | 'arrow-up' | 'arrow-down'
+  | 'palette' | 'attach'
+  | 'folder-open' | 'chevron-right' | 'chevron-down'
+  | 'file-code' | 'file-image' | 'file-json' | 'file-text';
 
 interface IconOptions {
   size?: number;
@@ -69,6 +72,15 @@ const PATHS: Record<IconName, string> = {
   home:     '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
   'arrow-up':   '<line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>',
   'arrow-down': '<line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/>',
+  palette:  '<circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12" r="1.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.04-.24-.3-.39-.65-.39-1.04 0-.83.67-1.5 1.5-1.5H16c3.31 0 6-2.69 6-6 0-5.17-4.49-8.92-10-8.92z"/>',
+  attach:        '<path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>',
+  'folder-open': '<path d="M5 19a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v1"/><path d="M3.27 15L7.5 9h13l-4.24 6H3.27z"/>',
+  'chevron-right':'<polyline points="9 18 15 12 9 6"/>',
+  'chevron-down': '<polyline points="6 9 12 15 18 9"/>',
+  'file-code':   '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M10 12l-2 2 2 2"/><path d="M14 12l2 2-2 2"/>',
+  'file-image':  '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><circle cx="10" cy="13" r="2"/><path d="M20 17l-1.09-1.09a2 2 0 0 0-2.82 0L10 22"/>',
+  'file-json':   '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M10 12a1 1 0 0 0-1 1v1a1 1 0 0 1-1 1 1 1 0 0 1 1 1v1a1 1 0 0 0 1 1"/><path d="M14 18a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1 1 1 0 0 1-1-1v-1a1 1 0 0 0-1-1"/>',
+  'file-text':   '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>',
 };
 
 function icon(name: IconName, opts: IconOptions = {}): string {
