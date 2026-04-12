@@ -111,18 +111,33 @@ Kompilace: `npx tsc` — output do `dist/`
 - Auto-scroll, hard reload, scrollbar redesign, Ctrl+V/Shift+Enter fix
 - Settings/Help přesunuty do #window-controls (Electron app-region fix)
 
+## Hotovo v1.2
+
+- Terminál: toolbar odstraněn, čistý xterm (jako tmux/VS Code split)
+- Status dot overlay, aktivní pane = accent inset shadow
+- Akce (search/clear/split) v grid headeru TERMINAL
+- Popout multi-terminal: tiled layout (vedle sebe)
+- Popout browser: race condition fix + webview pro http://
+- Splitter unifikace: sdílený split-handle CSS
+- Browser toolbar: ikony-only
+- Touch ikona: nová hand/finger SVG
+- File tree: auto-refresh odstraněn (složky se nezavírají)
+- New Project wizard: +React/Vue/Svelte/Next.js/Astro šablony
+- Cross-platform build config (mac/linux targets)
+- Orphaned CSS cleanup, terminál splitter direction fix
+
 ## Bugy / known issues
 
-- **Popout terminal občas černé okno** — race condition
-- **Popout browser** — funguje jen pro file://, ne http://
+- **Split-handle ucho není vidět** — `::after` pseudo-element se nekreslí na splitter elementech, handle pilulka neviditelná
+- **Term-splitter příliš tlustý** — mezera mezi terminály je širší než mezi grid panely
 
-## TODO v1.2
+## TODO v1.3
 
-- Touch ikona duplikát, terminál splitter direction fix
-- Popout font size ze store, popout multi-terminal
-- New Project wizard — více šablon (React/Vue/Svelte/Next/Astro) + prázdný projekt
-- Orphaned CSS cleanup po sloučení panelů
-- Cross-platform build (macOS, Linux)
+- Fix split-handle vizualizace (debug ::after na všech splitterech)
+- Term-splitter šířka sjednotit s grid-splitter
+- Drag-back gesture (drag header popout okna zpět nad workspace)
+- Editor model handshake (Monaco model sdílení mezi okny)
+- Cross-platform testování (macOS, Linux)
 
 ## Git
 
