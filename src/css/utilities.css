@@ -90,8 +90,6 @@
 /* ═══════════════════════════════════
    MOBILE / EXPO PANEL
    ═══════════════════════════════════ */
-
-.panel-mobile { display: flex; flex-direction: column; flex: 1; background: var(--bg-base); border-radius: inherit; }
 .mobile-panel { display: flex; flex-direction: column; flex: 1; }
 
 .mobile-toolbar {

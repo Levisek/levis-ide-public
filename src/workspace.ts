@@ -83,7 +83,7 @@ async function createWorkspace(projectPath: string, projectName: string, project
       <button class="ws-panel-tab ws-btn-toggle-sidebar" title="${t('ws.toggleSidebar')}">${I('sidebar')}</button>
       <button class="ws-panel-tab ws-btn-sidebar-side" title="${t('ws.swapSidebar')}">${I('swap')}</button>
       <span class="ws-toolbar-divider"></span>
-      <button class="ws-panel-tab ws-btn-add-panel" title="${t('ws.addPanel')}">${I('plus')} ${t('ws.addPanel')}</button>
+      <button class="ws-panel-tab ws-btn-add-panel" title="${t('ws.addPanel')}">${I('plus')}</button>
       <button class="ws-panel-tab ws-btn-reset-layout" title="${t('ws.resetLayout')}">${I('refresh')}</button>
       <button class="ws-panel-tab ws-btn-equalize-layout" title="${t('ws.equalize')}">${I('equalize')}</button>
       <button class="ws-panel-tab ws-btn-lock-layout" title="${t('ws.lockLayout')}">${I('lock')}</button>
@@ -104,7 +104,7 @@ async function createWorkspace(projectPath: string, projectName: string, project
   panels.appendChild(sidebarContainer);
 
   const sidebarSplitter = document.createElement('div');
-  sidebarSplitter.className = 'splitter sidebar-splitter';
+  sidebarSplitter.className = 'splitter split-handle sidebar-splitter';
   panels.appendChild(sidebarSplitter);
 
   // Layout-tree root container (drží celý strom panelů)
@@ -178,7 +178,6 @@ async function createWorkspace(projectPath: string, projectName: string, project
     <button class="status-btn status-btn-pull" title="${t('ws.gitPull')}">${I('download')} ${t('ws.btnPull')}</button>
     <button class="status-btn status-btn-restart" title="${t('ws.restartCC')}">${I('restart')} ${t('ws.btnCC')}</button>
     <button class="status-btn status-btn-attach" title="${t('ws.attachFile')}">${I('attach')} ${t('ws.btnAttach')}</button>
-    <button class="status-btn status-btn-split" title="${t('ws.newTerminal')}">${I('plus')} ${t('ws.btnTerminal')}</button>
     <button class="status-btn status-btn-devlog" title="${t('ws.devLogTooltip')}" style="display:none">${I('file')} ${t('ws.btnDevLog')}</button>
   `;
   wrapper.appendChild(statusBar);
@@ -274,9 +273,9 @@ async function createWorkspace(projectPath: string, projectName: string, project
     // Add splitter between terminals
     if (termInstances.length > 0) {
       const tSplitter = document.createElement('div');
-      tSplitter.className = 'splitter term-splitter';
+      tSplitter.className = 'term-splitter split-handle';
       termSlot.before(tSplitter);
-      setupDragSplitter(tSplitter, 'horizontal', termContainer);
+      setupDragSplitter(tSplitter, 'vertical', termContainer);
     }
 
     try {
@@ -443,6 +442,24 @@ async function createWorkspace(projectPath: string, projectName: string, project
     rootEl: layoutRoot,
     mountPanel: (panel: WsPanelId) => panelEls[panel],
     getLabel: (panel: WsPanelId) => PANEL_LABELS[panel],
+    onHeaderRender: (panel: WsPanelId, header: HTMLElement) => {
+      if (panel === 'terminal') {
+        const actions = [
+          { icon: 'search', title: t('terminal.search'), fn: () => { const ti = termInstances[activeTerminalIndex] || termInstances[0]; ti?.toggleSearch(); } },
+          { icon: 'clear', title: t('terminal.clear'), fn: () => { const ti = termInstances[activeTerminalIndex] || termInstances[0]; ti?.clear(); } },
+          { icon: 'split', title: t('ws.newTerminal'), fn: () => addTerminal() },
+        ];
+        const closeBtn = header.querySelector('.grid-cell-close');
+        for (const a of actions) {
+          const btn = document.createElement('button');
+          btn.className = 'grid-cell-action';
+          btn.title = a.title;
+          btn.innerHTML = I(a.icon, { size: 14 });
+          btn.addEventListener('click', (e) => { e.stopPropagation(); a.fn(); });
+          if (closeBtn) closeBtn.before(btn);
+        }
+      }
+    },
     onChange: (state: any) => {
       persistLayout();
       // Lazy actions když panel přibyl — projdi všechny řádky
@@ -465,22 +482,23 @@ async function createWorkspace(projectPath: string, projectName: string, project
           const r = await levis.popoutPanel({ panelType: 'editor', payload: { files, projectPath, projectName } });
           if (r?.panelId) panelPopoutMap.set(r.panelId, 'editor');
         } else if (panel === 'terminal') {
-          const first = termInstances[0];
-          const firstPty = first?.ptyId;
-          // Dumpni buffer aby popout terminal viděl historii
-          let initial = '';
-          try {
-            if (first?.term) {
-              const buf = first.term.buffer.active;
-              const lines: string[] = [];
-              for (let i = 0; i < buf.length; i++) {
-                const line = buf.getLine(i);
-                if (line) lines.push(line.translateToString(true));
+          // Dumpni buffer všech terminálů pro popout
+          const terminals = termInstances.map((inst, idx) => {
+            let initial = '';
+            try {
+              if (inst.term) {
+                const buf = inst.term.buffer.active;
+                const lines: string[] = [];
+                for (let i = 0; i < buf.length; i++) {
+                  const line = buf.getLine(i);
+                  if (line) lines.push(line.translateToString(true));
+                }
+                initial = lines.join('\r\n');
               }
-              initial = lines.join('\r\n');
-            }
-          } catch {}
-          const r = await levis.popoutPanel({ panelType: 'terminal', payload: { ptyId: firstPty, projectPath, projectName, initial } });
+            } catch {}
+            return { ptyId: inst.ptyId, label: `Terminal ${idx + 1}`, initial };
+          });
+          const r = await levis.popoutPanel({ panelType: 'terminal', payload: { terminals, projectPath, projectName } });
           if (r?.panelId) panelPopoutMap.set(r.panelId, 'terminal');
         } else {
           showToast(`Panel "${PANEL_LABELS[panel].text}" zatím nepodporuje popout`, 'warning');
@@ -729,7 +747,7 @@ async function createWorkspace(projectPath: string, projectName: string, project
     persistLayout();
   });
 
-  // ── Splitter utility (no memory leak) ──
+  // ── Splitter utility (overlay + user-select lock, sjednoceno s grid splitterem) ──
   function setupDragSplitter(
     handle: HTMLElement,
     direction: 'vertical' | 'horizontal',
@@ -738,23 +756,42 @@ async function createWorkspace(projectPath: string, projectName: string, project
     handle.addEventListener('mousedown', (e: MouseEvent) => {
       e.preventDefault();
       handle.classList.add('dragging');
+      document.body.style.userSelect = 'none';
+      document.body.style.cursor = direction === 'vertical' ? 'col-resize' : 'row-resize';
 
-      const onMove = (e: MouseEvent) => {
+      // Overlay zabrání iframe/xterm žrát mouse events
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;cursor:' + (direction === 'vertical' ? 'col-resize' : 'row-resize');
+      document.body.appendChild(overlay);
+
+      const onMove = (ev: MouseEvent) => {
         const rect = parent.getBoundingClientRect();
         if (direction === 'vertical') {
-          const pct = ((e.clientX - rect.left) / rect.width) * 100;
+          let pct = ((ev.clientX - rect.left) / rect.width) * 100;
+          // Snap k 50%
+          if (Math.abs(pct - 50) < 3) pct = 50;
+          pct = Math.min(85, Math.max(15, pct));
           const prev = handle.previousElementSibling as HTMLElement;
-          if (prev) prev.style.width = `${Math.min(70, Math.max(30, pct))}%`;
+          if (prev) {
+            prev.style.flex = 'none';
+            prev.style.width = `${pct}%`;
+          }
         }
-        for (const t of termInstances) {
-          try { t.fitAddon.fit(); } catch {}
+        for (const ti of termInstances) {
+          try { ti.fitAddon.fit(); } catch {}
         }
       };
 
       const onUp = () => {
         handle.classList.remove('dragging');
+        document.body.style.userSelect = '';
+        document.body.style.cursor = '';
+        overlay.remove();
         document.removeEventListener('mousemove', onMove);
         document.removeEventListener('mouseup', onUp);
+        for (const ti of termInstances) {
+          try { ti.fitAddon.fit(); } catch {}
+        }
       };
 
       document.addEventListener('mousemove', onMove);
@@ -879,11 +916,6 @@ async function createWorkspace(projectPath: string, projectName: string, project
     showToast(t('toast.filesAttached', { n: files.length }), 'info');
   });
 
-  statusBar.querySelector('.status-btn-split')!.addEventListener('click', () => {
-    switchLeftPanel('terminal');
-    addTerminal();
-  });
-
   statusBar.querySelector('.status-btn-save')!.addEventListener('click', () => {
     sendToFirstTerminal('/takjo');
     showToast(t('toast.takjo'), 'info');
@@ -915,7 +947,6 @@ async function createWorkspace(projectPath: string, projectName: string, project
       if (ccIdleTimer) clearTimeout(ccIdleTimer);
       ccIdleTimer = setTimeout(() => {
         updateGitStatus();
-        if (fileTreeInstance) fileTreeInstance.refresh();
       }, 2000);
     });
     cleanups.push(unsubAutoRefresh);
@@ -934,9 +965,15 @@ async function createWorkspace(projectPath: string, projectName: string, project
   // ── Pop-out button ────────────────────
   let poppedOut = false;
   async function popoutArtifact(): Promise<void> {
+    const currentUrl = browserInstance?.getUrl?.() || '';
     let filePath: string | null = null;
-    // Fallback: pokud artifact nemá načtený soubor, najdi index.html v projektu
-    if (!filePath) {
+    let url: string | undefined;
+
+    if (currentUrl.startsWith('http://') || currentUrl.startsWith('https://')) {
+      url = currentUrl;
+    } else if (currentUrl.startsWith('file:///')) {
+      filePath = currentUrl.replace('file:///', '').replace(/\//g, '\\');
+    } else {
       const sep = projectPath.includes('\\') ? '\\' : '/';
       const candidates = [
         projectPath + sep + 'index.html',
@@ -953,6 +990,7 @@ async function createWorkspace(projectPath: string, projectName: string, project
     await levis.popout({
       type: 'browser',
       filePath: filePath || undefined,
+      url,
     });
     grid.removePanel('browser');
     poppedOut = true;

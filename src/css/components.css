@@ -37,16 +37,11 @@
 /* ── Terminal ────────────────────── */
 
 .panel-terminal { display: flex; flex-direction: column; background: var(--bg-base); overflow: hidden; min-height: 0; border-radius: inherit; position: relative; }
-.terminal-toolbar {
-  display: flex; align-items: center; gap: var(--space-2); flex-shrink: 0;
-  padding: var(--space-2) var(--space-4);
-  font-size: 12px;
-}
-.terminal-toolbar .project-label { font-weight: 600; color: var(--accent); }
 .term-status-dot {
-  width: 10px; height: 10px; border-radius: 50%;
-  display: inline-block; flex-shrink: 0; margin-right: 6px;
+  width: 8px; height: 8px; border-radius: 50%;
+  position: absolute; top: 8px; right: 8px; z-index: 5;
   transition: background 200ms ease, box-shadow 200ms ease;
+  pointer-events: none;
 }
 .term-status-idle { background: #10b981; box-shadow: 0 0 6px rgba(16,185,129,0.5); }
 .term-status-working {
@@ -77,25 +72,10 @@
       0 0 38px rgba(59,130,246,0.8);
   }
 }
-.terminal-toolbar .terminal-label {
-  padding: 3px var(--space-2); font-size: 10px;
-  background: var(--accent-dim); color: var(--accent);
-  border-radius: var(--radius-pill);
-  text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;
-}
-.terminal-toolbar button {
-  background: transparent; border: none; color: var(--text-muted);
-  cursor: pointer; font-size: 12px; padding: 4px var(--space-2);
-  border-radius: var(--radius-sm); transition: all var(--t-fast) var(--ease);
-}
-.terminal-toolbar button:hover { background: var(--bg-elev-2); color: var(--text); }
-.btn-close-term:hover { background: var(--error) !important; color: white !important; }
-/* Jediný terminál křížek nepotřebuje */
-.term-split-container > .term-slot:only-child .btn-close-term { display: none; }
-.terminal-container { flex: 1; padding: var(--space-2) var(--space-3); overflow: hidden; min-height: 0; }
+.terminal-container { flex: 1; padding: var(--space-1) var(--space-2); overflow: hidden; min-height: 0; }
 
 .term-search-bar {
-  position: absolute; top: 40px; right: var(--space-3); z-index: 10;
+  position: relative; z-index: 10; flex-shrink: 0;
   padding: var(--space-2) var(--space-3); background: var(--bg-elev-2);
   border-radius: var(--radius);
   box-shadow: var(--shadow-lg);
@@ -507,11 +487,11 @@
 .file-tree-btn:hover { color: var(--accent); background: var(--bg-elev-1); }
 .file-tree-content { flex: 1; overflow-y: auto; padding: var(--space-1) var(--space-1); }
 .file-tree-item {
-  display: flex; align-items: center; gap: 4px;
-  padding: 3px 6px; cursor: pointer; font-size: 12px;
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 8px; cursor: pointer; font-size: 12px;
   border-radius: var(--radius-xs);
   transition: background var(--t-fast) var(--ease); user-select: none;
-  height: 26px;
+  height: 28px;
 }
 .file-tree-item:hover { background: var(--bg-elev-1); }
 .ft-active { background: var(--accent-dim) !important; }
@@ -524,7 +504,7 @@
 }
 .ft-chevron-spacer { flex-shrink: 0; width: 14px; }
 .ft-icon {
-  flex-shrink: 0; width: 16px; height: 16px;
+  flex-shrink: 0; width: 18px; height: 18px;
   display: flex; align-items: center; justify-content: center;
   color: var(--text-muted);
 }
@@ -651,7 +631,7 @@
   display: flex; align-items: center; gap: var(--space-3); flex-shrink: 0;
   padding: 0 var(--space-4); background: var(--bg-base);
   font-size: 11px; height: 38px;
-  margin: 0 var(--space-2) var(--space-2);
+  margin: var(--space-1) var(--space-2) var(--space-2);
   border-radius: var(--radius);
   border: 1px solid var(--border);
 }
@@ -1087,6 +1067,13 @@
   display: flex; align-items: center; justify-content: center;
 }
 .grid-cell-close:hover { background: var(--error); color: white; }
+.grid-cell-action {
+  background: transparent; border: none; color: var(--text-muted);
+  width: 22px; height: 22px; border-radius: var(--radius-sm);
+  cursor: pointer; font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+}
+.grid-cell-action:hover { background: var(--accent-dim); color: var(--accent); }
 
 .grid-cell-body {
   flex: 1; display: flex; flex-direction: column;
@@ -1097,18 +1084,7 @@
   overflow: hidden; min-height: 0;
 }
 
-.grid-splitter::after {
-  content: ''; position: absolute; inset: 0;
-  background: var(--border); border-radius: var(--radius-pill);
-  margin: auto; transition: all var(--t-base) var(--ease);
-}
-.grid-splitter-v::after { width: 4px; height: 36px; }
-.grid-splitter-h::after { height: 4px; width: 36px; }
-.grid-splitter:hover::after {
-  background: var(--accent); box-shadow: 0 0 12px var(--accent-glow);
-}
-.grid-splitter-v:hover::after { height: 48px; }
-.grid-splitter-h:hover::after { width: 48px; }
+/* Grid splitter handle — styly přes sdílený .split-handle v layout.css */
 
 .grid-drag-ghost {
   position: fixed; pointer-events: none; z-index: 9999;
@@ -1140,7 +1116,7 @@
   background: var(--bg-elev-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: 20px; min-width: 320px; max-width: 480px;
+  padding: 24px; min-width: 360px; max-width: 480px;
   box-shadow: var(--shadow-lg), 0 20px 60px rgba(0,0,0,0.5);
 }
 .grid-add-modal-title {
@@ -1149,11 +1125,11 @@
   margin-bottom: 14px; text-align: center;
 }
 .grid-add-modal-list {
-  display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
 }
 .grid-add-modal-item {
-  display: flex; flex-direction: column; align-items: center; gap: 6px;
-  padding: 14px 8px; background: var(--bg-elev-1);
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  padding: 20px 12px; background: var(--bg-elev-1);
   border: 1px solid var(--border); color: var(--text);
   font-size: 12px; cursor: pointer;
   border-radius: var(--radius-md); font-family: inherit;
@@ -1163,7 +1139,7 @@
   background: var(--bg-elev-2); color: var(--accent);
   border-color: var(--accent); transform: translateY(-1px);
 }
-.grid-add-modal-icon { font-size: 18px; }
+.grid-add-modal-icon { font-size: 26px; }
 .grid-add-modal-text { font-weight: 500; }
 
 /* ── Quick file open (Ctrl+P) ── */

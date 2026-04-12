@@ -2,8 +2,6 @@
    ARTIFACT PREVIEW
    ═══════════════════════════════════ */
 
-.panel-artifact { display: flex; flex-direction: column; flex: 1; background: var(--bg-base); min-height: 0; min-width: 0; border-radius: inherit; }
-.panel-mobile { display: flex; flex-direction: column; flex: 1; min-height: 0; min-width: 0; }
 
 .artifact-panel { display: flex; flex-direction: column; flex: 1; min-height: 0; min-width: 0; }
 

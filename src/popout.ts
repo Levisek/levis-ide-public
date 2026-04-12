@@ -15,7 +15,20 @@ let currentFilePath: string | null = null;
 
 function initPopout(): void {
   const iframe = document.getElementById('popout-iframe') as HTMLIFrameElement;
+  const webview = document.getElementById('popout-webview') as any;
   const fileLabel = document.querySelector('.popout-file') as HTMLElement;
+  let useWebview = false;
+
+  function showIframe(): void {
+    useWebview = false;
+    iframe.style.display = '';
+    webview.style.display = 'none';
+  }
+  function showWebview(): void {
+    useWebview = true;
+    iframe.style.display = 'none';
+    webview.style.display = 'flex';
+  }
 
   document.getElementById('pop-min')!.addEventListener('click', () => {
     popoutApi.minimize();
@@ -38,11 +51,18 @@ function initPopout(): void {
       currentFilePath = data.filePath;
       const name = data.filePath.replace(/\\/g, '/').split('/').pop();
       fileLabel.textContent = name || '';
+      showIframe();
       iframe.src = 'file:///' + data.filePath.replace(/\\/g, '/');
     } else if (data.url) {
       currentFilePath = null;
       fileLabel.textContent = data.url;
-      iframe.src = data.url;
+      if (data.url.startsWith('http://') || data.url.startsWith('https://')) {
+        showWebview();
+        webview.src = data.url;
+      } else {
+        showIframe();
+        iframe.src = data.url;
+      }
     }
   });
 
@@ -50,6 +70,8 @@ function initPopout(): void {
   popoutApi.onRefresh(() => {
     if (currentFilePath) {
       iframe.src = 'file:///' + currentFilePath.replace(/\\/g, '/') + '?t=' + Date.now();
+    } else if (useWebview) {
+      try { webview.reload(); } catch {}
     } else {
       try { iframe.contentWindow?.location.reload(); } catch {}
     }
@@ -59,6 +81,8 @@ function initPopout(): void {
   document.querySelector('.pop-reload')!.addEventListener('click', () => {
     if (currentFilePath) {
       iframe.src = 'file:///' + currentFilePath.replace(/\\/g, '/') + '?t=' + Date.now();
+    } else if (useWebview) {
+      try { webview.reload(); } catch {}
     } else {
       try { iframe.contentWindow?.location.reload(); } catch {}
     }
@@ -79,30 +103,32 @@ function initPopout(): void {
       sizeBtns.forEach(b => b.classList.remove('pop-size-active'));
       btn.classList.add('pop-size-active');
       const content = document.getElementById('popout-content') as HTMLElement;
+      const target = useWebview ? webview : iframe;
       switch (size) {
         case 'mobile':
-          iframe.style.width = '375px';
-          iframe.style.margin = '0 auto';
+          target.style.width = '375px';
+          target.style.margin = '0 auto';
           content.classList.add('artifact-device-frame');
           break;
         case 'tablet':
-          iframe.style.width = '768px';
-          iframe.style.margin = '0 auto';
+          target.style.width = '768px';
+          target.style.margin = '0 auto';
           content.classList.add('artifact-device-frame');
           break;
         default:
-          iframe.style.width = '100%';
-          iframe.style.margin = '0';
+          target.style.width = '100%';
+          target.style.margin = '0';
           content.classList.remove('artifact-device-frame');
       }
     });
   });
 
-  // ── DevTools for iframe ──
+  // ── DevTools for iframe / webview ──
   document.querySelector('.pop-devtools')!.addEventListener('click', () => {
-    if ((iframe as any).openDevTools) {
-      if ((iframe as any).isDevToolsOpened()) (iframe as any).closeDevTools();
-      else (iframe as any).openDevTools();
+    const target = useWebview ? webview : iframe;
+    if (target.openDevTools) {
+      if (target.isDevToolsOpened()) target.closeDevTools();
+      else target.openDevTools();
     }
   });
 

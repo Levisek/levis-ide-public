@@ -110,15 +110,15 @@ async function createFileTree(
   function getFileIcon(node: FileTreeNode): { svg: string; cls: string } {
     if (node.isDirectory) {
       return node.expanded
-        ? { svg: I('folder-open', { size: 14 }), cls: 'ft-icon-folder-open' }
-        : { svg: I('folder', { size: 14 }), cls: 'ft-icon-folder' };
+        ? { svg: I('folder-open', { size: 16 }), cls: 'ft-icon-folder-open' }
+        : { svg: I('folder', { size: 16 }), cls: 'ft-icon-folder' };
     }
     const byName = FILE_NAME_MAP[node.name];
-    if (byName) return { svg: I(byName.icon, { size: 14 }), cls: byName.cls };
+    if (byName) return { svg: I(byName.icon, { size: 16 }), cls: byName.cls };
     const ext = getFileExt(node.name);
     const byExt = FILE_ICON_MAP[ext];
-    if (byExt) return { svg: I(byExt.icon, { size: 14 }), cls: byExt.cls };
-    return { svg: I('file', { size: 14 }), cls: '' };
+    if (byExt) return { svg: I(byExt.icon, { size: 16 }), cls: byExt.cls };
+    return { svg: I('file', { size: 16 }), cls: '' };
   }
 
   // ── Git status mapa ──
@@ -376,7 +376,7 @@ async function createFileTree(
       c.innerHTML = I('chevron-right', { size: 12 });
     });
     treeContainer.querySelectorAll('.ft-icon-folder-open').forEach((ic) => {
-      ic.innerHTML = I('folder', { size: 14 });
+      ic.innerHTML = I('folder', { size: 16 });
       ic.className = 'ft-icon ft-icon-folder';
     });
   });

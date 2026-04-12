@@ -17,7 +17,7 @@ type IconName =
   | 'split' | 'eye' | 'search' | 'clear' | 'info' | 'warning' | 'error'
   | 'check' | 'play' | 'stop' | 'folder' | 'file' | 'gear' | 'menu'
   | 'inspect' | 'pin' | 'help' | 'logout' | 'home' | 'arrow-up' | 'arrow-down'
-  | 'palette' | 'attach'
+  | 'palette' | 'attach' | 'touch'
   | 'folder-open' | 'chevron-right' | 'chevron-down'
   | 'file-code' | 'file-image' | 'file-json' | 'file-text';
 
@@ -74,6 +74,7 @@ const PATHS: Record<IconName, string> = {
   'arrow-down': '<line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/>',
   palette:  '<circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12" r="1.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.04-.24-.3-.39-.65-.39-1.04 0-.83.67-1.5 1.5-1.5H16c3.31 0 6-2.69 6-6 0-5.17-4.49-8.92-10-8.92z"/>',
   attach:        '<path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>',
+  touch:         '<path d="M18 11V6a4 4 0 0 0-8 0v5"/><path d="M14 10V4a2 2 0 0 0-4 0v12l-2.8-2.8a2 2 0 0 0-2.8 2.8L10 22h8a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2z"/>',
   'folder-open': '<path d="M5 19a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v1"/><path d="M3.27 15L7.5 9h13l-4.24 6H3.27z"/>',
   'chevron-right':'<polyline points="9 18 15 12 9 6"/>',
   'chevron-down': '<polyline points="6 9 12 15 18 9"/>',

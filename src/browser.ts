@@ -35,12 +35,12 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
       <button class="artifact-size-btn" data-size="tablet" title="Tablet (768px)">${I('file')}</button>
       <button class="artifact-size-btn artifact-size-active" data-size="full" title="Full">${I('browser')}</button>
     </div>
-    <button class="artifact-btn browser-touch-toggle" title="${t('mobile.touchEm')}">${I('mobile')} Touch</button>
+    <button class="artifact-btn browser-touch-toggle" title="${t('mobile.touchEm')}">${I('touch')}</button>
     <button class="artifact-btn browser-color-scheme" title="Dark / Light">☀</button>
-    <button class="artifact-btn browser-inspect" title="${t('artifact.inspectTip')}">${I('inspect')} ${t('browser.inspect')}</button>
-    <button class="artifact-btn browser-annotate" title="${t('artifact.annotateTip')}">${I('editor')} ${t('browser.annotate')}</button>
+    <button class="artifact-btn browser-inspect" title="${t('artifact.inspectTip')}">${I('inspect')}</button>
+    <button class="artifact-btn browser-annotate" title="${t('artifact.annotateTip')}">${I('editor')}</button>
     <button class="artifact-btn browser-reload" title="${t('artifact.refreshTip')}">${I('refresh')}</button>
-    <button class="artifact-btn browser-watch" title="${t('artifact.watchTip')}">${I('eye')} Watch</button>
+    <button class="artifact-btn browser-watch" title="${t('artifact.watchTip')}">${I('eye')}</button>
     <button class="artifact-btn browser-open-file" title="${t('artifact.loadHtml')}">${I('folder')}</button>
     <button class="btn-devtools" title="DevTools">${I('gear')}</button>
   `;

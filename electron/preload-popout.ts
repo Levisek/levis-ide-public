@@ -1,5 +1,12 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
+// Buffer pro data která přijdou před registrací listeneru
+let pendingLoad: any = null;
+
+ipcRenderer.on('popout:load', (_e, data) => {
+  pendingLoad = data;
+});
+
 const api = {
   minimize: () => ipcRenderer.send('popout:minimize'),
   toggleMaximize: () => ipcRenderer.send('popout:toggleMaximize'),
@@ -7,6 +14,12 @@ const api = {
   toggleFullscreen: () => ipcRenderer.send('popout:toggleFullscreen'),
   sendPrompt: (prompt: string) => ipcRenderer.send('popout:sendPrompt', prompt),
   onLoad: (cb: (data: any) => void) => {
+    // Doruč data co přišla před registrací
+    if (pendingLoad) {
+      const d = pendingLoad;
+      pendingLoad = null;
+      queueMicrotask(() => cb(d));
+    }
     const handler = (_e: any, data: any) => cb(data);
     ipcRenderer.on('popout:load', handler);
     return () => { ipcRenderer.off('popout:load', handler); };

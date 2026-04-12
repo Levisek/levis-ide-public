@@ -15,6 +15,9 @@ interface TerminalInstance {
   fitAddon: any;
   searchAddon: any;
   container: HTMLElement;
+  toggleSearch: () => void;
+  clear: () => void;
+  close: () => void;
   getState: () => 'idle' | 'working' | 'waiting';
   onStateChange: (cb: (state: 'idle' | 'working' | 'waiting') => void) => () => void;
   dispose: () => void;
@@ -27,25 +30,15 @@ async function createTerminal(
   autoCommand?: string,
   label?: string
 ): Promise<TerminalInstance> {
-  // Toolbar
-  const toolbar = document.createElement('div');
-  toolbar.className = 'terminal-toolbar';
-  const labelHtml = label ? ` <span class="terminal-label">${label}</span>` : '';
-  const I = (window as any).icon;
-  toolbar.innerHTML = `
-    <span class="term-status-dot term-status-idle" title="${t('terminal.status')}"></span>
-    <span class="project-label">${projectName}</span>${labelHtml}
-    <span style="flex:1"></span>
-    <button class="btn-search-term" title="${t('terminal.search')}">${I('search')}</button>
-    <button class="btn-restart" title="${t('ws.restartCC')}">${I('restart')} Restart CC</button>
-    <button class="btn-clear" title="${t('terminal.clear')}">${I('clear')} Clear</button>
-    <button class="btn-close-term" title="${t('terminal.close')}">${I('close')}</button>
-  `;
-  container.appendChild(toolbar);
+  // Status dot overlay (v rohu pane, žádný toolbar)
+  const statusDot = document.createElement('span');
+  statusDot.className = 'term-status-dot term-status-idle';
+  statusDot.title = t('terminal.status');
+  container.style.position = 'relative';
+  container.appendChild(statusDot);
 
   // Status detector
   const ccDetector = new ((window as any).CCStateDetector)();
-  const statusDot = toolbar.querySelector('.term-status-dot') as HTMLElement;
   let currentState: 'idle' | 'working' | 'waiting' = 'idle';
   let stateTimer: any = null;
   const stateListeners: Array<(s: 'idle' | 'working' | 'waiting') => void> = [];
@@ -295,15 +288,11 @@ async function createTerminal(
     }
   }, 1000);
 
-  // Toolbar buttons
-  const btnSearch = toolbar.querySelector('.btn-search-term') as HTMLElement;
-  const btnRestart = toolbar.querySelector('.btn-restart') as HTMLElement;
-  const btnClear = toolbar.querySelector('.btn-clear') as HTMLElement;
-
+  // Search bar (toggled from grid header)
   let searchBarVisible = false;
   let searchBar: HTMLElement | null = null;
 
-  btnSearch.addEventListener('click', () => {
+  function toggleSearch(): void {
     if (searchBarVisible && searchBar) {
       searchBar.remove();
       searchBarVisible = false;
@@ -312,32 +301,16 @@ async function createTerminal(
     searchBar = document.createElement('div');
     searchBar.className = 'term-search-bar';
     searchBar.innerHTML = `<input type="text" class="term-search-input" placeholder="${t('terminal.searchPh')}">`;
-    toolbar.after(searchBar);
+    container.insertBefore(searchBar, termContainer);
     searchBarVisible = true;
     const input = searchBar.querySelector('.term-search-input') as HTMLInputElement;
     input.focus();
     input.addEventListener('input', () => searchAddon.findNext(input.value));
     input.addEventListener('keydown', (e: KeyboardEvent) => {
       if (e.key === 'Enter') searchAddon.findNext(input.value);
-      if (e.key === 'Escape') {
-        searchBar!.remove();
-        searchBarVisible = false;
-      }
+      if (e.key === 'Escape') toggleSearch();
     });
-  });
-
-  btnRestart.addEventListener('click', () => {
-    levis.writePty(ptyId, '\x03');
-    setTimeout(() => levis.writePty(ptyId, 'claude\r'), 500);
-  });
-
-  btnClear.addEventListener('click', () => term.clear());
-
-  // Close button — dispatches custom event so workspace can handle removal
-  const btnCloseTerm = toolbar.querySelector('.btn-close-term') as HTMLElement;
-  btnCloseTerm.addEventListener('click', () => {
-    container.dispatchEvent(new CustomEvent('term-close'));
-  });
+  }
 
   return {
     ptyId,
@@ -345,6 +318,9 @@ async function createTerminal(
     fitAddon,
     searchAddon,
     container,
+    toggleSearch,
+    clear: () => term.clear(),
+    close: () => container.dispatchEvent(new CustomEvent('term-close')),
     getState: () => currentState,
     onStateChange: (cb) => {
       stateListeners.push(cb);

@@ -10,19 +10,21 @@ interface PanelLoadData {
   payload: any;
 }
 
-let myPanelId = '';
+// PanelId z URL hash — spolehlivě dostupný hned po load, bez race condition
+let myPanelId = window.location.hash.slice(1) || '';
 
-// Handshake: nejdřív zaregistruj listener na panel:load, pak řekni mainu že jsme ready
 panelApi.onAssignId?.((panelId: string) => {
-  myPanelId = panelId;
+  if (!myPanelId) myPanelId = panelId;
 });
+
 panelApi.onLoad((data: PanelLoadData) => {
   myPanelId = data.panelId;
   const titleEl = document.getElementById('panel-title')!;
   const contentEl = document.getElementById('panel-content')!;
 
   if (data.panelType === 'terminal') {
-    titleEl.textContent = `Terminál — ${data.payload.projectName || ''}`;
+    const termCount = data.payload.terminals?.length ?? 1;
+    titleEl.textContent = `Terminál — ${data.payload.projectName || ''} (${termCount})`;
     initTerminalPanel(contentEl, data.payload);
   } else if (data.panelType === 'editor') {
     titleEl.textContent = `Editor — ${data.payload.projectName || ''}`;
@@ -30,17 +32,10 @@ panelApi.onLoad((data: PanelLoadData) => {
   }
 });
 
-// Po DOMContentLoaded řekni mainu že jsme ready a může poslat panel:load
 window.addEventListener('DOMContentLoaded', () => {
-  // Pokud už máme id z assignId, použij; jinak counter retry
-  const tryReady = () => {
-    if (myPanelId) {
-      panelApi.notifyReady?.(myPanelId);
-    } else {
-      setTimeout(tryReady, 30);
-    }
-  };
-  tryReady();
+  if (myPanelId) {
+    panelApi.notifyReady?.(myPanelId);
+  }
 });
 
 // Window controls
@@ -57,107 +52,121 @@ document.getElementById('panel-return')!.addEventListener('click', () => {
   }
 });
 
-// ── Terminal panel ──
-function initTerminalPanel(host: HTMLElement, payload: { ptyId: string; cwd: string; label?: string; projectName?: string; initial?: string }): void {
+// ── Terminal panel (multi-terminal s tab barem) ──
+interface TermEntry { ptyId: string; label: string; initial?: string }
+
+async function initTerminalPanel(host: HTMLElement, payload: any): Promise<void> {
   const T: any = (window as any).Terminal;
   const Fit: any = (window as any).FitAddon?.FitAddon;
   const Web: any = (window as any).WebLinksAddon?.WebLinksAddon;
   const Wgl: any = (window as any).WebglAddon?.WebglAddon || null;
 
-  console.log('[popout-panel] initTerminal', { hasTerminal: typeof T, hasFit: typeof Fit, ptyId: payload.ptyId });
+  // Normalizace: starý formát (single ptyId) → nový (terminals pole)
+  const terminals: TermEntry[] = payload.terminals
+    ? payload.terminals
+    : [{ ptyId: payload.ptyId, label: 'Terminal 1', initial: payload.initial }];
+
+  console.log('[popout-panel] initTerminal', { count: terminals.length });
   if (typeof T !== 'function') {
     host.innerHTML = '<div style="color:#ef4444;padding:20px;font-family:monospace;">CHYBA: window.Terminal není načtený. xterm UMD se nepovedlo.</div>';
     return;
   }
 
-  const container = document.createElement('div');
-  container.style.cssText = 'flex:1; padding: 8px 12px; min-height:0; min-width:0; width:100%; height:100%;';
-  host.appendChild(container);
-  // host musí mít flex children layout
   host.style.display = 'flex';
+  host.style.flexDirection = 'column';
   host.style.flex = '1';
   host.style.minHeight = '0';
 
-  const term = new T({
-    theme: {
-      background: '#0a0a0f', foreground: '#e8e8f0', cursor: '#ff6a00',
-      cursorAccent: '#0a0a0f',
-      selectionBackground: '#ff6a0033',
-      black: '#1a1a24', red: '#ef4444', green: '#10b981', yellow: '#f59e0b',
-      blue: '#3b82f6', magenta: '#a855f7', cyan: '#06b6d4', white: '#e8e8f0',
-      brightBlack: '#6b6b80', brightRed: '#f87171', brightGreen: '#34d399',
-      brightYellow: '#fbbf24', brightBlue: '#60a5fa', brightMagenta: '#c084fc',
-      brightCyan: '#22d3ee', brightWhite: '#ffffff',
-    },
-    fontFamily: "'JetBrains Mono', monospace",
-    fontSize: 13,
-    cursorBlink: true,
-    allowTransparency: true,
-    scrollback: 10000,
-  });
+  const fontSize = Number(await panelApi.storeGet('terminalFontSize')) || 13;
 
-  const fit = new Fit();
-  term.loadAddon(fit);
-  if (Web) term.loadAddon(new Web());
-  term.open(container);
-  if (Wgl) { try { term.loadAddon(new Wgl()); } catch {} }
+  // Tiled layout — terminály vedle sebe (jako tmux/VS Code split)
+  const termContainer = document.createElement('div');
+  termContainer.style.cssText = 'flex:1; display:flex; gap:4px; min-height:0; overflow:hidden;';
+  host.appendChild(termContainer);
 
-  // Replay buffer z hlavního okna
-  if (payload.initial) {
-    try { term.write(payload.initial); } catch {}
-  }
+  const instances: Array<{ term: any; fit: any; container: HTMLElement; ptyId: string; unsubs: Array<() => void> }> = [];
 
-  const ptyId = payload.ptyId;
+  for (let i = 0; i < terminals.length; i++) {
+    const entry = terminals[i];
+    const slot = document.createElement('div');
+    slot.style.cssText = 'flex:1; padding:4px; min-width:0; min-height:0; overflow:hidden; border-left:' + (i > 0 ? '1px solid var(--border)' : 'none') + ';';
+    termContainer.appendChild(slot);
 
-  // Listen na pty data — broadcast filter podle id
-  const unsubData = panelApi.onPtyData((id: string, data: string) => {
-    if (id === ptyId) term.write(data);
-  });
-  const unsubExit = panelApi.onPtyExit((id: string) => {
-    if (id === ptyId) term.write('\r\n\x1b[33m[Process exited]\x1b[0m\r\n');
-  });
+    const term = new T({
+      theme: {
+        background: '#0a0a0f', foreground: '#e8e8f0', cursor: '#ff6a00',
+        cursorAccent: '#0a0a0f', selectionBackground: '#ff6a0033',
+        black: '#1a1a24', red: '#ef4444', green: '#10b981', yellow: '#f59e0b',
+        blue: '#3b82f6', magenta: '#a855f7', cyan: '#06b6d4', white: '#e8e8f0',
+        brightBlack: '#6b6b80', brightRed: '#f87171', brightGreen: '#34d399',
+        brightYellow: '#fbbf24', brightBlue: '#60a5fa', brightMagenta: '#c084fc',
+        brightCyan: '#22d3ee', brightWhite: '#ffffff',
+      },
+      fontFamily: "'JetBrains Mono', monospace",
+      fontSize,
+      cursorBlink: true,
+      allowTransparency: true,
+      scrollback: 10000,
+    });
 
-  // Vstupy uživatele
-  term.onData((data: string) => panelApi.writePty(ptyId, data));
+    const fit = new Fit();
+    term.loadAddon(fit);
+    if (Web) term.loadAddon(new Web());
+    term.open(slot);
+    if (Wgl) { try { term.loadAddon(new Wgl()); } catch {} }
 
-  // Custom keys: paste/copy/shift+enter
-  term.attachCustomKeyEventHandler((e: KeyboardEvent) => {
-    if (e.type !== 'keydown') return true;
-    if ((e.ctrlKey || e.metaKey) && (e.key === 'v' || e.key === 'V')) {
-      panelApi.clipboardRead().then((text: string) => {
-        if (text) panelApi.writePty(ptyId, text);
-      }).catch(() => {});
-      return false;
-    }
-    if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C') && term.hasSelection()) {
-      panelApi.clipboardWrite(term.getSelection());
-      return false;
-    }
-    if (e.shiftKey && !e.ctrlKey && !e.altKey && e.key === 'Enter') {
-      panelApi.writePty(ptyId, '\\\r\n');
-      return false;
-    }
-    return true;
-  });
+    if (entry.initial) { try { term.write(entry.initial); } catch {} }
 
-  // Resize tracking
-  function tryFit(): void {
-    try {
-      const r = container.getBoundingClientRect();
-      if (r.width > 50 && r.height > 50) {
-        fit.fit();
-        panelApi.resizePty(ptyId, term.cols, term.rows);
+    const ptyId = entry.ptyId;
+    const unsubData = panelApi.onPtyData((id: string, data: string) => {
+      if (id === ptyId) term.write(data);
+    });
+    const unsubExit = panelApi.onPtyExit((id: string) => {
+      if (id === ptyId) term.write('\r\n\x1b[33m[Process exited]\x1b[0m\r\n');
+    });
+    term.onData((data: string) => panelApi.writePty(ptyId, data));
+
+    term.attachCustomKeyEventHandler((e: KeyboardEvent) => {
+      if (e.type !== 'keydown') return true;
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'v' || e.key === 'V')) {
+        panelApi.clipboardRead().then((text: string) => {
+          if (text) panelApi.writePty(ptyId, text);
+        }).catch(() => {});
+        return false;
       }
-    } catch {}
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C') && term.hasSelection()) {
+        panelApi.clipboardWrite(term.getSelection());
+        return false;
+      }
+      if (e.shiftKey && !e.ctrlKey && !e.altKey && e.key === 'Enter') {
+        panelApi.writePty(ptyId, '\\\r\n');
+        return false;
+      }
+      return true;
+    });
+
+    instances.push({ term, fit, container: slot, ptyId, unsubs: [unsubData, unsubExit] });
   }
-  requestAnimationFrame(tryFit);
-  const ro = new ResizeObserver(() => tryFit());
-  ro.observe(container);
-  window.addEventListener('resize', tryFit);
+
+  // Fit all terminals
+  function fitAll(): void {
+    for (const inst of instances) {
+      try {
+        const r = inst.container.getBoundingClientRect();
+        if (r.width > 50 && r.height > 50) {
+          inst.fit.fit();
+          panelApi.resizePty(inst.ptyId, inst.term.cols, inst.term.rows);
+        }
+      } catch {}
+    }
+  }
+  requestAnimationFrame(fitAll);
+  const ro = new ResizeObserver(() => fitAll());
+  ro.observe(termContainer);
+  window.addEventListener('resize', fitAll);
 
   window.addEventListener('beforeunload', () => {
-    unsubData();
-    unsubExit();
+    for (const inst of instances) inst.unsubs.forEach(u => u());
     ro.disconnect();
   });
 }
@@ -247,7 +256,7 @@ async function initEditorPanel(host: HTMLElement, payload: EditorPayload): Promi
   const editor = monaco.editor.create(editorHost, {
     theme: 'vs-dark',
     automaticLayout: true,
-    fontSize: 14,
+    fontSize: Number(await panelApi.storeGet('editorFontSize')) || 14,
     fontFamily: "'JetBrains Mono', monospace",
     minimap: { enabled: false },
     scrollBeyondLastLine: false,

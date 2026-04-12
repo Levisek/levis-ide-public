@@ -51,7 +51,7 @@ export function registerWindowHandlers(mainWindow: BrowserWindow): void {
 
     popoutWindow.loadFile(path.join(__dirname, '..', '..', '..', 'src', 'popout.html'));
 
-    popoutWindow.once('ready-to-show', () => {
+    popoutWindow.webContents.once('did-finish-load', () => {
       popoutWindow!.webContents.send('popout:load', data);
     });
 
@@ -122,11 +122,7 @@ export function registerWindowHandlers(mainWindow: BrowserWindow): void {
     panelPopouts.set(panelId, win);
     // Ulož data ať si je renderer vyzvedne handshake-em (panel:ready → panel:load)
     pendingPanelData.set(panelId, { panelId, panelType: data.panelType, payload: data.payload });
-    win.loadFile(path.join(__dirname, '..', '..', '..', 'src', 'popout-panel.html'));
-    // Předej id přes URL hash ať renderer ví kdo je hned po načtení
-    win.webContents.once('did-finish-load', () => {
-      win.webContents.send('panel:assignId', panelId);
-    });
+    win.loadFile(path.join(__dirname, '..', '..', '..', 'src', 'popout-panel.html'), { hash: panelId });
     win.on('closed', () => {
       try {
         panelPopouts.delete(panelId);

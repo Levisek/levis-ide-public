@@ -208,8 +208,9 @@ body {
 
 /* ── Lucide icons (global) ── */
 .lvi {
-  display: inline-block;
+  display: inline-flex;
   vertical-align: middle;
   flex-shrink: 0;
+  align-self: center;
 }
 button .lvi { pointer-events: none; }

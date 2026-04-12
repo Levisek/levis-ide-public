@@ -543,6 +543,11 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
             <button class="template-pick" data-tpl="">${t('hub.template.gral')} <span>${t('hub.template.gralDesc')}</span></button>
             <button class="template-pick" data-tpl="vitejs/vite/packages/create-vite/template-vanilla">${t('hub.template.viteJs')} <span>${t('hub.template.viteJsDesc')}</span></button>
             <button class="template-pick" data-tpl="vitejs/vite/packages/create-vite/template-vanilla-ts">${t('hub.template.viteTs')} <span>${t('hub.template.viteTsDesc')}</span></button>
+            <button class="template-pick" data-tpl="vitejs/vite/packages/create-vite/template-react-ts">${t('hub.template.reactTs')} <span>${t('hub.template.reactTsDesc')}</span></button>
+            <button class="template-pick" data-tpl="vitejs/vite/packages/create-vite/template-vue-ts">${t('hub.template.vueTs')} <span>${t('hub.template.vueTsDesc')}</span></button>
+            <button class="template-pick" data-tpl="vitejs/vite/packages/create-vite/template-svelte-ts">${t('hub.template.svelteTs')} <span>${t('hub.template.svelteTsDesc')}</span></button>
+            <button class="template-pick" data-tpl="__next__">${t('hub.template.next')} <span>${t('hub.template.nextDesc')}</span></button>
+            <button class="template-pick" data-tpl="__astro__">${t('hub.template.astro')} <span>${t('hub.template.astroDesc')}</span></button>
             <button class="template-pick" data-tpl="__plain__">${t('hub.template.plain')} <span>${t('hub.template.plainDesc')}</span></button>
           </div>
           <button class="template-cancel">${t('hub.template.cancel')}</button>

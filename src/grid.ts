@@ -8,7 +8,7 @@
 // "-" pro sbalení prázdné buňky/řádku.
 
 type GridPanelId =
-  | 'terminal' | 'editor' | 'diff'
+  | 'terminal' | 'editor' | 'diff' | 'audit' | 'tokens'
   | 'browser';
 
 interface GridRow {
@@ -28,6 +28,8 @@ interface GridOptions {
   getLabel: (panel: GridPanelId) => { icon: string; text: string };
   onChange?: (state: GridState) => void;
   onAfterRender?: () => void;
+  // Extra akční tlačítka v headeru (např. split terminal)
+  onHeaderRender?: (panel: GridPanelId, header: HTMLElement) => void;
   // Drag panelu mimo workspace bounds → tear-out do popout okna
   onDragOut?: (panel: GridPanelId, x: number, y: number) => void;
 }
@@ -175,7 +177,7 @@ function createGrid(opts: GridOptions): GridApi {
     root.style.flexDirection = 'column';
     root.style.width = '100%';
     root.style.height = '100%';
-    root.style.gap = state.rows.length > 1 ? '8px' : '0';
+    root.style.gap = state.rows.length > 1 ? '0' : '0';
 
     for (let ri = 0; ri < state.rows.length; ri++) {
       const row = state.rows[ri];
@@ -185,7 +187,7 @@ function createGrid(opts: GridOptions): GridApi {
       rowEl.style.flexDirection = 'row';
       rowEl.style.minHeight = '0';
       rowEl.style.minWidth = '0';
-      rowEl.style.gap = row.cells.length > 1 ? '8px' : '0';
+      rowEl.style.gap = row.cells.length > 1 ? '0' : '0';
       rowEl.style.position = 'relative';
       if (state.locked) {
         rowEl.style.flex = '1';
@@ -221,6 +223,7 @@ function createGrid(opts: GridOptions): GridApi {
             setCell({ row: ri, col: ci }, null);
           });
           header.appendChild(closeBtn);
+          if (opts.onHeaderRender) opts.onHeaderRender(panel, header);
           cell.appendChild(header);
 
           const body = document.createElement('div');
@@ -245,7 +248,7 @@ function createGrid(opts: GridOptions): GridApi {
       // Splitter mezi sloupci v řádku (jen když 2 buňky a !locked)
       if (row.cells.length === 2 && !state.locked) {
         const vSplit = document.createElement('div');
-        vSplit.className = 'grid-splitter grid-splitter-v';
+        vSplit.className = 'grid-splitter grid-splitter-v split-handle';
         vSplit.style.cssText =
           `position:absolute;top:0;bottom:0;width:8px;` +
           `left:calc(${row.colSizes[0]}% - 4px);cursor:col-resize;z-index:5;`;
@@ -290,7 +293,7 @@ function createGrid(opts: GridOptions): GridApi {
     // Splitter mezi řádky
     if (state.rows.length === 2 && !state.locked) {
       const hSplit = document.createElement('div');
-      hSplit.className = 'grid-splitter grid-splitter-h';
+      hSplit.className = 'grid-splitter grid-splitter-h split-handle split-handle-h';
       hSplit.style.cssText =
         `position:absolute;left:0;right:0;height:8px;` +
         `top:calc(${state.rowSizes[0]}% - 4px);cursor:row-resize;z-index:5;`;
