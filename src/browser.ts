@@ -148,7 +148,6 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
           webview.style.border = '1px solid rgba(255,255,255,0.12)';
           webview.style.borderRadius = '24px';
           webview.style.boxShadow = '0 8px 40px rgba(0,0,0,0.5)';
-          if (touchWebContentsId != null) try { await levis.mobileEnableTouch(touchWebContentsId); } catch {}
           break;
         case 'tablet':
           resetWebviewFull();
@@ -158,11 +157,9 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
           webviewContainer.style.display = 'flex';
           webviewContainer.style.justifyContent = 'center';
           webviewContainer.style.overflow = 'auto';
-          if (touchWebContentsId != null) try { await levis.mobileDisableTouch(touchWebContentsId); } catch {}
           break;
         default:
           resetWebviewFull();
-          if (touchWebContentsId != null) try { await levis.mobileDisableTouch(touchWebContentsId); } catch {}
       }
     });
   });
@@ -184,11 +181,18 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
   });
   document.addEventListener('mouseup', () => { touchCursor.classList.remove('pressed'); });
 
+  function ensureWebContentsId(): void {
+    if (touchWebContentsId == null) {
+      try { touchWebContentsId = (webview as any).getWebContentsId(); } catch {}
+    }
+  }
+
   btnTouchToggle.addEventListener('click', async () => {
     touchEmulationOn = !touchEmulationOn;
     btnTouchToggle.classList.toggle('artifact-btn-active', touchEmulationOn);
     if (!touchEmulationOn) touchCursor.classList.remove('visible', 'pressed');
     webviewContainer.style.cursor = touchEmulationOn ? 'none' : '';
+    ensureWebContentsId();
     if (touchWebContentsId != null) {
       if (touchEmulationOn) await levis.mobileEnableTouch(touchWebContentsId);
       else await levis.mobileDisableTouch(touchWebContentsId);
@@ -203,6 +207,7 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
     colorScheme = colorScheme === 'light' ? 'dark' : 'light';
     btnColorScheme.textContent = colorScheme === 'dark' ? '☾' : '☀';
     btnColorScheme.classList.toggle('artifact-btn-active', colorScheme === 'dark');
+    ensureWebContentsId();
     if (touchWebContentsId != null) {
       await levis.mobileSetColorScheme(touchWebContentsId, colorScheme);
     }

@@ -262,6 +262,13 @@ async function createWorkspace(projectPath: string, projectName: string, project
     }
     const termSlot = document.createElement('div');
     termSlot.className = 'term-slot';
+    const termIdx = termInstances.length;
+    termSlot.addEventListener('mousedown', () => {
+      activeTerminalIndex = termIdx;
+      termContainer.querySelectorAll('.term-slot').forEach((s, i) => {
+        (s as HTMLElement).classList.toggle('term-slot-active', i === termIdx);
+      });
+    });
     termContainer.appendChild(termSlot);
 
     // Add splitter between terminals
@@ -826,10 +833,12 @@ async function createWorkspace(projectPath: string, projectName: string, project
     queueWatcherAttached = true;
   }
 
+  let activeTerminalIndex = 0;
+
   function sendToFirstTerminal(text: string): void {
-    const first = termInstances[0];
-    if (!first) return;
-    const state = first.getState ? first.getState() : 'idle';
+    const target = termInstances[activeTerminalIndex] || termInstances[0];
+    if (!target) return;
+    const state = target.getState ? target.getState() : 'idle';
     if (state !== 'idle') {
       promptQueue.push(text);
       attachQueueWatcher();
@@ -838,7 +847,7 @@ async function createWorkspace(projectPath: string, projectName: string, project
       return;
     }
     switchLeftPanel('terminal');
-    levis.writePty(first.ptyId, text + '\r');
+    levis.writePty(target.ptyId, text + '\r');
   }
 
   const btnRestart = statusBar.querySelector('.status-btn-restart') as HTMLButtonElement;

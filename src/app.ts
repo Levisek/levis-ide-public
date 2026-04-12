@@ -226,7 +226,7 @@ async function init(): Promise<void> {
   tabs.push(hubTab);
   hubTab.tabEl.addEventListener('click', () => switchTab('hub'));
 
-  renderHub(hubContent, openProject);
+  await renderHub(hubContent, openProject);
 
   document.getElementById('btn-new-tab')!.addEventListener('click', () => {
     switchTab('hub');
@@ -241,23 +241,12 @@ async function init(): Promise<void> {
     }, 150);
   });
   const btnHelp = document.getElementById('btn-help');
-  if (btnHelp) {
-    btnHelp.style.cssText += ';-webkit-app-region:no-drag;pointer-events:auto;position:relative;z-index:10;';
-    btnHelp.addEventListener('click', (e) => { e.stopPropagation(); showHelpOverlay(); });
-  }
+  if (btnHelp) btnHelp.addEventListener('click', () => showHelpOverlay());
   const btnSettings = document.getElementById('btn-settings');
-  if (btnSettings) {
-    btnSettings.style.cssText += ';-webkit-app-region:no-drag;pointer-events:auto;position:relative;z-index:10;';
-    btnSettings.addEventListener('click', (e) => { e.stopPropagation();
-      if ((window as any).openHubSettings) {
-        (window as any).openHubSettings();
-      } else {
-        // Hub ještě nedoběhl, přepni na hub a zkus znovu
-        switchTab('hub');
-        setTimeout(() => (window as any).openHubSettings?.(), 300);
-      }
-    });
-  }
+  if (btnSettings) btnSettings.addEventListener('click', () => {
+    if ((window as any).openHubSettings) (window as any).openHubSettings();
+    else { switchTab('hub'); setTimeout(() => (window as any).openHubSettings?.(), 1000); }
+  });
 
   // ── Native keyboard shortcuts (NO hotkeys-js — no Ctrl+C/V conflict) ──
   document.addEventListener('keydown', (e: KeyboardEvent) => {
