@@ -47,14 +47,20 @@
   box-shadow: var(--shadow-sm);
   font-weight: 600;
 }
-/* CC pracuje — oranžový pulsující border */
-.tab.tab-cc-working {
-  border: 1px solid var(--accent);
-  animation: tab-working-pulse 1.2s ease-in-out infinite;
+/* Per-projekt barva — border kolem tabu */
+.tab[style*="--tab-color"] {
+  border: 1.5px solid var(--tab-color);
 }
-@keyframes tab-working-pulse {
-  0%, 100% { border-color: var(--accent); box-shadow: 0 0 4px var(--accent-glow); }
-  50% { border-color: var(--accent-soft); box-shadow: 0 0 12px var(--accent-glow); }
+/* CC pracuje — jemný oranžový dot nahoře (ne border) */
+.tab.tab-cc-working::after {
+  content: ''; position: absolute;
+  top: 4px; left: 50%; transform: translateX(-50%);
+  width: 6px; height: 6px; background: var(--accent); border-radius: 50%;
+  animation: tab-working-dot 1.4s ease-in-out infinite;
+}
+@keyframes tab-working-dot {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
 }
 /* CC dokončilo na neaktivním tabu — pulsující puntík */
 .tab.tab-has-badge::before {

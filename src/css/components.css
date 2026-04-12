@@ -126,7 +126,7 @@
   flex-shrink: 0;
 }
 .browser-toolbar .artifact-btn { flex-shrink: 0; }
-.browser-toolbar .browser-url { min-width: 120px; }
+.browser-toolbar .browser-url { min-width: 120px; flex-basis: 100%; order: -1; }
 .browser-toolbar button:hover:not(:disabled) { background: var(--bg-elev-2); color: var(--text); }
 .browser-toolbar button:disabled { opacity: 0.3; cursor: not-allowed; }
 .browser-url {

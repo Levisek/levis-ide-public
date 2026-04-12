@@ -240,12 +240,15 @@ async function init(): Promise<void> {
       }
     }, 150);
   });
-  const btnHelp = document.getElementById('btn-help');
-  if (btnHelp) btnHelp.addEventListener('click', () => showHelpOverlay());
-  const btnSettings = document.getElementById('btn-settings');
-  if (btnSettings) btnSettings.addEventListener('click', () => {
-    if ((window as any).openHubSettings) (window as any).openHubSettings();
-    else { switchTab('hub'); setTimeout(() => (window as any).openHubSettings?.(), 1000); }
+  // Help + Settings — delegovaný listener na document (obejde app-region drag problémy)
+  document.addEventListener('click', (e) => {
+    const el = (e.target as HTMLElement).closest('#btn-help');
+    if (el) { showHelpOverlay(); return; }
+    const settingsEl = (e.target as HTMLElement).closest('#btn-settings');
+    if (settingsEl) {
+      if ((window as any).openHubSettings) (window as any).openHubSettings();
+      else { switchTab('hub'); setTimeout(() => (window as any).openHubSettings?.(), 1000); }
+    }
   });
 
   // ── Native keyboard shortcuts (NO hotkeys-js — no Ctrl+C/V conflict) ──
@@ -556,6 +559,12 @@ async function openProject(project: any): Promise<void> {
     <span class="tab-label">${escapeHtmlSafe(project.name)}</span>
     <span class="tab-close">&times;</span>
   `;
+  // Per-projekt barevný border na tabu
+  try {
+    const colors: Record<string, string> = (await levis.storeGet('projectColors')) || {};
+    const c = colors[project.path];
+    if (c) tabEl.style.setProperty('--tab-color', c);
+  } catch {}
   tabsContainer.appendChild(tabEl);
 
   tabEl.addEventListener('click', (e: MouseEvent) => {
