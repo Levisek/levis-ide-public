@@ -10,12 +10,9 @@
   gap: var(--space-1);
 }
 /* Všechny interaktivní prvky musí mít no-drag */
-#tabs, #tabs *, #toolbar-actions, #toolbar-actions *,
+#tabs, #tabs *,
 #window-controls, #window-controls *, #btn-new-tab {
   -webkit-app-region: no-drag;
-}
-#toolbar-actions {
-  display: flex; align-items: center; gap: 4px; margin-left: 8px;
 }
 
 .tab-logo {
@@ -131,14 +128,14 @@
   display: flex; -webkit-app-region: no-drag; margin-left: auto; height: 100%;
   align-items: center; gap: 2px; padding: 0 var(--space-1);
 }
-#window-controls button {
+#window-controls button:not(#btn-help):not(#btn-settings) {
   background: transparent; border: none; color: var(--text-muted);
   width: 36px; height: 28px; font-size: 12px; cursor: pointer;
   border-radius: var(--radius-sm);
   transition: all var(--t-fast) var(--ease);
   display: flex; align-items: center; justify-content: center;
 }
-#window-controls button:hover { background: var(--bg-elev-2); color: var(--text); }
+#window-controls button:not(#btn-help):not(#btn-settings):hover { background: var(--bg-elev-2); color: var(--text); }
 #btn-close:hover { background: var(--error) !important; color: white !important; }
 
 /* ═══════════════════════════════════
