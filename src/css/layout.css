@@ -10,9 +10,12 @@
   gap: var(--space-1);
 }
 /* Všechny interaktivní prvky musí mít no-drag */
-#tabs, #tabs *, #btn-help, #btn-help *, #btn-settings, #btn-settings *,
+#tabs, #tabs *, #toolbar-actions, #toolbar-actions *,
 #window-controls, #window-controls *, #btn-new-tab {
   -webkit-app-region: no-drag;
+}
+#toolbar-actions {
+  display: flex; align-items: center; gap: 4px; margin-left: 8px;
 }
 
 .tab-logo {
@@ -47,9 +50,11 @@
   box-shadow: var(--shadow-sm);
   font-weight: 600;
 }
-/* Per-projekt barva — border kolem tabu */
-.tab[style*="--tab-color"] {
-  border: 1.5px solid var(--tab-color);
+/* Per-projekt barva — dot vlevo v tabu */
+.tab[style*="--tab-color"]::before {
+  content: ''; position: absolute; left: 6px; top: 50%; transform: translateY(-50%);
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--tab-color);
 }
 /* CC pracuje — jemný oranžový dot nahoře (ne border) */
 .tab.tab-cc-working::after {
@@ -99,9 +104,6 @@
   display: flex; align-items: center; justify-content: center; white-space: nowrap;
 }
 #btn-new-tab:hover { background: rgba(255,106,0,0.2); border-color: rgba(255,106,0,0.5); }
-#btn-help, #btn-help * {
-  -webkit-app-region: no-drag;
-}
 #btn-help {
   background: transparent; border: 1px solid rgba(255,255,255,0.12);
   color: var(--text-muted); font-size: 13px; font-weight: 600;
@@ -112,9 +114,6 @@
   position: relative; z-index: 2;
 }
 #btn-help:hover { color: var(--accent); border-color: var(--accent); }
-#btn-settings, #btn-settings * {
-  -webkit-app-region: no-drag;
-}
 #btn-settings {
   background: transparent; border: 1px solid rgba(255,255,255,0.12);
   color: var(--text-muted); font-size: 13px;
