@@ -228,7 +228,7 @@ async function init(): Promise<void> {
 
   await renderHub(hubContent, openProject);
 
-  document.getElementById('btn-new-tab')!.addEventListener('click', () => {
+  document.getElementById('btn-new-tab')?.addEventListener('click', () => {
     switchTab('hub');
     setTimeout(() => {
       // Najdi tile "Nový projekt" v Hubu nebo button v empty state a klikni
