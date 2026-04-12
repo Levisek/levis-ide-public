@@ -240,16 +240,6 @@ async function init(): Promise<void> {
       }
     }, 150);
   });
-  // Help + Settings — delegovaný listener na document (obejde app-region drag problémy)
-  document.addEventListener('click', (e) => {
-    const el = (e.target as HTMLElement).closest('#btn-help');
-    if (el) { showHelpOverlay(); return; }
-    const settingsEl = (e.target as HTMLElement).closest('#btn-settings');
-    if (settingsEl) {
-      if ((window as any).openHubSettings) (window as any).openHubSettings();
-      else { switchTab('hub'); setTimeout(() => (window as any).openHubSettings?.(), 1000); }
-    }
-  });
 
   // ── Native keyboard shortcuts (NO hotkeys-js — no Ctrl+C/V conflict) ──
   document.addEventListener('keydown', (e: KeyboardEvent) => {
@@ -412,6 +402,12 @@ async function init(): Promise<void> {
     document.addEventListener('keydown', escHandler);
   }
   (window as any).showHelpOverlay = showHelpOverlay;
+
+  // Help + Settings — přímé listenery (registrujeme PO definici showHelpOverlay)
+  document.getElementById('btn-help')?.addEventListener('click', () => showHelpOverlay());
+  document.getElementById('btn-settings')?.addEventListener('click', () => {
+    if ((window as any).openHubSettings) (window as any).openHubSettings();
+  });
 
   // ── Command palette commands ──
   const cp = (window as any).commandPalette;
