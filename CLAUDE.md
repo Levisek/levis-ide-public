@@ -102,26 +102,27 @@ Kompilace: `npx tsc` — output do `dist/`
 
 ## Hotovo v1.1.0
 
-- Témata (4 color schemes) — Dark / Dark Soft / Mid / Light
-- Per-projekt barevný tag — paleta 8 barev, border kolem tabu
-- Per-projekt status — Aktivní / Pozastavený / Ukončený, skupiny v Hubu
-- Attach externích souborů do CC, drag souboru z file tree do terminálu
-- Vylepšený file tree — ikony per typ, šipky, New File/Folder
-- Floating popover sjednocen v browser i mobile (smart placement)
-- Dark/Light mode simulace v preview (CDP prefers-color-scheme)
-- Touch kurzor (oranžový), prompt fronta, CC working indikátor v tabu
-- Pravý klik v terminálu (Copy/Paste), auto-scroll, hard reload
-- Scrollbar redesign, Settings gear fix, URL bar fix, Ctrl+V fix, Shift+Enter fix
+- **Sloučení panelů** — Preview + Browser + Mobile → jeden Browser panel
+- Témata (4 color schemes), per-projekt barvy (dot v tabu), statusy (Active/Paused/Finished)
+- File tree: ikony per typ, šipky, pravý klik (rename/copy path)
+- Floating popover, Dark/Light mode, Touch kurzor (jen přes tlačítko)
+- Prompt fronta (CC busy → auto-send), aktivní terminál (klik vybere cíl)
+- Drag file tree → terminál/browser, pravý klik v terminálu (Copy/Paste)
+- Auto-scroll, hard reload, scrollbar redesign, Ctrl+V/Shift+Enter fix
+- Settings/Help přesunuty do #window-controls (Electron app-region fix)
 
 ## Bugy / known issues
 
-- **Popout terminal občas černé okno** — race condition. Workaround: zavři a otevři znovu.
+- **Popout terminal občas černé okno** — race condition
+- **Popout browser** — funguje jen pro file://, ne http://
 
-## TODO
+## TODO v1.2
 
+- Touch ikona duplikát, terminál splitter direction fix
+- Popout font size ze store, popout multi-terminal
+- New Project wizard — více šablon (React/Vue/Svelte/Next/Astro) + prázdný projekt
+- Orphaned CSS cleanup po sloučení panelů
 - Cross-platform build (macOS, Linux)
-- Drag-back gesture (popout → workspace)
-- Editor model handshake (cross-window dirty stav)
 
 ## Git
 
