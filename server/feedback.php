@@ -15,7 +15,6 @@ header('Access-Control-Allow-Headers: Content-Type, X-API-Key');
 header('Access-Control-Allow-Credentials: true');
 
 // ── Config ──
-$API_KEY = 'lvsIDE-fb-k7x9Q2mW4pR8';
 $to      = 'martin@levinger.cz';
 
 // Preflight
@@ -27,14 +26,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     echo json_encode(['error' => 'POST only']);
-    exit;
-}
-
-// ── API klíč ──
-$key = $_SERVER['HTTP_X_API_KEY'] ?? '';
-if ($key !== $API_KEY) {
-    http_response_code(403);
-    echo json_encode(['error' => 'Forbidden']);
     exit;
 }
 

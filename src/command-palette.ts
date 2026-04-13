@@ -1,5 +1,7 @@
 // ── Command Palette (Ctrl+Shift+P) ──────
 
+function escPalette(s: string): string { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
 interface PaletteCommand {
   id: string;
   label: string;
@@ -74,9 +76,9 @@ function renderFiltered(): void {
     const item = document.createElement('div');
     item.className = `palette-item${i === 0 ? ' palette-selected' : ''}`;
     item.innerHTML = `
-      <span class="palette-category">${cmd.category || 'General'}</span>
-      <span class="palette-label">${cmd.label}</span>
-      ${cmd.shortcut ? `<span class="palette-shortcut">${cmd.shortcut}</span>` : ''}
+      <span class="palette-category">${escPalette(cmd.category || 'General')}</span>
+      <span class="palette-label">${escPalette(cmd.label)}</span>
+      ${cmd.shortcut ? `<span class="palette-shortcut">${escPalette(cmd.shortcut)}</span>` : ''}
     `;
     item.addEventListener('click', () => {
       hidePalette();

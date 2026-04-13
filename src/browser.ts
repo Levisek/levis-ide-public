@@ -208,7 +208,7 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
   // ── Touch emulation ──
   const btnTouchToggle = toolbar.querySelector('.browser-touch-toggle') as HTMLElement;
 
-  document.addEventListener('mousemove', (e: MouseEvent) => {
+  const onTouchMove = (e: MouseEvent) => {
     if (!touchEmulationOn) return;
     const rect = webviewContainer.getBoundingClientRect();
     const over = e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom;
@@ -216,11 +216,14 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
     touchCursor.style.top = e.clientY + 'px';
     if (over) touchCursor.classList.add('visible');
     else touchCursor.classList.remove('visible', 'pressed');
-  });
-  document.addEventListener('mousedown', () => {
+  };
+  const onTouchDown = () => {
     if (touchEmulationOn && touchCursor.classList.contains('visible')) touchCursor.classList.add('pressed');
-  });
-  document.addEventListener('mouseup', () => { touchCursor.classList.remove('pressed'); });
+  };
+  const onTouchUp = () => { touchCursor.classList.remove('pressed'); };
+  document.addEventListener('mousemove', onTouchMove);
+  document.addEventListener('mousedown', onTouchDown);
+  document.addEventListener('mouseup', onTouchUp);
 
   function ensureWebContentsId(): void {
     if (touchWebContentsId == null) {
@@ -721,6 +724,9 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
     dispose: () => {
       stopWatch();
       inspector.dispose();
+      document.removeEventListener('mousemove', onTouchMove);
+      document.removeEventListener('mousedown', onTouchDown);
+      document.removeEventListener('mouseup', onTouchUp);
       touchCursor.remove();
       wrapper.remove();
     },

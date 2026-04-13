@@ -4,6 +4,8 @@
 // pokud kurzor opustí workspaceContainer bounds, zobrazí ghost preview;
 // na mouseup MIMO workspace zavolá onTearOut.
 
+function escDock(s: string): string { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
 interface DragOptions {
   handle: HTMLElement;            // drag handle (panel header / toolbar)
   workspaceContainer: HTMLElement; // bounds proti kterým se měří
@@ -26,7 +28,7 @@ function attachDragOut(opts: DragOptions): () => void {
         <span class="dock-ghost-dot dot-r"></span>
         <span class="dock-ghost-dot dot-y"></span>
         <span class="dock-ghost-dot dot-g"></span>
-        <span class="dock-ghost-title">${panelLabel}</span>
+        <span class="dock-ghost-title">${escDock(panelLabel)}</span>
       </div>
       <div class="dock-ghost-body">
         <div class="dock-ghost-line w70"></div>

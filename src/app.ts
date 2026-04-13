@@ -450,7 +450,6 @@ async function init(): Promise<void> {
 
     const FEEDBACK_URL = 'https://levinger.cz/feedback.php';
     const FEEDBACK_TOKEN_URL = 'https://levinger.cz/feedback_token.php';
-    const FEEDBACK_KEY = 'lvsIDE-fb-k7x9Q2mW4pR8';
 
     overlay.querySelectorAll('.feedback-submit-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
@@ -472,7 +471,7 @@ async function init(): Promise<void> {
             const res = await fetch(FEEDBACK_URL, {
               method: 'POST',
               credentials: 'include',
-              headers: { 'Content-Type': 'application/json', 'X-API-Key': FEEDBACK_KEY },
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ type: typeLabel, title, desc, captcha }),
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);

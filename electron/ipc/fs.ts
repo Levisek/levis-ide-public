@@ -307,9 +307,9 @@ export function registerFsHandlers(mainWindow: BrowserWindow): void {
     }
   });
 
-  // Otevřít https/http URL nebo mailto: v defaultním prohlížeči / mail klientu
+  // Otevřít https/http URL v defaultním prohlížeči
   ipcMain.handle('shell:openExternal', async (_event, url: string) => {
-    if (!/^https?:\/\//i.test(url) && !/^mailto:/i.test(url)) return { error: 'Only http(s) and mailto: URLs allowed' };
+    if (!/^https?:\/\//i.test(url)) return { error: 'Only http(s) URLs allowed' };
     try {
       await shell.openExternal(url);
       return { success: true };
