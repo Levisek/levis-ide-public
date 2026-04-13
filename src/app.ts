@@ -428,8 +428,8 @@ async function init(): Promise<void> {
   cp.registerCommand({ id: 'gral-vylepsit', label: t('cp.vylepsit'), category: t('cp.cat.gral'), action: () => sendToActiveTerminal('/vylepsit') });
   cp.registerCommand({ id: 'gral-harvest', label: t('cp.harvest'), category: t('cp.cat.gral'), action: () => sendToActiveTerminal('/harvest') });
   cp.registerCommand({ id: 'gral-extract', label: '/extract — Extrakce z projektu', category: 'GRAL', action: () => sendToActiveTerminal('/extract') });
-  cp.registerCommand({ id: 'gral-jeb', label: '/jeb — Git save + push', category: 'GRAL', action: () => sendToActiveTerminal('/jeb') });
-  cp.registerCommand({ id: 'gral-takjo', label: '/takjo — Git save (local)', category: 'GRAL', action: () => sendToActiveTerminal('/takjo') });
+  cp.registerCommand({ id: 'git-save', label: 'Git Save (commit)', category: 'Git', action: async () => { const cmd = (await levis.storeGet('cmdSave')) || '/commit'; sendToActiveTerminal(cmd as string); } });
+  cp.registerCommand({ id: 'git-push', label: 'Git Push (commit + push)', category: 'Git', action: async () => { const cmd = (await levis.storeGet('cmdPush')) || '/commit && git push'; sendToActiveTerminal(cmd as string); } });
 
   // Nav commands
   cp.registerCommand({ id: 'hub', label: t('cp.gotoHub'), shortcut: 'Ctrl+Shift+T', category: t('cp.cat.nav'), action: () => switchTab('hub') });

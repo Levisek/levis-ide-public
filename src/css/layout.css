@@ -47,30 +47,28 @@
   box-shadow: var(--shadow-sm);
   font-weight: 600;
 }
-/* Per-projekt barva — dot vlevo v tabu */
-.tab[style*="--tab-color"]::before {
-  content: ''; position: absolute; left: 6px; top: 50%; transform: translateY(-50%);
-  width: 6px; height: 6px; border-radius: 50%;
-  background: var(--tab-color);
+/* Per-projekt barva — levý border (jako hub tile) */
+.tab[style*="--tab-color"] {
+  border-left: 3px solid var(--tab-color);
 }
-/* CC pracuje — jemný oranžový dot nahoře (ne border) */
+/* CC pracuje — oranžový proužek nahoře */
 .tab.tab-cc-working::after {
   content: ''; position: absolute;
-  top: 4px; left: 50%; transform: translateX(-50%);
-  width: 6px; height: 6px; background: var(--accent); border-radius: 50%;
-  animation: tab-working-dot 1.4s ease-in-out infinite;
+  top: 0; left: 0; right: 0; height: 2px;
+  background: var(--accent);
+  animation: tab-working-bar 1.4s ease-in-out infinite;
 }
-@keyframes tab-working-dot {
-  0%, 100% { opacity: 0.5; }
+@keyframes tab-working-bar {
+  0%, 100% { opacity: 0.4; }
   50% { opacity: 1; }
 }
-/* CC dokončilo na neaktivním tabu — pulsující puntík */
+/* CC dokončilo na neaktivním tabu — pulsující badge vpravo nahoře */
 .tab.tab-has-badge::before {
   content: ''; position: absolute;
-  top: 6px; right: 6px;
-  width: 8px; height: 8px;
+  top: 4px; right: 4px;
+  width: 7px; height: 7px;
   background: var(--accent); border-radius: 50%;
-  box-shadow: 0 0 8px var(--accent), 0 0 16px var(--accent-glow);
+  box-shadow: 0 0 6px var(--accent), 0 0 12px var(--accent-glow);
   animation: tab-badge-pulse 1.6s ease-in-out infinite;
 }
 @keyframes tab-badge-pulse {

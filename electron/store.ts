@@ -29,6 +29,8 @@ interface StoreSchema {
   autostartDev: boolean;
   locale: 'en' | 'cs';
   monitorDiagonal: number;
+  cmdSave: string;
+  cmdPush: string;
 }
 
 export const store = new Store<StoreSchema>({
@@ -61,5 +63,7 @@ export const store = new Store<StoreSchema>({
     autostartDev: true,
     locale: 'cs',
     monitorDiagonal: 24,
+    cmdSave: '/commit',
+    cmdPush: '/commit && git push',
   },
 });

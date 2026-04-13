@@ -972,6 +972,7 @@ async function createWorkspace(projectPath: string, projectName: string, project
     btnRevert.appendChild(dd);
 
     dd.addEventListener('click', async (ev) => {
+      ev.stopPropagation();
       const item = (ev.target as HTMLElement).closest('.checkpoint-item') as HTMLElement;
       if (!item) return;
       const idx = Number(item.dataset.idx);
@@ -1010,14 +1011,17 @@ async function createWorkspace(projectPath: string, projectName: string, project
     showToast(t('toast.filesAttached', { n: files.length }), 'info');
   });
 
-  statusBar.querySelector('.status-btn-save')!.addEventListener('click', () => {
-    sendToFirstTerminal('/takjo');
-    showToast(t('toast.takjo'), 'info');
+  // Save\Push — konfigurovatelné příkazy (default: git commit / git commit+push)
+  statusBar.querySelector('.status-btn-save')!.addEventListener('click', async () => {
+    const cmd = (await levis.storeGet('cmdSave')) || '/commit';
+    sendToFirstTerminal(cmd as string);
+    showToast(t('toast.saving'), 'info');
   });
 
-  statusBar.querySelector('.status-btn-push')!.addEventListener('click', () => {
-    sendToFirstTerminal('/jeb');
-    showToast(t('toast.jeb'), 'info');
+  statusBar.querySelector('.status-btn-push')!.addEventListener('click', async () => {
+    const cmd = (await levis.storeGet('cmdPush')) || '/commit && git push';
+    sendToFirstTerminal(cmd as string);
+    showToast(t('toast.pushing'), 'info');
   });
 
   statusBar.querySelector('.status-btn-pull')!.addEventListener('click', async () => {
