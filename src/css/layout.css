@@ -9,13 +9,14 @@
   padding: 0 var(--space-2);
   gap: var(--space-1);
 }
-/* Všechny interaktivní prvky musí mít no-drag */
-#tabs, #tabs *,
-#window-controls, #window-controls *, #btn-new-tab {
+/* Interaktivní prvky = no-drag, prázdný prostor v tab-baru zůstane draggable */
+.tab, #btn-new-tab,
+#window-controls button {
   -webkit-app-region: no-drag;
 }
 
 .tab-logo {
+  -webkit-app-region: drag; cursor: grab;
   font-family: 'Inter', -apple-system, sans-serif; font-weight: 700; font-size: 14px;
   color: var(--accent); padding: 0 var(--space-3); letter-spacing: -0.01em; white-space: nowrap;
   display: flex; align-items: center; gap: 8px;
@@ -25,7 +26,7 @@
 #tabs {
   display: flex; align-items: center; flex: 1; gap: var(--space-1);
   overflow-x: auto; overflow-y: hidden;
-  -webkit-app-region: no-drag; height: 100%;
+  height: 100%;
   padding: var(--space-1) 0;
 }
 
@@ -100,42 +101,37 @@
   display: flex; align-items: center; justify-content: center; white-space: nowrap;
 }
 #btn-new-tab:hover { background: rgba(255,106,0,0.2); border-color: rgba(255,106,0,0.5); }
-#btn-help {
-  background: transparent; border: 1px solid rgba(255,255,255,0.12);
-  color: var(--text-muted); font-size: 13px; font-weight: 600;
-  width: 28px; height: 28px; margin-left: 8px;
-  border-radius: 50%; cursor: pointer;
-  transition: all var(--t-fast) var(--ease);
-  display: flex; align-items: center; justify-content: center;
-  position: relative; z-index: 2;
-}
-#btn-help:hover { color: var(--accent); border-color: var(--accent); }
-#btn-settings {
+#btn-feedback, #btn-help, #btn-settings {
   background: transparent; border: 1px solid rgba(255,255,255,0.12);
   color: var(--text-muted); font-size: 13px;
-  width: 28px; height: 28px; margin-left: 4px;
+  width: 28px; height: 28px; margin-left: 6px;
   border-radius: 50%; cursor: pointer;
   transition: all var(--t-fast) var(--ease);
   display: flex; align-items: center; justify-content: center;
-  position: relative; z-index: 2;
-  padding: 0;
+  position: relative; z-index: 2; padding: 0;
 }
-#btn-settings:hover { color: var(--accent); border-color: var(--accent); }
-#btn-settings svg { width: 14px; height: 14px; }
+#btn-help { font-weight: 600; }
+#btn-feedback:hover, #btn-help:hover, #btn-settings:hover { color: var(--accent); border-color: var(--accent); }
+#btn-feedback svg, #btn-settings svg { width: 14px; height: 14px; }
 
 #window-controls {
   display: flex; -webkit-app-region: no-drag; margin-left: auto; height: 100%;
   align-items: center; gap: 2px; padding: 0 var(--space-1);
 }
-#window-controls button:not(#btn-help):not(#btn-settings) {
+#window-controls button:not(#btn-help):not(#btn-settings):not(#btn-feedback) {
   background: transparent; border: none; color: var(--text-muted);
   width: 36px; height: 28px; font-size: 12px; cursor: pointer;
   border-radius: var(--radius-sm);
   transition: all var(--t-fast) var(--ease);
   display: flex; align-items: center; justify-content: center;
 }
-#window-controls button:not(#btn-help):not(#btn-settings):hover { background: var(--bg-elev-2); color: var(--text); }
+#window-controls button:not(#btn-help):not(#btn-settings):not(#btn-feedback):hover { background: var(--bg-elev-2); color: var(--text); }
 #btn-close:hover { background: var(--error) !important; color: white !important; }
+
+/* Hub active — skrýt titlebar settings/help/feedback (Hub má vlastní) */
+.hub-active #btn-settings,
+.hub-active #btn-help,
+.hub-active #btn-feedback { display: none; }
 
 /* ═══════════════════════════════════
    CONTENT AREA

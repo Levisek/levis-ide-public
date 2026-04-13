@@ -403,8 +403,99 @@ async function init(): Promise<void> {
   }
   (window as any).showHelpOverlay = showHelpOverlay;
 
-  // Help + Settings — přímé listenery (registrujeme PO definici showHelpOverlay)
+  // ── Feedback formulář ──
+  function showFeedbackForm(): void {
+    if (document.getElementById('feedback-overlay')) return;
+    const overlay = document.createElement('div');
+    overlay.id = 'feedback-overlay';
+    overlay.className = 'feedback-overlay';
+    overlay.innerHTML = `
+      <div class="feedback-box">
+        <div class="feedback-header">
+          <h2>${t('feedback.title')}</h2>
+          <button class="help-close" title="${t('artifact.cancelEsc')}">${(window as any).icon('close')}</button>
+        </div>
+        <div class="feedback-body">
+          <label class="feedback-label">${t('feedback.type')}</label>
+          <div class="feedback-type-row">
+            <button class="feedback-type-btn active" data-type="bug">🐛 ${t('feedback.bug')}</button>
+            <button class="feedback-type-btn" data-type="feature">💡 ${t('feedback.feature')}</button>
+            <button class="feedback-type-btn" data-type="crash">💥 ${t('feedback.crash')}</button>
+          </div>
+          <label class="feedback-label">${t('feedback.titleLabel')}</label>
+          <input class="feedback-input" id="feedback-title" type="text" placeholder="${t('feedback.titlePlaceholder')}" />
+          <label class="feedback-label">${t('feedback.descLabel')}</label>
+          <textarea class="feedback-textarea" id="feedback-desc" rows="5" placeholder="${t('feedback.descPlaceholder')}"></textarea>
+          <label class="feedback-label">${t('feedback.sendVia')}</label>
+          <div class="feedback-submit-row">
+            <button class="feedback-submit-btn feedback-submit-github" data-via="github">${(window as any).icon('github')} ${t('help.feedbackGithub')}</button>
+            <button class="feedback-submit-btn feedback-submit-email" data-via="email">${(window as any).icon('upload')} ${t('help.feedbackEmail')}</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    const close = () => overlay.remove();
+    overlay.querySelector('.help-close')!.addEventListener('click', close);
+    overlay.addEventListener('click', (ev) => { if (ev.target === overlay) close(); });
+
+    let selectedType = 'bug';
+    overlay.querySelectorAll('.feedback-type-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        overlay.querySelectorAll('.feedback-type-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedType = (btn as HTMLElement).dataset.type || 'bug';
+      });
+    });
+
+    const FEEDBACK_URL = 'https://levinger.cz/feedback.php';
+    const FEEDBACK_TOKEN_URL = 'https://levinger.cz/feedback_token.php';
+    const FEEDBACK_KEY = 'lvsIDE-fb-k7x9Q2mW4pR8';
+
+    overlay.querySelectorAll('.feedback-submit-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const title = (overlay.querySelector('#feedback-title') as HTMLInputElement).value.trim();
+        const desc = (overlay.querySelector('#feedback-desc') as HTMLTextAreaElement).value.trim();
+        if (!title) { (overlay.querySelector('#feedback-title') as HTMLInputElement).focus(); return; }
+        const typeLabel = selectedType === 'bug' ? 'Bug' : selectedType === 'crash' ? 'Crash' : 'Feature';
+        const via = (btn as HTMLElement).dataset.via;
+        close();
+        if (via === 'github') {
+          const labels = selectedType === 'feature' ? 'enhancement' : 'bug';
+          const body = encodeURIComponent(`## ${typeLabel}\n\n${desc || '_Bez popisu_'}`);
+          const url = `https://github.com/Levisek/levis-ide/issues/new?title=${encodeURIComponent(`[${typeLabel}] ${title}`)}&body=${body}&labels=${labels}`;
+          await (window as any).levis?.openExternal?.(url);
+        } else {
+          try {
+            const tokenRes = await fetch(FEEDBACK_TOKEN_URL, { credentials: 'include' });
+            const { token: captcha } = await tokenRes.json();
+            const res = await fetch(FEEDBACK_URL, {
+              method: 'POST',
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json', 'X-API-Key': FEEDBACK_KEY },
+              body: JSON.stringify({ type: typeLabel, title, desc, captcha }),
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          } catch {
+            showToast(t('feedback.error'), 'error');
+            return;
+          }
+        }
+        showToast(t('feedback.sent'), 'success');
+      });
+    });
+
+    const esc = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') { close(); document.removeEventListener('keydown', esc); }
+    };
+    document.addEventListener('keydown', esc);
+    setTimeout(() => (overlay.querySelector('#feedback-title') as HTMLInputElement)?.focus(), 50);
+  }
+  (window as any).showFeedbackForm = showFeedbackForm;
+
+  // Help + Settings + Feedback — přímé listenery
   document.getElementById('btn-help')?.addEventListener('click', () => showHelpOverlay());
+  document.getElementById('btn-feedback')?.addEventListener('click', () => showFeedbackForm());
   document.getElementById('btn-settings')?.addEventListener('click', () => {
     if ((window as any).openHubSettings) (window as any).openHubSettings();
   });
@@ -491,6 +582,8 @@ function switchTab(tabId: string): void {
     tab.contentEl.classList.toggle('active', isActive);
     if (isActive) tab.tabEl.classList.remove('tab-has-badge');
   }
+  // Skrýt titlebar settings/help/feedback v Hubu (Hub má vlastní)
+  document.getElementById('window-controls')?.classList.toggle('hub-active', tabId === 'hub');
 }
 
 async function closeTab(tabId: string): Promise<void> {

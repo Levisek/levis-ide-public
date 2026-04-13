@@ -46,12 +46,13 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
     <span class="browser-zoom-label" style="font-size:10px;color:var(--text-muted);min-width:32px;text-align:center;user-select:none;">100%</span>
     <button class="artifact-btn browser-zoom-in" title="Zoom +">+</button>
     <button class="btn-devtools" title="DevTools">${I('gear')}</button>
+    <button class="artifact-btn browser-pin-url" title="${t('browser.pinUrl')}">${I('pin')}</button>
   `;
   wrapper.appendChild(toolbar);
 
   const webviewContainer = document.createElement('div');
   webviewContainer.className = 'browser-webview-container';
-  webviewContainer.style.cssText = 'position:relative;flex:1 1 auto;overflow:hidden;';
+  webviewContainer.style.cssText = 'position:relative;flex:1 1 0;min-height:0;overflow:hidden;';
   wrapper.appendChild(webviewContainer);
 
   const webview = document.createElement('webview') as any;
@@ -336,6 +337,16 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
       await loadFile(fp);
     } else {
       showToast(t('artifact.notHtml'), 'warning');
+    }
+  });
+
+  // ── Pin URL jako výchozí pro projekt ──
+  toolbar.querySelector('.browser-pin-url')?.addEventListener('click', async () => {
+    const url = urlInput.value.trim();
+    if (!url || url === 'about:blank') { showToast(t('browser.pinEmpty'), 'warning'); return; }
+    if (projectPath) {
+      await levis.setProjectPref(projectPath, 'previewUrl', url);
+      showToast(t('browser.pinSaved', { url }), 'success');
     }
   });
 

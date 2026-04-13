@@ -115,6 +115,7 @@ const EN: Dict = {
   'toast.lastTerminal':       "Can't close the last terminal",
   'toast.devStarted':         '{name} running on :{port}',
   'toast.devTimeout':         "Dev server didn't come up in 30 s — check the log",
+  'toast.deployUrl':          'Preview: {url}',
   'toast.devFailed':          'Dev server failed: {msg}',
   'toast.devError':           'Dev: {line}',
   'toast.storybookStarting':  'Storybook starting…',
@@ -162,6 +163,9 @@ const EN: Dict = {
   'browser.back':          'Back',
   'browser.forward':       'Forward',
   'browser.lasso':         'Mark area (lasso → screenshot)',
+  'browser.pinUrl':        'Save current URL as default for this project',
+  'browser.pinSaved':      'Default URL saved: {url}',
+  'browser.pinEmpty':      'No URL to save',
 
   // ── Artifact panel ──────────────────
   'artifact.inspectTip':   'Inspect element (Alt+I) — click an element in the preview, write what to change, send to Claude Code',
@@ -354,6 +358,22 @@ const EN: Dict = {
   'help.hub4':             'Filter chips by project type, fulltext search',
   'help.popoutText':       'The "Pop out" button opens preview in a separate window (second monitor) with its own inspect and annotations. Prompts are sent back to the main terminal.',
 
+  // ── Feedback ───────────────────────
+  'help.feedbackGithub':   'Report on GitHub',
+  'help.feedbackEmail':    'Send',
+  'feedback.title':        'Feedback',
+  'feedback.type':         'Type',
+  'feedback.bug':          'Bug',
+  'feedback.feature':      'Idea / Feature',
+  'feedback.crash':        'Crash',
+  'feedback.titleLabel':   'Title',
+  'feedback.titlePlaceholder': 'Short description of the issue…',
+  'feedback.descLabel':    'Description (optional)',
+  'feedback.descPlaceholder': 'Steps to reproduce, what you expected, what happened…',
+  'feedback.sendVia':      'Send via',
+  'feedback.sent':         'Thank you for your feedback!',
+  'feedback.error':        'Failed to send feedback. Try GitHub instead.',
+
   // ── Search confirm ─────────────────
   'search.confirmReplace': 'Replace {n} matches in {files} files?',
 
@@ -528,6 +548,7 @@ const CS: Dict = {
   'toast.lastTerminal':       'Poslední terminál nelze zavřít',
   'toast.devStarted':         '{name} spuštěn na :{port}',
   'toast.devTimeout':         'Dev server nenaběhl do 30 s — zkontroluj log',
+  'toast.deployUrl':          'Preview: {url}',
   'toast.devFailed':          'Dev server selhal: {msg}',
   'toast.devError':           'Dev: {line}',
   'toast.storybookStarting':  'Storybook startuje…',
@@ -575,6 +596,9 @@ const CS: Dict = {
   'browser.back':          'Zpět',
   'browser.forward':       'Vpřed',
   'browser.lasso':         'Označit oblast (lasso → screenshot)',
+  'browser.pinUrl':        'Uložit aktuální URL jako výchozí pro tento projekt',
+  'browser.pinSaved':      'Výchozí URL uložena: {url}',
+  'browser.pinEmpty':      'Žádná URL k uložení',
 
   // ── Artifact panel ──────────────────
   'artifact.inspectTip':   'Inspect element (Alt+I) — klikni na prvek v náhledu, napiš co změnit, pošli do Claude Code',
@@ -766,6 +790,22 @@ const CS: Dict = {
   'help.hub3':             'Pull vše / Push vše — hromadný git nad všemi projekty',
   'help.hub4':             'Filtr chips podle typu projektu, fulltext search',
   'help.popoutText':       'Tlačítko „Pop out" otevře preview v samostatném okně (druhý monitor) s vlastním inspectem a anotacemi. Prompty se posílají zpět do hlavního terminálu.',
+
+  // ── Feedback ───────────────────────
+  'help.feedbackGithub':   'Nahlásit na GitHubu',
+  'help.feedbackEmail':    'Odeslat',
+  'feedback.title':        'Zpětná vazba',
+  'feedback.type':         'Typ',
+  'feedback.bug':          'Bug',
+  'feedback.feature':      'Nápad / Vylepšení',
+  'feedback.crash':        'Crash',
+  'feedback.titleLabel':   'Název',
+  'feedback.titlePlaceholder': 'Stručný popis problému…',
+  'feedback.descLabel':    'Popis (volitelný)',
+  'feedback.descPlaceholder': 'Kroky k reprodukci, co jsi čekal, co se stalo…',
+  'feedback.sendVia':      'Odeslat přes',
+  'feedback.sent':         'Díky za zpětnou vazbu!',
+  'feedback.error':        'Nepodařilo se odeslat. Zkus to přes GitHub.',
 
   // ── Search confirm ─────────────────
   'search.confirmReplace': 'Nahradit {n} výskytů ve {files} souborech?',

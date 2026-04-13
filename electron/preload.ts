@@ -14,6 +14,7 @@ const api = {
   },
   popout: (data: { type: string; url?: string; filePath?: string }) => ipcRenderer.invoke('window:popout', data),
   popoutPanel: (data: { panelType: 'terminal' | 'editor'; payload: any }) => ipcRenderer.invoke('window:popoutPanel', data),
+  closePopoutPanel: (panelId: string) => ipcRenderer.send('panel:close', panelId),
   onPanelReturned: (cb: (data: { panelId: string; panelType?: string }) => void) => {
     const handler = (_e: any, data: any) => cb(data);
     ipcRenderer.on('panel:returned', handler);

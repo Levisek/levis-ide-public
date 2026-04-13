@@ -15,6 +15,7 @@ interface LevisAPI {
   onConfirmQuit: (cb: () => void) => () => void;
   popout: (data: { type: string; url?: string; filePath?: string }) => Promise<any>;
   popoutPanel: (data: { panelType: 'terminal' | 'editor'; payload: any }) => Promise<{ panelId: string }>;
+  closePopoutPanel: (panelId: string) => void;
   popoutRefresh: () => void;
   onPopoutLoad: (cb: (data: any) => void) => () => void;
   onPopoutRefresh: (cb: () => void) => () => void;

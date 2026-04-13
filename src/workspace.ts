@@ -235,6 +235,32 @@ async function createWorkspace(projectPath: string, projectName: string, project
   const hasNoPreview = autostartEntry.cmd === null && resolvedType !== 'static';
   const hasStorybook = !!pkgScripts.storybook;
 
+  // ── Deploy URL autodetekce (Vercel, package.json homepage) ──
+  let deployUrl = '';
+  try {
+    const prefs = await levis.getProjectPrefs(projectPath);
+    if ((prefs as any)?.previewUrl) deployUrl = (prefs as any).previewUrl;
+  } catch {}
+  if (!deployUrl) {
+    try {
+      const vRaw = await levis.readFile(projectPath + '\\vercel.json');
+      if (typeof vRaw === 'string') {
+        const vc = JSON.parse(vRaw);
+        const alias = vc.alias?.[0] || vc.name;
+        if (alias) deployUrl = alias.startsWith('http') ? alias : `https://${alias}.vercel.app`;
+      }
+    } catch {}
+  }
+  if (!deployUrl) {
+    try {
+      const pkgRaw2 = await levis.readFile(projectPath + '\\package.json');
+      if (typeof pkgRaw2 === 'string') {
+        const pkg2 = JSON.parse(pkgRaw2);
+        if (pkg2.homepage && pkg2.homepage.startsWith('http')) deployUrl = pkg2.homepage;
+      }
+    } catch {}
+  }
+
   // Skript fallback: pokud preferovany script chybi, zkus dev/start/serve a uprav cmd.
   let devCommand: string | null = autostartEntry.cmd;
   if (devCommand && autostartEntry.scriptName && !pkgScripts[autostartEntry.scriptName]) {
@@ -561,7 +587,12 @@ async function createWorkspace(projectPath: string, projectName: string, project
     if (v === false) autostartEnabled = false;
   } catch {}
 
-  if (autostartEnabled && devCommand && autostartEntry.cmd !== null) {
+  // Deploy URL má nejvyšší prioritu — pokud existuje, načti rovnou
+  if (deployUrl) {
+    switchRightPanel('browser');
+    browserInstance.setUrl(deployUrl);
+    showToast(t('toast.deployUrl', { url: deployUrl }), 'info');
+  } else if (autostartEnabled && devCommand && autostartEntry.cmd !== null) {
     switchRightPanel('browser');
     startBackgroundDevPty(termCwd, devCommand);
     const btnDevLog = statusBar.querySelector('.status-btn-devlog') as HTMLElement;
@@ -573,7 +604,6 @@ async function createWorkspace(projectPath: string, projectName: string, project
       (async () => {
         const ok = await probePort(autostartEntry.port!, probeSignal);
         if (probeSignal.aborted) return;
-        // Pokus o detekci jineho portu z dev logu (port collision)
         let actualPort = autostartEntry.port!;
         const m = devLogBuffer.join('').match(/https?:\/\/(?:localhost|127\.0\.0\.1):(\d+)/);
         if (m) actualPort = parseInt(m[1], 10);
@@ -1323,6 +1353,11 @@ async function createWorkspace(projectPath: string, projectName: string, project
       }
     },
     dispose: () => {
+      // Zavřít všechna plovoucí okna patřící tomuto workspace
+      for (const [panelId] of panelPopoutMap) {
+        try { levis.closePopoutPanel(panelId); } catch {}
+      }
+      panelPopoutMap.clear();
       if (devLogUnsub) devLogUnsub();
       if (devPtyId) { try { levis.killPty(devPtyId); } catch {} }
       if (devLogPanel) devLogPanel.remove();

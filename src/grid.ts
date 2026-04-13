@@ -484,6 +484,31 @@ function createGrid(opts: GridOptions): GridApi {
     row.cells[ref.col] = panel;
   }
 
+  function compactGrid(): void {
+    const panels: GridPanelId[] = [];
+    for (const row of state.rows) {
+      for (const c of row.cells) {
+        if (c !== null) panels.push(c);
+      }
+    }
+    if (panels.length === 0) {
+      state.rows = [{ cells: [null], colSizes: [100] }];
+      state.rowSizes = [100];
+    } else if (panels.length === 1) {
+      state.rows = [{ cells: [panels[0]], colSizes: [100] }];
+      state.rowSizes = [100];
+    } else if (panels.length === 2) {
+      state.rows = [{ cells: [panels[0], panels[1]], colSizes: [55, 45] }];
+      state.rowSizes = [100];
+    } else if (panels.length === 3) {
+      state.rows = [
+        { cells: [panels[0], panels[1]], colSizes: [55, 45] },
+        { cells: [panels[2]], colSizes: [100] },
+      ];
+      state.rowSizes = [60, 40];
+    }
+  }
+
   function setCell(ref: CellRef, panel: GridPanelId | null): void {
     if (panel) {
       // Pokud panel už někde je → swap
@@ -498,6 +523,7 @@ function createGrid(opts: GridOptions): GridApi {
       }
     }
     setCellRaw(ref, panel);
+    if (panel === null) compactGrid();
     opts.onChange?.(state);
     rerender();
   }
@@ -586,6 +612,7 @@ function createGrid(opts: GridOptions): GridApi {
     const ref = findCell(panel);
     if (!ref) return;
     state.rows[ref.row].cells[ref.col] = null;
+    compactGrid();
     opts.onChange?.(state);
     rerender();
   }

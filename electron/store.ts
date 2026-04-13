@@ -21,7 +21,7 @@ interface StoreSchema {
   editorFontSize: number;
   terminalFontSize: number;
   pinnedProjects: string[];
-  projectPrefs: Record<string, { panelsSwapped?: boolean; workspaceLayout?: unknown; editorOpenFiles?: string[] }>;
+  projectPrefs: Record<string, { panelsSwapped?: boolean; workspaceLayout?: unknown; editorOpenFiles?: string[]; previewUrl?: string }>;
   ccNotifications: boolean;
   ccSound: boolean;
   projectLastOpened: Record<string, number>;
