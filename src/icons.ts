@@ -13,7 +13,7 @@ type IconName =
   | 'browser' | 'preview' | 'mobile'
   // Akce
   | 'save' | 'upload' | 'download' | 'deploy' | 'restart' | 'plus' | 'close'
-  | 'lock' | 'unlock' | 'equalize' | 'refresh' | 'sidebar' | 'swap'
+  | 'lock' | 'unlock' | 'equalize' | 'equalize-v' | 'refresh' | 'sidebar' | 'swap'
   | 'split' | 'eye' | 'search' | 'clear' | 'info' | 'warning' | 'error'
   | 'check' | 'play' | 'stop' | 'folder' | 'file' | 'gear' | 'menu'
   | 'inspect' | 'pin' | 'help' | 'logout' | 'home' | 'arrow-up' | 'arrow-down'
@@ -48,6 +48,7 @@ const PATHS: Record<IconName, string> = {
   lock:     '<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
   unlock:   '<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/>',
   equalize: '<line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>',
+  'equalize-v': '<line x1="6" y1="3" x2="6" y2="21"/><line x1="12" y1="3" x2="12" y2="21"/><line x1="18" y1="3" x2="18" y2="21"/>',
   refresh:  '<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>',
   sidebar:  '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/>',
   swap:     '<polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>',

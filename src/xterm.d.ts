@@ -1,6 +1,7 @@
 interface LevisAPI {
   getHomeDir: () => Promise<string>;
   clipboardRead: () => Promise<string>;
+  clipboardReadImage: (projectPath: string) => Promise<string | null>;
   clipboardWrite: (text: string) => void;
   mobileEnableTouch: (webContentsId: number) => Promise<boolean>;
   mobileDisableTouch: (webContentsId: number) => Promise<boolean>;

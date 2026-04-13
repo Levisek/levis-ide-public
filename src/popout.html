@@ -15,20 +15,23 @@
 </head>
 <body>
   <div id="popout-bar">
-    <span class="popout-title">LevisIDE Preview</span>
+    <span class="popout-title">LevisIDE Browser</span>
     <span class="popout-file"></span>
     <span style="flex:1"></span>
-    <button class="pop-btn pop-return" id="pop-return" title="Vrátit náhled do hlavního okna">‹ Vrátit</button>
+    <button class="pop-btn pop-return" id="pop-return" title="Vrátit náhled do hlavního okna"><svg class="lvi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="19 12 5 12"/><polyline points="12 19 5 12 12 5"/></svg></button>
     <div class="artifact-size-btns" style="-webkit-app-region:no-drag">
-      <button class="pop-size-btn" data-size="mobile" title="Mobile (375 px)">M</button>
-      <button class="pop-size-btn" data-size="tablet" title="Tablet (768 px)">T</button>
-      <button class="pop-size-btn pop-size-active" data-size="full" title="Plná šířka">F</button>
+      <button class="pop-size-btn" data-size="mobile" title="Mobile (375 px)"><svg class="lvi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></button>
+      <button class="pop-size-btn" data-size="tablet" title="Tablet (768 px)"><svg class="lvi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></button>
+      <button class="pop-size-btn pop-size-active" data-size="full" title="Plná šířka"><svg class="lvi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></button>
     </div>
-    <button class="pop-btn pop-inspect" title="Inspect element — klikni na prvek a pošli prompt">Inspect</button>
-    <button class="pop-btn pop-annotate" title="Označit oblast — zakroužkuj a pošli screenshot">Označit</button>
-    <button class="pop-btn pop-fullscreen" title="Přepnout fullscreen">Fullscreen</button>
-    <button class="pop-btn pop-reload" title="Obnovit náhled">Obnovit</button>
-    <button class="pop-btn pop-devtools" title="Otevřít DevTools">DevTools</button>
+    <button class="pop-btn pop-inspect" title="Inspect element"><svg class="lvi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3a2 2 0 0 0-2 2"/><path d="M19 3a2 2 0 0 1 2 2"/><path d="M21 19a2 2 0 0 1-2 2"/><path d="M5 21a2 2 0 0 1-2-2"/><path d="M9 3h1"/><path d="M9 21h2"/><path d="M14 3h1"/><path d="M3 9v1"/><path d="M21 9v2"/><path d="M3 14v1"/><path d="M21 14v1"/></svg></button>
+    <button class="pop-btn pop-annotate" title="Označit oblast"><svg class="lvi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button>
+    <button class="pop-btn pop-fullscreen" title="Fullscreen"><svg class="lvi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button>
+    <button class="pop-btn pop-reload" title="Obnovit"><svg class="lvi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button>
+    <button class="pop-btn pop-zoom-out" title="Zoom −">−</button>
+    <span class="pop-zoom-label" style="font-size:10px;color:#9999ad;min-width:32px;text-align:center;user-select:none;-webkit-app-region:no-drag;">100%</span>
+    <button class="pop-btn pop-zoom-in" title="Zoom +">+</button>
+    <button class="pop-btn pop-devtools" title="DevTools"><svg class="lvi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
     <div id="popout-controls">
       <button id="pop-min">&#x2500;</button>
       <button id="pop-max">&#x25A1;</button>

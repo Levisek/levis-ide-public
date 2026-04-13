@@ -177,7 +177,7 @@ function createGrid(opts: GridOptions): GridApi {
     root.style.flexDirection = 'column';
     root.style.width = '100%';
     root.style.height = '100%';
-    root.style.gap = state.rows.length > 1 ? '0' : '0';
+    root.style.gap = '4px';
 
     for (let ri = 0; ri < state.rows.length; ri++) {
       const row = state.rows[ri];
@@ -187,7 +187,7 @@ function createGrid(opts: GridOptions): GridApi {
       rowEl.style.flexDirection = 'row';
       rowEl.style.minHeight = '0';
       rowEl.style.minWidth = '0';
-      rowEl.style.gap = row.cells.length > 1 ? '0' : '0';
+      rowEl.style.gap = '4px';
       rowEl.style.position = 'relative';
       if (state.locked) {
         rowEl.style.flex = '1';
@@ -250,8 +250,8 @@ function createGrid(opts: GridOptions): GridApi {
         const vSplit = document.createElement('div');
         vSplit.className = 'grid-splitter grid-splitter-v split-handle';
         vSplit.style.cssText =
-          `position:absolute;top:0;bottom:0;width:8px;` +
-          `left:calc(${row.colSizes[0]}% - 4px);cursor:col-resize;z-index:5;`;
+          `position:absolute;top:0;bottom:0;width:6px;` +
+          `left:calc(${row.colSizes[0]}% - 3px);cursor:col-resize;z-index:5;`;
         rowEl.appendChild(vSplit);
         attachVSplit(vSplit, rowEl, ri);
       }
@@ -295,8 +295,8 @@ function createGrid(opts: GridOptions): GridApi {
       const hSplit = document.createElement('div');
       hSplit.className = 'grid-splitter grid-splitter-h split-handle split-handle-h';
       hSplit.style.cssText =
-        `position:absolute;left:0;right:0;height:8px;` +
-        `top:calc(${state.rowSizes[0]}% - 4px);cursor:row-resize;z-index:5;`;
+        `position:absolute;left:0;right:0;height:6px;` +
+        `top:calc(${state.rowSizes[0]}% - 3px);cursor:row-resize;z-index:5;`;
       wrapper.appendChild(hSplit);
       // Wrapper musí vědět o root pro výpočet — připojíme později
       setTimeout(() => attachHSplit(hSplit, wrapper), 0);

@@ -49,6 +49,7 @@ const api = {
   // Env
   getHomeDir: () => ipcRenderer.invoke('env:homeDir'),
   clipboardRead: () => ipcRenderer.invoke('clipboard:read'),
+  clipboardReadImage: (projectPath: string) => ipcRenderer.invoke('clipboard:readImage', projectPath),
   clipboardWrite: (text: string) => ipcRenderer.send('clipboard:write', text),
 
   // Touch input do webview pres CDP

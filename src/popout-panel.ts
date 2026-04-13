@@ -89,7 +89,13 @@ async function initTerminalPanel(host: HTMLElement, payload: any): Promise<void>
   for (let i = 0; i < terminals.length; i++) {
     const entry = terminals[i];
     const slot = document.createElement('div');
-    slot.style.cssText = 'flex:1; padding:4px; min-width:0; min-height:0; overflow:hidden; border-left:' + (i > 0 ? '1px solid var(--border)' : 'none') + ';';
+    slot.style.cssText = 'flex:1; padding:2px; min-width:0; min-height:0; overflow:hidden; background:#0a0a0f; transition: box-shadow .15s ease;';
+    slot.addEventListener('mousedown', () => {
+      termContainer.querySelectorAll(':scope > div').forEach((s) => {
+        (s as HTMLElement).style.boxShadow = '';
+      });
+      slot.style.boxShadow = 'inset 0 2px 0 #ff7a1a';
+    });
     termContainer.appendChild(slot);
 
     const term = new T({
@@ -113,7 +119,8 @@ async function initTerminalPanel(host: HTMLElement, payload: any): Promise<void>
     term.loadAddon(fit);
     if (Web) term.loadAddon(new Web());
     term.open(slot);
-    if (Wgl) { try { term.loadAddon(new Wgl()); } catch {} }
+    // WebGL vypnutý — canvas stabilnější
+    // if (Wgl) { try { term.loadAddon(new Wgl()); } catch {} }
 
     if (entry.initial) { try { term.write(entry.initial); } catch {} }
 

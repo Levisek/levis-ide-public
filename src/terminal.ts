@@ -85,8 +85,9 @@ async function createTerminal(
       brightCyan: '#22d3ee',
       brightWhite: '#ffffff',
     },
-    fontFamily: "'JetBrains Mono', monospace",
+    fontFamily: "'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace",
     fontSize,
+    lineHeight: 1.1,
     cursorBlink: true,
     allowTransparency: true,
     scrollback: 10000,
@@ -146,31 +147,39 @@ async function createTerminal(
     if ((e.ctrlKey || e.metaKey) && (e.key === 'v' || e.key === 'V')) {
       e.preventDefault();
       e.stopPropagation();
-      levis.clipboardRead().then((text) => {
-        if (text) levis.writePty(ptyId, text);
-      }).catch(() => {});
+      (async () => {
+        const text = await levis.clipboardRead();
+        if (text) { levis.writePty(ptyId, text); return; }
+        if (levis.clipboardReadImage) {
+          const imgPath = await levis.clipboardReadImage(cwd);
+          if (imgPath) {
+            const rel = imgPath.replace(/\\/g, '/').replace(cwd.replace(/\\/g, '/') + '/', '');
+            levis.writePty(ptyId, rel);
+          }
+        }
+      })().catch(() => {});
       return false;
     }
     if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C') && term.hasSelection()) {
       levis.clipboardWrite(term.getSelection());
       return false;
     }
-    // Shift+Enter — prostý newline (CC to interpretuje jako pokračování vstupu)
+    // Shift+Enter — line continuation (backslash + enter, jako v bashi)
     if (e.shiftKey && !e.ctrlKey && !e.altKey && e.key === 'Enter') {
-      levis.writePty(ptyId, '\n');
+      levis.writePty(ptyId, '\\\r');
       return false;
     }
     return true;
   });
 
-  // Try WebGL renderer for performance
-  if (WebglAddon) {
-    try {
-      term.loadAddon(new WebglAddon());
-    } catch {
-      // WebGL not available, fallback to canvas
-    }
-  }
+  // WebGL renderer vypnutý — canvas je stabilnější (WebGL má rendering artefakty na některých GPU)
+  // if (WebglAddon) {
+  //   try {
+  //     const webgl = new WebglAddon();
+  //     webgl.onContextLoss(() => { webgl.dispose(); });
+  //     term.loadAddon(webgl);
+  //   } catch {}
+  // }
 
   // Delay fit until container is in DOM and has real dimensions
   // Multiple frames needed because workspace appends wrapper async

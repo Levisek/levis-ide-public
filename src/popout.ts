@@ -11,6 +11,19 @@ declare const popoutApi: {
   onRefresh: (cb: () => void) => () => void;
 };
 
+// Fallback — popout nemá i18n.ts, vrací klíč jako fallback
+const popT = (typeof (window as any).t === 'function')
+  ? (window as any).t as (key: string) => string
+  : (key: string) => {
+    const map: Record<string, string> = {
+      'browser.inspect': 'Inspect', 'browser.inspectOn': 'Inspect ON',
+      'browser.annotate': 'Annotate', 'browser.annotateDraw': 'Drawing...',
+      'popout.areaPh': 'Co chceš změnit?', 'popout.cancel': 'Zrušit',
+      'toast.sentToCC': 'Odeslat do CC',
+    };
+    return map[key] || key;
+  };
+
 let currentFilePath: string | null = null;
 
 function initPopout(): void {
@@ -27,7 +40,7 @@ function initPopout(): void {
   function showWebview(): void {
     useWebview = true;
     iframe.style.display = 'none';
-    webview.style.display = 'flex';
+    webview.style.cssText = 'flex:1; border:none;';
   }
 
   document.getElementById('pop-min')!.addEventListener('click', () => {
@@ -95,7 +108,14 @@ function initPopout(): void {
     isFullscreen = !isFullscreen;
   });
 
-  // ── Responsive size buttons ──
+  // ── 1:1 Device simulation ──
+  const DEVICES: Record<string, { w: number; h: number; radius: number }> = {
+    mobile: { w: 2.56, h: 5.69, radius: 20 },
+    tablet: { w: 6.58, h: 8.77, radius: 16 },
+  };
+  const monitorDiag = 24;
+  const cssPPI = Math.sqrt(window.screen.width ** 2 + window.screen.height ** 2) / monitorDiag;
+
   const sizeBtns = document.querySelectorAll('.pop-size-btn');
   sizeBtns.forEach((btn: Element) => {
     btn.addEventListener('click', () => {
@@ -104,21 +124,32 @@ function initPopout(): void {
       btn.classList.add('pop-size-active');
       const content = document.getElementById('popout-content') as HTMLElement;
       const target = useWebview ? webview : iframe;
-      switch (size) {
-        case 'mobile':
-          target.style.width = '375px';
-          target.style.margin = '0 auto';
-          content.classList.add('artifact-device-frame');
-          break;
-        case 'tablet':
-          target.style.width = '768px';
-          target.style.margin = '0 auto';
-          content.classList.add('artifact-device-frame');
-          break;
-        default:
-          target.style.width = '100%';
-          target.style.margin = '0';
-          content.classList.remove('artifact-device-frame');
+      target.style.width = '';
+      target.style.height = '';
+      target.style.maxHeight = '';
+      target.style.flex = '';
+      target.style.border = '';
+      target.style.borderRadius = '';
+      target.style.boxShadow = '';
+      content.classList.remove('artifact-device-frame');
+      content.style.alignItems = '';
+      content.style.justifyContent = '';
+
+      const device = DEVICES[size];
+      if (device) {
+        const w = Math.round(device.w * cssPPI);
+        const h = Math.round(device.h * cssPPI);
+        content.style.display = 'flex';
+        content.style.alignItems = 'center';
+        content.style.justifyContent = 'center';
+        content.classList.add('artifact-device-frame');
+        target.style.width = w + 'px';
+        target.style.height = h + 'px';
+        target.style.maxHeight = '100%';
+        target.style.flex = '0 0 auto';
+        target.style.border = '1px solid rgba(255,255,255,0.1)';
+        target.style.borderRadius = device.radius + 'px';
+        target.style.boxShadow = '0 8px 32px rgba(0,0,0,0.5)';
       }
     });
   });
@@ -132,6 +163,115 @@ function initPopout(): void {
     }
   });
 
+  // ── Zoom (device frame scale) ──
+  let popZoom = 1.0;
+  const popZoomLabel = document.querySelector('.pop-zoom-label') as HTMLElement;
+  function applyPopZoom(): void {
+    popZoomLabel.textContent = Math.round(popZoom * 100) + '%';
+    const activeBtn = document.querySelector('.pop-size-btn.pop-size-active');
+    const size = activeBtn?.getAttribute('data-size') || 'full';
+    const device = DEVICES[size];
+    if (device) {
+      const target = useWebview ? webview : iframe;
+      const w = Math.round(device.w * cssPPI * popZoom);
+      const h = Math.round(device.h * cssPPI * popZoom);
+      target.style.width = w + 'px';
+      target.style.height = h + 'px';
+    } else {
+      const target = useWebview ? webview : iframe;
+      if (target.setZoomFactor) { try { target.setZoomFactor(popZoom); } catch {} }
+    }
+  }
+  document.querySelector('.pop-zoom-in')!.addEventListener('click', () => {
+    popZoom = Math.min(3, popZoom + 0.1); applyPopZoom();
+  });
+  document.querySelector('.pop-zoom-out')!.addEventListener('click', () => {
+    popZoom = Math.max(0.25, popZoom - 0.1); applyPopZoom();
+  });
+  popZoomLabel.addEventListener('click', () => { popZoom = 1.0; applyPopZoom(); });
+
+  // ── Shared floating popover (same as workspace browser) ──
+  const popoutContent = document.getElementById('popout-content') as HTMLElement;
+  let activePopover: HTMLElement | null = null;
+
+  const SVG_INSPECT = '<svg class="lvi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3a2 2 0 0 0-2 2"/><path d="M19 3a2 2 0 0 1 2 2"/><path d="M21 19a2 2 0 0 1-2 2"/><path d="M5 21a2 2 0 0 1-2-2"/><path d="M9 3h1"/><path d="M9 21h2"/><path d="M14 3h1"/><path d="M3 9v1"/><path d="M21 9v2"/><path d="M3 14v1"/><path d="M21 14v1"/></svg>';
+  const SVG_CLOSE = '<svg class="lvi" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+  const SVG_SEND = '<svg class="lvi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
+
+  function showFloatingPopover(
+    rect: { x: number; y: number; width: number; height: number },
+    label: string,
+    placeholder: string,
+    onSubmit: (text: string) => void,
+    onCancel?: () => void
+  ): void {
+    closePopover();
+    const popover = document.createElement('div');
+    popover.className = 'artifact-popover';
+    popover.innerHTML = `
+      <div class="popover-header">
+        <span class="popover-icon">${SVG_INSPECT}</span>
+        <span class="popover-label">${label}</span>
+        <button class="popover-close" title="Esc">${SVG_CLOSE}</button>
+      </div>
+      <div class="popover-body">
+        <input type="text" class="popover-input" placeholder="${placeholder}">
+        <button class="popover-send" title="Odeslat do CC">${SVG_SEND}</button>
+      </div>
+      <div class="popover-arrow"></div>
+    `;
+    popoutContent.appendChild(popover);
+    activePopover = popover;
+
+    const containerRect = popoutContent.getBoundingClientRect();
+    const popW = 380, popH = popover.getBoundingClientRect().height || 80;
+    const pad = 12;
+    const cx = rect.x + rect.width / 2;
+    const cy = rect.y + rect.height / 2;
+    type Side = 'bottom' | 'top' | 'right' | 'left';
+    const candidates: Array<{ side: Side; x: number; y: number }> = [
+      { side: 'bottom', x: cx - popW / 2, y: rect.y + rect.height + pad },
+      { side: 'top',    x: cx - popW / 2, y: rect.y - popH - pad },
+      { side: 'right',  x: rect.x + rect.width + pad, y: cy - popH / 2 },
+      { side: 'left',   x: rect.x - popW - pad, y: cy - popH / 2 },
+    ];
+    let chosen: { side: Side; x: number; y: number } | null = null;
+    for (const c of candidates) {
+      if (c.x >= 4 && c.y >= 4 && c.x + popW <= containerRect.width - 4 && c.y + popH <= containerRect.height - 4) {
+        chosen = c; break;
+      }
+    }
+    if (!chosen) chosen = { side: 'bottom', x: cx - popW / 2, y: rect.y + rect.height + pad };
+    chosen.x = Math.max(8, Math.min(chosen.x, containerRect.width - popW - 8));
+    chosen.y = Math.max(8, Math.min(chosen.y, containerRect.height - popH - 8));
+    popover.style.left = `${chosen.x}px`;
+    popover.style.top = `${chosen.y}px`;
+    popover.dataset.side = chosen.side;
+
+    const arrow = popover.querySelector('.popover-arrow') as HTMLElement;
+    if (chosen.side === 'bottom') { arrow.style.left = `${Math.max(12, Math.min(cx - chosen.x, popW - 12))}px`; arrow.style.top = '-6px'; }
+    else if (chosen.side === 'top') { arrow.style.left = `${Math.max(12, Math.min(cx - chosen.x, popW - 12))}px`; arrow.style.bottom = '-6px'; }
+    else if (chosen.side === 'right') { arrow.style.top = `${Math.max(12, Math.min(cy - chosen.y, popH - 12))}px`; arrow.style.left = '-6px'; }
+    else { arrow.style.top = `${Math.max(12, Math.min(cy - chosen.y, popH - 12))}px`; arrow.style.right = '-6px'; }
+
+    const input = popover.querySelector('.popover-input') as HTMLInputElement;
+    const sendBtn = popover.querySelector('.popover-send') as HTMLElement;
+    const closeBtn = popover.querySelector('.popover-close') as HTMLElement;
+    function submit(): void { onSubmit(input.value.trim()); }
+    function cancel(): void { if (onCancel) onCancel(); closePopover(); }
+    sendBtn.addEventListener('click', submit);
+    closeBtn.addEventListener('click', cancel);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); submit(); }
+      if (e.key === 'Escape') { e.preventDefault(); cancel(); }
+    });
+    setTimeout(() => input.focus(), 50);
+  }
+
+  function closePopover(): void {
+    if (activePopover) { activePopover.remove(); activePopover = null; }
+  }
+
   // ── Inspector integration ──
   const inspector = (window as any).createInspector() as any;
   const btnInspect = document.querySelector('.pop-inspect') as HTMLElement;
@@ -140,70 +280,39 @@ function initPopout(): void {
   btnInspect.addEventListener('click', () => {
     inspectActive = !inspectActive;
     btnInspect.classList.toggle('artifact-btn-active', inspectActive);
-    btnInspect.textContent = t(inspectActive ? 'browser.inspectOn' : 'browser.inspect');
+    btnInspect.title = popT(inspectActive ? 'browser.inspectOn' : 'browser.inspect');
     if (inspectActive) {
       inspector.enable(iframe);
     } else {
       inspector.disable();
+      closePopover();
     }
   });
 
-  // Re-enable inspector after iframe reloads
   iframe.addEventListener('load', () => {
-    if (inspectActive) {
-      setTimeout(() => inspector.enable(iframe), 300);
-    }
+    if (inspectActive) setTimeout(() => inspector.enable(iframe), 300);
   });
-
-  // Info bar — shows after element select
-  const infoBar = document.getElementById('popout-info-bar') as HTMLElement;
-  const infoPromptInput = infoBar.querySelector('.info-prompt') as HTMLInputElement;
-  const infoSelectorLabel = infoBar.querySelector('.info-selector') as HTMLElement;
-  let selectedElement: any = null;
 
   inspector.onSelect((info: any) => {
-    selectedElement = info;
-    infoBar.style.display = 'flex';
-    infoSelectorLabel.textContent = info.selector;
-    infoPromptInput.value = '';
-    infoPromptInput.placeholder = `Co udělat s ${info.selector}?`;
-    infoPromptInput.focus();
-  });
-
-  function sendElementPrompt(): void {
-    if (!selectedElement) return;
     const file = currentFilePath ? currentFilePath.replace(/\\/g, '/').split('/').pop() : '';
-    const userText = infoPromptInput.value.trim();
-    const fullPrompt = `V souboru ${file} uprav element ${selectedElement.selector}` +
-      (selectedElement.text ? ` (obsah: "${selectedElement.text.substring(0, 50)}")` : '') +
-      (userText ? ` — ${userText}` : '');
-    // Send prompt to main window → terminal
-    popoutApi.sendPrompt(fullPrompt);
-    infoPromptInput.value = '';
-    selectedElement = null;
-    infoBar.style.display = 'none';
-
-    // Re-enable inspector for next selection
-    if (inspectActive) {
-      inspector.disable();
-      setTimeout(() => inspector.enable(iframe), 300);
-    }
-  }
-
-  infoBar.querySelector('.info-send')!.addEventListener('click', sendElementPrompt);
-  infoPromptInput.addEventListener('keydown', (e: KeyboardEvent) => {
-    if (e.key === 'Enter') { e.preventDefault(); sendElementPrompt(); }
-    if (e.key === 'Escape') { selectedElement = null; infoBar.style.display = 'none'; }
-  });
-  infoBar.querySelector('.info-clear')!.addEventListener('click', () => {
-    selectedElement = null;
-    infoBar.style.display = 'none';
+    showFloatingPopover(
+      info.rect || { x: 100, y: 100, width: 100, height: 30 },
+      info.selector,
+      `Co udělat s ${info.selector}?`,
+      (text) => {
+        const prompt = `V souboru ${file} uprav element ${info.selector}` +
+          (info.text ? ` (obsah: "${info.text.substring(0, 50)}")` : '') +
+          (text ? ` — ${text}` : '');
+        popoutApi.sendPrompt(prompt);
+        closePopover();
+        if (inspectActive) { inspector.disable(); setTimeout(() => inspector.enable(iframe), 300); }
+      }
+    );
   });
 
   // ── Annotation (freehand drawing) ──
   const btnAnnotate = document.querySelector('.pop-annotate') as HTMLElement;
   const annotCanvas = document.getElementById('popout-annot-canvas') as HTMLCanvasElement;
-  const popoutContent = document.getElementById('popout-content') as HTMLElement;
   let annotating = false;
   let annotCtx: CanvasRenderingContext2D | null = null;
   let drawing = false;
@@ -213,10 +322,9 @@ function initPopout(): void {
   btnAnnotate.addEventListener('click', () => {
     annotating = !annotating;
     btnAnnotate.classList.toggle('artifact-btn-active', annotating);
-    btnAnnotate.textContent = t(annotating ? 'browser.annotateDraw' : 'browser.annotate');
+    btnAnnotate.title = popT(annotating ? 'browser.annotateDraw' : 'browser.annotate');
     annotCanvas.style.display = annotating ? 'block' : 'none';
     annotCanvas.style.pointerEvents = annotating ? 'auto' : 'none';
-
     if (annotating) {
       const rect = popoutContent.getBoundingClientRect();
       annotCanvas.width = rect.width;
@@ -232,7 +340,6 @@ function initPopout(): void {
     const rect = annotCanvas.getBoundingClientRect();
     currentStroke = [{ x: e.clientX - rect.left, y: e.clientY - rect.top }];
   });
-
   annotCanvas.addEventListener('mousemove', (e: MouseEvent) => {
     if (!drawing || !annotCtx) return;
     const rect = annotCanvas.getBoundingClientRect();
@@ -241,75 +348,43 @@ function initPopout(): void {
     drawStroke(annotCtx, currentStroke, '#ff6a00', 3);
   });
 
-  annotCanvas.addEventListener('mouseup', () => {
+  function finishStroke(): void {
     if (drawing && currentStroke.length > 2) {
       currentStroke.push({ x: currentStroke[0].x, y: currentStroke[0].y });
       strokes.push([...currentStroke]);
       redrawAll();
-      showAnnotPrompt(currentStroke);
+      const pts = strokes[strokes.length - 1];
+      const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+      const minX = Math.min(...xs), maxX = Math.max(...xs);
+      const minY = Math.min(...ys), maxY = Math.max(...ys);
+      const file = currentFilePath ? currentFilePath.replace(/\\/g, '/').split('/').pop() : '';
+      showFloatingPopover(
+        { x: minX, y: minY, width: maxX - minX, height: maxY - minY },
+        `Oblast ${Math.round(maxX - minX)}×${Math.round(maxY - minY)}px`,
+        popT('popout.areaPh'),
+        (text) => {
+          if (!text) return;
+          const prompt = `V souboru ${file} v oblasti (${Math.round(minX)},${Math.round(minY)} → ${Math.round(maxX)},${Math.round(maxY)}) udělej: ${text}`;
+          popoutApi.sendPrompt(prompt);
+          closePopover();
+          strokes.pop();
+          redrawAll();
+        },
+        () => { strokes.pop(); redrawAll(); }
+      );
     }
     drawing = false;
     currentStroke = [];
-  });
+  }
 
-  annotCanvas.addEventListener('mouseleave', () => {
-    if (drawing && currentStroke.length > 2) {
-      currentStroke.push({ x: currentStroke[0].x, y: currentStroke[0].y });
-      strokes.push([...currentStroke]);
-      redrawAll();
-      showAnnotPrompt(currentStroke);
-    }
-    drawing = false;
-    currentStroke = [];
-  });
-
+  annotCanvas.addEventListener('mouseup', finishStroke);
+  annotCanvas.addEventListener('mouseleave', finishStroke);
   annotCanvas.addEventListener('contextmenu', (e: MouseEvent) => {
     e.preventDefault();
-    strokes = [];
-    currentStroke = [];
+    strokes = []; currentStroke = [];
     if (annotCtx) annotCtx.clearRect(0, 0, annotCanvas.width, annotCanvas.height);
+    closePopover();
   });
-
-  let annotPrompt: HTMLElement | null = null;
-
-  function showAnnotPrompt(pts: Array<{x: number; y: number}>): void {
-    const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
-    const minX = Math.min(...xs), maxX = Math.max(...xs);
-    const minY = Math.min(...ys), maxY = Math.max(...ys);
-    if (annotPrompt) annotPrompt.remove();
-
-    annotPrompt = document.createElement('div');
-    annotPrompt.className = 'annot-prompt';
-    annotPrompt.innerHTML = `
-      <span class="annot-prompt-label">Označená oblast (${Math.round(maxX - minX)}x${Math.round(maxY - minY)}px)</span>
-      <input type="text" class="annot-prompt-input" placeholder="${t('popout.areaPh')}">
-      <button class="annot-prompt-send" title="${t('toast.sentToCC')}">›</button>
-      <button class="annot-prompt-clear" title="${t('popout.cancel')}">×</button>
-    `;
-    popoutContent.appendChild(annotPrompt);
-    const input = annotPrompt.querySelector('.annot-prompt-input') as HTMLInputElement;
-    input.focus();
-
-    function sendAnnot(): void {
-      const text = input.value.trim();
-      if (!text) return;
-      const file = currentFilePath ? currentFilePath.replace(/\\/g, '/').split('/').pop() : '';
-      const prompt = `V souboru ${file} v oblasti (${Math.round(minX)},${Math.round(minY)} → ${Math.round(maxX)},${Math.round(maxY)}) udělej: ${text}`;
-      popoutApi.sendPrompt(prompt);
-      if (annotPrompt) { annotPrompt.remove(); annotPrompt = null; }
-      strokes.pop();
-      redrawAll();
-    }
-
-    annotPrompt.querySelector('.annot-prompt-send')!.addEventListener('click', sendAnnot);
-    input.addEventListener('keydown', (e: KeyboardEvent) => {
-      if (e.key === 'Enter') sendAnnot();
-      if (e.key === 'Escape') { strokes.pop(); redrawAll(); if (annotPrompt) { annotPrompt.remove(); annotPrompt = null; } }
-    });
-    annotPrompt.querySelector('.annot-prompt-clear')!.addEventListener('click', () => {
-      strokes.pop(); redrawAll(); if (annotPrompt) { annotPrompt.remove(); annotPrompt = null; }
-    });
-  }
 
   function drawStroke(ctx: CanvasRenderingContext2D, pts: Array<{x: number; y: number}>, color: string, width: number): void {
     if (pts.length < 2) return;

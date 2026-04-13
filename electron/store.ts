@@ -28,6 +28,7 @@ interface StoreSchema {
   welcomeSeen: boolean;
   autostartDev: boolean;
   locale: 'en' | 'cs';
+  monitorDiagonal: number;
 }
 
 export const store = new Store<StoreSchema>({
@@ -59,5 +60,6 @@ export const store = new Store<StoreSchema>({
     welcomeSeen: false,
     autostartDev: true,
     locale: 'cs',
+    monitorDiagonal: 24,
   },
 });

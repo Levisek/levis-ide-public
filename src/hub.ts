@@ -712,9 +712,9 @@ const PLAN_LIMITS: Record<string, { block5h: number; month: number; label: strin
 };
 
 function fmtTok(n: number): string {
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(2) + 'M';
-  if (n >= 1_000) return (n / 1_000).toFixed(1) + 'k';
-  return String(n);
+  if (n >= 1_000_000) return Math.round(n / 1_000_000) + 'M';
+  if (n >= 1_000) return Math.round(n / 1_000) + 'k';
+  return String(Math.round(n));
 }
 function fmtUsd(n: number): string {
   return '$' + n.toFixed(2);
@@ -730,15 +730,15 @@ async function renderUsagePanel(host: HTMLElement): Promise<void> {
 
   const limits = PLAN_LIMITS[plan] || PLAN_LIMITS.max5;
   const t = data.totals;
-  const block5hPct = Math.min(100, (t.block5h.cost / limits.block5h) * 100);
-  const monthPct = Math.min(100, (t.month.cost / limits.month) * 100);
+  const block5hPct = Math.round(Math.min(100, (t.block5h.cost / limits.block5h) * 100));
+  const monthPct = Math.round(Math.min(100, (t.month.cost / limits.month) * 100));
 
   // Realna procenta od Claude Code (pokud je statusline dump dostupny)
   const rl = realLimits?.rate_limits || null;
   const cw = realLimits?.context_window || null;
-  const sessionPct = rl?.five_hour?.used_percentage ?? null;
-  const weeklyPct = rl?.seven_day?.used_percentage ?? null;
-  const ctxPct = cw?.used_percentage ?? null;
+  const sessionPct = rl?.five_hour?.used_percentage != null ? Math.round(rl.five_hour.used_percentage) : null;
+  const weeklyPct = rl?.seven_day?.used_percentage != null ? Math.round(rl.seven_day.used_percentage) : null;
+  const ctxPct = cw?.used_percentage != null ? Math.round(cw.used_percentage) : null;
   function fmtReset(epoch: number | undefined): string {
     if (!epoch) return '';
     const diff = epoch * 1000 - Date.now();
@@ -754,13 +754,13 @@ async function renderUsagePanel(host: HTMLElement): Promise<void> {
     <div class="usage-stat">
       <div class="usage-stat-label">Session (5h)</div>
       <div class="usage-stat-val">${sessionPct}<span class="usage-stat-pct-unit">%</span></div>
-      <div class="usage-progress"><div class="usage-progress-fill" style="width:${sessionPct}%;background:${pctColor(sessionPct)}"></div></div>
+      <div class="usage-progress"><div class="usage-progress-fill" style="width:${sessionPct ?? 0}%;background:${pctColor(sessionPct ?? 0)}"></div></div>
       <div class="usage-stat-sub">${fmtReset(rl.five_hour?.resets_at)}</div>
     </div>
     <div class="usage-stat">
       <div class="usage-stat-label">Weekly</div>
       <div class="usage-stat-val">${weeklyPct}<span class="usage-stat-pct-unit">%</span></div>
-      <div class="usage-progress"><div class="usage-progress-fill" style="width:${weeklyPct}%;background:${pctColor(weeklyPct)}"></div></div>
+      <div class="usage-progress"><div class="usage-progress-fill" style="width:${weeklyPct ?? 0}%;background:${pctColor(weeklyPct ?? 0)}"></div></div>
       <div class="usage-stat-sub">${fmtReset(rl.seven_day?.resets_at)}</div>
     </div>
     ${ctxPct !== null ? `

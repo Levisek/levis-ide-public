@@ -39,7 +39,7 @@
 .panel-terminal { display: flex; flex-direction: column; background: var(--bg-base); overflow: hidden; min-height: 0; border-radius: inherit; position: relative; }
 .term-status-dot {
   width: 8px; height: 8px; border-radius: 50%;
-  position: absolute; top: 8px; right: 8px; z-index: 5;
+  position: absolute; top: 8px; right: 24px; z-index: 5;
   transition: background 200ms ease, box-shadow 200ms ease;
   pointer-events: none;
 }
@@ -72,7 +72,7 @@
       0 0 38px rgba(59,130,246,0.8);
   }
 }
-.terminal-container { flex: 1; padding: var(--space-1) var(--space-2); overflow: hidden; min-height: 0; }
+.terminal-container { flex: 1; padding: 2px; overflow: hidden; min-height: 0; }
 
 .term-search-bar {
   position: relative; z-index: 10; flex-shrink: 0;
@@ -631,7 +631,7 @@
   display: flex; align-items: center; gap: var(--space-3); flex-shrink: 0;
   padding: 0 var(--space-4); background: var(--bg-base);
   font-size: 11px; height: 38px;
-  margin: var(--space-1) var(--space-2) var(--space-2);
+  margin: 0 4px 4px;
   border-radius: var(--radius);
   border: 1px solid var(--border);
 }
@@ -973,12 +973,11 @@
 .grid-cell {
   display: flex; flex-direction: column;
   background: var(--bg-base);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-sm);
   overflow: hidden; min-width: 0; min-height: 0;
-  border: 1px solid var(--border);
 }
 .grid-cell-empty {
-  border-style: dashed; background: transparent;
+  border: 1px dashed var(--border); background: transparent;
   align-items: center; justify-content: center;
   flex-direction: column; gap: 12px;
 }
@@ -1050,8 +1049,8 @@
   font-size: 11px; font-weight: 600; color: var(--text-soft);
   text-transform: uppercase; letter-spacing: 0.05em;
   cursor: grab; user-select: none; flex-shrink: 0;
-  border-top-left-radius: var(--radius-lg);
-  border-top-right-radius: var(--radius-lg);
+  border-top-left-radius: var(--radius-sm);
+  border-top-right-radius: var(--radius-sm);
 }
 .grid-cell-header:hover { color: var(--text); background: var(--bg-elev-3); }
 .grid-locked .grid-cell-header { cursor: default; }

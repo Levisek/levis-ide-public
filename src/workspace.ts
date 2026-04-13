@@ -270,6 +270,19 @@ async function createWorkspace(projectPath: string, projectName: string, project
     });
     termContainer.appendChild(termSlot);
 
+    // Close button (visible on hover, only for non-first terminals)
+    if (termInstances.length > 0) {
+      const closeBtn = document.createElement('button');
+      closeBtn.className = 'term-close-btn';
+      closeBtn.title = 'Zavřít terminál';
+      closeBtn.innerHTML = (window as any).icon('close', { size: 12 });
+      closeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        termSlot.dispatchEvent(new Event('term-close'));
+      });
+      termSlot.appendChild(closeBtn);
+    }
+
     // Add splitter between terminals
     if (termInstances.length > 0) {
       const tSplitter = document.createElement('div');
@@ -447,6 +460,11 @@ async function createWorkspace(projectPath: string, projectName: string, project
         const actions = [
           { icon: 'search', title: t('terminal.search'), fn: () => { const ti = termInstances[activeTerminalIndex] || termInstances[0]; ti?.toggleSearch(); } },
           { icon: 'clear', title: t('terminal.clear'), fn: () => { const ti = termInstances[activeTerminalIndex] || termInstances[0]; ti?.clear(); } },
+          { icon: 'equalize-v', title: t('ws.equalizeTerminals'), fn: () => {
+            const slots = termContainer.querySelectorAll('.term-slot');
+            slots.forEach((s) => { (s as HTMLElement).style.flex = '1'; (s as HTMLElement).style.width = ''; });
+            for (const ti of termInstances) { try { ti.fitAddon.fit(); } catch {} }
+          }},
           { icon: 'split', title: t('ws.newTerminal'), fn: () => addTerminal() },
         ];
         const closeBtn = header.querySelector('.grid-cell-close');
@@ -475,7 +493,11 @@ async function createWorkspace(projectPath: string, projectName: string, project
       // Popout panelu mimo workspace
       try {
         if (panel === 'browser') {
-          await levis.popout({ type: 'browser' });
+          const bUrl = browserInstance?.getUrl?.() || '';
+          const popData: any = { type: 'browser' };
+          if (bUrl.startsWith('file:///')) popData.filePath = bUrl.replace('file:///', '');
+          else if (bUrl && bUrl !== 'about:blank') popData.url = bUrl;
+          await levis.popout(popData);
           poppedPanels.add('browser');
         } else if (panel === 'editor') {
           const files = editorInstance?.getOpenFiles?.() || [];
@@ -751,32 +773,46 @@ async function createWorkspace(projectPath: string, projectName: string, project
   function setupDragSplitter(
     handle: HTMLElement,
     direction: 'vertical' | 'horizontal',
-    parent: HTMLElement
+    _parent: HTMLElement
   ): void {
     handle.addEventListener('mousedown', (e: MouseEvent) => {
       e.preventDefault();
       handle.classList.add('dragging');
       document.body.style.userSelect = 'none';
-      document.body.style.cursor = direction === 'vertical' ? 'col-resize' : 'row-resize';
+      const cursor = direction === 'vertical' ? 'col-resize' : 'row-resize';
+      document.body.style.cursor = cursor;
+
+      const prev = handle.previousElementSibling as HTMLElement;
+      const next = handle.nextElementSibling as HTMLElement;
+      if (!prev || !next) return;
+
+      // Zachytit rects při mousedown — počítáme relativně k těmto dvěma slotům
+      const prevRect = prev.getBoundingClientRect();
+      const nextRect = next.getBoundingClientRect();
+      const originPx = direction === 'vertical' ? prevRect.left : prevRect.top;
+      const combinedPx = direction === 'vertical'
+        ? (nextRect.right - prevRect.left)
+        : (nextRect.bottom - prevRect.top);
 
       // Overlay zabrání iframe/xterm žrát mouse events
       const overlay = document.createElement('div');
-      overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;cursor:' + (direction === 'vertical' ? 'col-resize' : 'row-resize');
+      overlay.style.cssText = `position:fixed;inset:0;z-index:9999;cursor:${cursor}`;
       document.body.appendChild(overlay);
 
       const onMove = (ev: MouseEvent) => {
-        const rect = parent.getBoundingClientRect();
-        if (direction === 'vertical') {
-          let pct = ((ev.clientX - rect.left) / rect.width) * 100;
-          // Snap k 50%
-          if (Math.abs(pct - 50) < 3) pct = 50;
-          pct = Math.min(85, Math.max(15, pct));
-          const prev = handle.previousElementSibling as HTMLElement;
-          if (prev) {
-            prev.style.flex = 'none';
-            prev.style.width = `${pct}%`;
-          }
-        }
+        const mousePos = (direction === 'vertical' ? ev.clientX : ev.clientY) - originPx;
+        const minPx = combinedPx * 0.15;
+        let clamped = Math.min(combinedPx - minPx, Math.max(minPx, mousePos));
+
+        // Snap k 50% kombinované šířky
+        const half = combinedPx / 2;
+        if (Math.abs(clamped - half) < combinedPx * 0.03) clamped = half;
+
+        prev.style.flex = 'none';
+        prev.style[direction === 'vertical' ? 'width' : 'height'] = `${clamped}px`;
+        next.style.flex = 'none';
+        next.style[direction === 'vertical' ? 'width' : 'height'] = `${combinedPx - clamped}px`;
+
         for (const ti of termInstances) {
           try { ti.fitAddon.fit(); } catch {}
         }

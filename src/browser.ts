@@ -42,6 +42,9 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
     <button class="artifact-btn browser-reload" title="${t('artifact.refreshTip')}">${I('refresh')}</button>
     <button class="artifact-btn browser-watch" title="${t('artifact.watchTip')}">${I('eye')}</button>
     <button class="artifact-btn browser-open-file" title="${t('artifact.loadHtml')}">${I('folder')}</button>
+    <button class="artifact-btn browser-zoom-out" title="Zoom −">−</button>
+    <span class="browser-zoom-label" style="font-size:10px;color:var(--text-muted);min-width:32px;text-align:center;user-select:none;">100%</span>
+    <button class="artifact-btn browser-zoom-in" title="Zoom +">+</button>
     <button class="btn-devtools" title="DevTools">${I('gear')}</button>
   `;
   wrapper.appendChild(toolbar);
@@ -120,11 +123,44 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
     webview.style.position = 'absolute';
     webview.style.width = '100%';
     webview.style.height = '100%';
+    webview.style.maxHeight = '';
     webview.style.flex = '';
     webview.style.margin = '';
     webview.style.border = '';
     webview.style.borderRadius = '';
     webview.style.boxShadow = '';
+  }
+
+  // ── 1:1 device simulation ──
+  const DEVICES: Record<string, { w: number; h: number; radius: number }> = {
+    mobile: { w: 2.56, h: 5.69, radius: 20 },
+    tablet: { w: 6.58, h: 8.77, radius: 16 },
+  };
+
+  async function getMonitorCssPPI(): Promise<number> {
+    const diag = Number(await levis.storeGet('monitorDiagonal')) || 24;
+    const sw = window.screen.width;
+    const sh = window.screen.height;
+    return Math.sqrt(sw * sw + sh * sh) / diag;
+  }
+
+  function applyDeviceFrame(ppi: number, device: { w: number; h: number; radius: number }): void {
+    const w = Math.round(device.w * ppi);
+    const h = Math.round(device.h * ppi);
+    webviewContainer.style.background = '#0a0a0f';
+    webviewContainer.style.display = 'flex';
+    webviewContainer.style.alignItems = 'center';
+    webviewContainer.style.justifyContent = 'center';
+    webviewContainer.style.overflow = 'auto';
+    webview.style.position = 'relative';
+    webview.style.width = w + 'px';
+    webview.style.height = h + 'px';
+    webview.style.maxHeight = '100%';
+    webview.style.flex = '0 0 auto';
+    webview.style.margin = '0 auto';
+    webview.style.border = '1px solid rgba(255,255,255,0.1)';
+    webview.style.borderRadius = device.radius + 'px';
+    webview.style.boxShadow = '0 8px 32px rgba(0,0,0,0.5)';
   }
 
   const sizeBtns = toolbar.querySelectorAll('.artifact-size-btn');
@@ -133,36 +169,40 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
       currentSize = btn.getAttribute('data-size') || 'full';
       sizeBtns.forEach(b => b.classList.remove('artifact-size-active'));
       btn.classList.add('artifact-size-active');
-      switch (currentSize) {
-        case 'mobile':
-          webviewContainer.style.background = '#0a0a0f';
-          webviewContainer.style.display = 'flex';
-          webviewContainer.style.alignItems = 'flex-start';
-          webviewContainer.style.justifyContent = 'center';
-          webviewContainer.style.overflow = 'auto';
-          webview.style.position = 'relative';
-          webview.style.width = '412px';
-          webview.style.height = '915px';
-          webview.style.flex = '0 0 auto';
-          webview.style.margin = '12px auto';
-          webview.style.border = '1px solid rgba(255,255,255,0.12)';
-          webview.style.borderRadius = '24px';
-          webview.style.boxShadow = '0 8px 40px rgba(0,0,0,0.5)';
-          break;
-        case 'tablet':
-          resetWebviewFull();
-          webview.style.width = '768px';
-          webview.style.margin = '0 auto';
-          webview.style.position = 'relative';
-          webviewContainer.style.display = 'flex';
-          webviewContainer.style.justifyContent = 'center';
-          webviewContainer.style.overflow = 'auto';
-          break;
-        default:
-          resetWebviewFull();
+      resetWebviewFull();
+      const device = DEVICES[currentSize];
+      if (device) {
+        const ppi = await getMonitorCssPPI();
+        applyDeviceFrame(ppi, device);
       }
     });
   });
+
+  // ── Zoom (device frame scale) ──
+  let zoomLevel = 1.0;
+  const zoomLabel = toolbar.querySelector('.browser-zoom-label') as HTMLElement;
+  async function applyZoom(): Promise<void> {
+    zoomLabel.textContent = Math.round(zoomLevel * 100) + '%';
+    const device = DEVICES[currentSize];
+    if (device) {
+      const ppi = await getMonitorCssPPI();
+      const w = Math.round(device.w * ppi * zoomLevel);
+      const h = Math.round(device.h * ppi * zoomLevel);
+      webview.style.width = w + 'px';
+      webview.style.height = h + 'px';
+    } else {
+      try { (webview as any).setZoomFactor(zoomLevel); } catch {}
+    }
+  }
+  toolbar.querySelector('.browser-zoom-in')!.addEventListener('click', () => {
+    zoomLevel = Math.min(3, +(zoomLevel + 0.1).toFixed(1));
+    applyZoom();
+  });
+  toolbar.querySelector('.browser-zoom-out')!.addEventListener('click', () => {
+    zoomLevel = Math.max(0.25, +(zoomLevel - 0.1).toFixed(1));
+    applyZoom();
+  });
+  zoomLabel.addEventListener('click', () => { zoomLevel = 1.0; applyZoom(); });
 
   // ── Touch emulation ──
   const btnTouchToggle = toolbar.querySelector('.browser-touch-toggle') as HTMLElement;
@@ -341,7 +381,7 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
   btnInspect.addEventListener('click', () => {
     inspectActive = !inspectActive;
     btnInspect.classList.toggle('artifact-btn-active', inspectActive);
-    btnInspect.innerHTML = `${I('inspect')} ${t(inspectActive ? 'browser.inspectOn' : 'browser.inspect')}`;
+    btnInspect.title = t(inspectActive ? 'browser.inspectOn' : 'browser.inspect');
     if (inspectActive) {
       inspector.enable(webview);
       if (annotating) toggleAnnotate(false);
@@ -513,14 +553,14 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
   function toggleAnnotate(force?: boolean) {
     annotating = force !== undefined ? force : !annotating;
     btnAnnotate.classList.toggle('artifact-btn-active', annotating);
-    btnAnnotate.innerHTML = `${I('editor')} ${t(annotating ? 'browser.annotateDraw' : 'browser.annotate')}`;
+    btnAnnotate.title = t(annotating ? 'browser.annotateDraw' : 'browser.annotate');
     annotCanvas.style.display = annotating ? 'block' : 'none';
     annotCanvas.style.pointerEvents = annotating ? 'auto' : 'none';
     if (annotating) {
       if (inspectActive) {
         inspectActive = false;
         btnInspect.classList.remove('artifact-btn-active');
-        btnInspect.innerHTML = `${I('inspect')} ${t('browser.inspect')}`;
+        btnInspect.title = t('browser.inspect');
         inspector.disable();
       }
       const rect = webviewContainer.getBoundingClientRect();

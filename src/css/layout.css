@@ -181,7 +181,7 @@
   box-shadow: var(--shadow-xs);
 }
 
-.workspace-panels { display: flex; flex: 1; overflow: hidden; min-height: 0; padding: var(--space-2); gap: 0; }
+.workspace-panels { display: flex; flex: 1; overflow: hidden; min-height: 0; padding: 4px; gap: 0; }
 .workspace-panels.swapped { flex-direction: row-reverse; }
 
 .ws-left-side { display: flex; flex: 1; min-width: 20%; overflow: hidden; }
@@ -190,20 +190,20 @@
 .ws-sidebar {
   width: 220px; flex-shrink: 0; overflow: hidden;
   background: var(--bg-base);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-sm);
 }
 
 .ws-left-content {
   flex: 1; display: flex; flex-direction: column;
   overflow: hidden; position: relative; min-width: 0; min-height: 0;
   background: var(--bg-base);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-sm);
 }
 
 .ws-right-side {
   display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; overflow: hidden;
   background: var(--bg-base);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-sm);
 }
 
 .ws-panel-active { display: flex !important; flex-direction: column; flex: 1; position: relative; overflow: hidden; min-height: 0; }
@@ -216,8 +216,8 @@
 /* Handle: 4×36px vertikální pilulka, centrovaná přes inset:0 + margin:auto */
 .split-handle::after {
   content: ''; position: absolute; inset: 0; margin: auto;
-  width: 4px; height: 40px; border-radius: var(--radius-pill);
-  background: rgba(255, 255, 255, 0.15);
+  width: 4px; height: 36px; border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.06);
   transition: all var(--t-base) var(--ease);
 }
 .split-handle:hover::after, .split-handle.dragging::after {
@@ -230,13 +230,16 @@
 
 /* Flex-based splittery */
 .splitter {
-  width: var(--space-2); flex-shrink: 0; cursor: col-resize;
+  width: 4px; flex-shrink: 0; cursor: col-resize;
   position: relative; background: transparent;
 }
 .term-splitter {
-  width: 6px; flex-shrink: 0; cursor: col-resize;
+  width: 4px; flex-shrink: 0; cursor: col-resize;
   position: relative; background: transparent;
+  display: flex; align-items: center; justify-content: center;
 }
+.grid-splitter { background: transparent; }
+.grid-splitter:hover { background: rgba(255,255,255,0.04); }
 
 /* ── Split Terminals ─────────────── */
 
@@ -245,10 +248,19 @@
 }
 .term-slot {
   flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; min-height: 0;
-  position: relative;
+  position: relative; background: #0a0a0f;
   transition: box-shadow var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
 }
 .term-slot-active {
-  box-shadow: inset 2px 0 0 var(--accent);
+  box-shadow: inset 0 2px 0 var(--accent);
   background: rgba(255, 106, 0, 0.03);
 }
+.term-close-btn {
+  position: absolute; top: 4px; right: 4px; z-index: 10;
+  width: 18px; height: 18px; border-radius: var(--radius-sm);
+  background: transparent; border: none; color: var(--text-muted);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
+}
+.term-slot:hover .term-close-btn { opacity: 1; }
+.term-close-btn:hover { background: var(--error); color: white; }
