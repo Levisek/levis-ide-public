@@ -314,6 +314,16 @@
 .about-meta strong { color: var(--text); font-weight: 600; margin-right: 6px; }
 .about-meta a { color: var(--accent); text-decoration: none; }
 .about-meta a:hover { text-decoration: underline; }
+.about-changelog {
+  padding-top: 14px; border-top: 1px solid var(--border);
+}
+.about-changelog h3 {
+  font-size: 11px; font-weight: 600; color: var(--accent);
+  text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 8px;
+}
+.about-changelog-list { font-size: 12px; color: var(--text-soft); line-height: 1.6; }
+.about-cl-entry { margin-bottom: 4px; }
+.about-cl-entry strong { color: var(--text); font-weight: 600; }
 .about-name-explainer {
   font-size: 11px; line-height: 1.6; color: var(--text-muted);
   padding-top: 14px; border-top: 1px solid var(--border);

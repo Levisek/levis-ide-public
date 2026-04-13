@@ -1,5 +1,6 @@
 interface LevisAPI {
   getHomeDir: () => Promise<string>;
+  getAppVersion: () => Promise<string>;
   clipboardRead: () => Promise<string>;
   clipboardReadImage: (projectPath: string) => Promise<string | null>;
   clipboardWrite: (text: string) => void;

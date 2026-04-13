@@ -102,16 +102,29 @@ function showAboutDialog(): void {
       <button class="about-close" title="${t('settings.close')}">×</button>
       <div class="about-logo"><img src="../assets/icon.svg" alt="LevisIDE"></div>
       <h1>LevisIDE</h1>
-      <div class="about-version">${t('about.version')}</div>
+      <div class="about-version" id="about-version">v…</div>
       <div class="about-tagline">${t('welcome.tagline')}</div>
       <div class="about-meta">
         <div><strong>${t('about.author')}:</strong> Martin Levinger</div>
         <div><strong>${t('about.github')}:</strong> <a href="https://github.com/Levisek/levis-ide" data-extlink>Levisek/levis-ide</a></div>
         <div><strong>${t('about.builtOn')}:</strong> Electron, Monaco, xterm.js, node-pty</div>
       </div>
+      <div class="about-changelog">
+        <h3>${t('about.changelog')}</h3>
+        <div class="about-changelog-list">
+          <div class="about-cl-entry"><strong>v1.3.0</strong> — ${t('about.cl13')}</div>
+          <div class="about-cl-entry"><strong>v1.2.0</strong> — ${t('about.cl12')}</div>
+          <div class="about-cl-entry"><strong>v1.1.0</strong> — ${t('about.cl11')}</div>
+          <div class="about-cl-entry"><strong>v1.0.0</strong> — ${t('about.cl10')}</div>
+        </div>
+      </div>
       <div class="about-name-explainer">${t('about.nameExpl')}</div>
     </div>
   `;
+  levis.getAppVersion().then((v: string) => {
+    const el = overlay.querySelector('#about-version');
+    if (el) el.textContent = `v${v}`;
+  }).catch(() => {});
   document.body.appendChild(overlay);
   const close = () => overlay.remove();
   overlay.querySelector('.about-close')!.addEventListener('click', close);
@@ -277,7 +290,7 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
       <button class="hub-trademark" type="button" title="${t('hub.tradeTooltip')}">
         <img class="hub-tm-logo" src="../assets/icon.svg" alt="LevisIDE">
         <span class="hub-tm-text">LevisIDE™</span>
-        <span class="hub-tm-version">v1.0.0</span>
+        <span class="hub-tm-version" id="hub-version">v…</span>
       </button>
     </div>
   `;
@@ -290,6 +303,11 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
   const btnPushAll = container.querySelector('.hub-btn-push-all') as HTMLElement;
   const btnTrademark = container.querySelector('.hub-trademark') as HTMLElement;
   btnTrademark?.addEventListener('click', showAboutDialog);
+
+  levis.getAppVersion().then((v: string) => {
+    const el = container.querySelector('#hub-version');
+    if (el) el.textContent = `v${v}`;
+  }).catch(() => {});
 
   btnPullAll.addEventListener('click', async () => {
     showToast(t('toast.pullingAll'), 'info');

@@ -311,7 +311,12 @@ const EN: Dict = {
   'welcome.start':         "Let's go",
 
   // ── About dialog ───────────────────
-  'about.version':         'version 1.0.0',
+  'about.version':         'version',
+  'about.changelog':       'Changelog',
+  'about.cl13':            'Feedback form, grid auto-compact, drag fix, preview URL, audit fixes',
+  'about.cl12':            'Clean terminal, popout multi-terminal, splitter unify, new project templates',
+  'about.cl11':            'Panel merge, themes, file tree icons, floating popover, prompt queue',
+  'about.cl10':            'Initial release — workspace grid, drag-out, inspector, lasso screenshot',
   'about.author':          'Author',
   'about.github':          'GitHub',
   'about.builtOn':         'Built on',
@@ -744,7 +749,12 @@ const CS: Dict = {
   'welcome.start':         'Pojď na to',
 
   // ── About dialog ───────────────────
-  'about.version':         'verze 1.0.0',
+  'about.version':         'verze',
+  'about.changelog':       'Changelog',
+  'about.cl13':            'Feedback formulář, grid kompakce, drag fix, preview URL, audit opravy',
+  'about.cl12':            'Čistý terminál, popout multi-terminal, splitter sjednocení, nové šablony',
+  'about.cl11':            'Sloučení panelů, témata, ikony file tree, floating popover, prompt fronta',
+  'about.cl10':            'První vydání — workspace grid, drag-out, inspector, lasso screenshot',
   'about.author':          'Autor',
   'about.github':          'GitHub',
   'about.builtOn':         'Postaveno na',

@@ -49,6 +49,7 @@ const api = {
 
   // Env
   getHomeDir: () => ipcRenderer.invoke('env:homeDir'),
+  getAppVersion: () => ipcRenderer.invoke('env:appVersion'),
   clipboardRead: () => ipcRenderer.invoke('clipboard:read'),
   clipboardReadImage: (projectPath: string) => ipcRenderer.invoke('clipboard:readImage', projectPath),
   clipboardWrite: (text: string) => ipcRenderer.send('clipboard:write', text),

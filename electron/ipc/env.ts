@@ -1,10 +1,11 @@
-import { ipcMain, clipboard, nativeImage } from 'electron';
+import { ipcMain, clipboard, nativeImage, app } from 'electron';
 import * as os from 'os';
 import * as fs from 'fs';
 import * as path from 'path';
 
 export function registerEnvHandlers(): void {
   ipcMain.handle('env:homeDir', () => os.homedir());
+  ipcMain.handle('env:appVersion', () => app.getVersion());
   ipcMain.handle('clipboard:read', () => clipboard.readText());
   ipcMain.on('clipboard:write', (_e, text: string) => clipboard.writeText(text));
 
