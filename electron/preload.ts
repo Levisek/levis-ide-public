@@ -79,6 +79,9 @@ const api = {
   gitDiffStaged: (projectPath: string) => ipcRenderer.invoke('git:diffStaged', projectPath),
   gitCommit: (projectPath: string, message: string, push?: boolean) => ipcRenderer.invoke('git:commit', projectPath, message, push),
   gitPush: (projectPath: string) => ipcRenderer.invoke('git:push', projectPath),
+  gitRevparse: (projectPath: string) => ipcRenderer.invoke('git:revparse', projectPath),
+  gitResetHard: (projectPath: string, hash: string) => ipcRenderer.invoke('git:resetHard', projectPath, hash),
+  gitDiffRange: (projectPath: string, fromHash: string) => ipcRenderer.invoke('git:diffRange', projectPath, fromHash),
 
   // Capture (screenshot region for lasso → CC)
   captureRegion: (rect: { x: number; y: number; width: number; height: number }, savePath: string) =>

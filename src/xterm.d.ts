@@ -35,6 +35,9 @@ interface LevisAPI {
   gitDiffStaged: (projectPath: string) => Promise<string>;
   gitCommit: (projectPath: string, message: string, push?: boolean) => Promise<{ success?: boolean; error?: string; commit?: any; pushError?: string }>;
   gitPush: (projectPath: string) => Promise<{ success?: boolean; error?: string }>;
+  gitRevparse: (projectPath: string) => Promise<string>;
+  gitResetHard: (projectPath: string, hash: string) => Promise<{ success?: boolean; error?: string }>;
+  gitDiffRange: (projectPath: string, fromHash: string) => Promise<{ files: number; insertions: number; deletions: number } | { error: string }>;
   captureRegion: (rect: { x: number; y: number; width: number; height: number }, savePath: string) => Promise<{ success?: boolean; path?: string; error?: string }>;
   captureCleanup: (tmpDir: string) => Promise<{ success?: boolean; error?: string }>;
   deleteProject: (projectPath: string) => Promise<{ success?: boolean; error?: string }>;

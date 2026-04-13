@@ -658,6 +658,12 @@
   background: var(--bg-elev-2); color: var(--accent);
   border-color: var(--border);
 }
+.status-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.checkpoint-dropdown { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); margin-bottom: 8px; z-index: 100; min-width: 200px; background: var(--bg-elev-1); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 8px 24px rgba(0,0,0,0.5); overflow: hidden; }
+.checkpoint-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; cursor: pointer; gap: 12px; transition: background var(--t-fast) var(--ease); }
+.checkpoint-item:hover { background: var(--accent-dim); }
+.checkpoint-time { color: var(--text-soft); font-size: 11px; }
+.checkpoint-hash { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-muted); background: var(--bg-elev-2); padding: 1px 6px; border-radius: var(--radius-xs); }
 .status-cost {
   font-family: 'JetBrains Mono', monospace; font-size: 10px;
   color: var(--text-muted); background: var(--bg-elev-1);

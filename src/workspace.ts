@@ -177,6 +177,7 @@ async function createWorkspace(projectPath: string, projectName: string, project
     <button class="status-btn status-btn-push" title="${t('ws.jeb')}">${I('upload')} ${t('ws.btnSend')}</button>
     <button class="status-btn status-btn-pull" title="${t('ws.gitPull')}">${I('download')} ${t('ws.btnPull')}</button>
     <button class="status-btn status-btn-restart" title="${t('ws.restartCC')}">${I('restart')} ${t('ws.btnCC')}</button>
+    <button class="status-btn status-btn-revert" title="${t('ws.revertTooltip')}" disabled>${I('restart')} ↩</button>
     <button class="status-btn status-btn-attach" title="${t('ws.attachFile')}">${I('attach')} ${t('ws.btnAttach')}</button>
     <button class="status-btn status-btn-devlog" title="${t('ws.devLogTooltip')}" style="display:none">${I('file')} ${t('ws.btnDevLog')}</button>
   `;
@@ -944,6 +945,63 @@ async function createWorkspace(projectPath: string, projectName: string, project
     showToast(t('toast.ccRestarted'), 'info');
   });
 
+  // Checkpoint UI handler — registrovaný po ccDoneCallbacks (viz níže)
+  interface Checkpoint { hash: string; ts: number; files: number }
+  const checkpoints: Checkpoint[] = [];
+  const btnRevert = statusBar.querySelector('.status-btn-revert') as HTMLButtonElement;
+
+  btnRevert.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    if (checkpoints.length === 0) return;
+
+    const existing = document.querySelector('.checkpoint-dropdown');
+    if (existing) { existing.remove(); return; }
+
+    const dd = document.createElement('div');
+    dd.className = 'checkpoint-dropdown';
+    const recent = checkpoints.slice(0, 5);
+    dd.innerHTML = recent.map((cp, i) => {
+      const ago = Math.round((Date.now() - cp.ts) / 60000);
+      const label = ago < 1 ? 'právě teď' : ago < 60 ? `před ${ago} min` : `před ${Math.round(ago / 60)}h`;
+      return `<div class="checkpoint-item" data-idx="${i}">
+        <span class="checkpoint-time">${label}</span>
+        <span class="checkpoint-hash">${cp.hash.slice(0, 7)}</span>
+      </div>`;
+    }).join('');
+    btnRevert.style.position = 'relative';
+    btnRevert.appendChild(dd);
+
+    dd.addEventListener('click', async (ev) => {
+      const item = (ev.target as HTMLElement).closest('.checkpoint-item') as HTMLElement;
+      if (!item) return;
+      const idx = Number(item.dataset.idx);
+      const cp = recent[idx];
+      if (!cp) return;
+      dd.remove();
+
+      const status = await levis.gitStatus(projectPath);
+      if (status && !status.error && (status.files?.length > 0)) {
+        if (!confirm('Máš neuložené změny — budou ztraceny. Pokračovat?')) return;
+      }
+
+      const result = await levis.gitResetHard(projectPath, cp.hash);
+      if (result && result.success) {
+        const ago = Math.round((Date.now() - cp.ts) / 60000);
+        const label = ago < 1 ? 'právě teď' : `před ${ago} minutami`;
+        showToast(`✓ Projekt vrácen do stavu ${label}`, 'success');
+        checkpoints.splice(0, idx);
+      } else {
+        showToast('Revert selhal: ' + ((result as any)?.error || 'neznámá chyba'), 'error');
+      }
+    });
+
+    setTimeout(() => {
+      document.addEventListener('click', function closeDd() {
+        dd.remove(); document.removeEventListener('click', closeDd);
+      }, { once: true });
+    }, 10);
+  });
+
   statusBar.querySelector('.status-btn-attach')!.addEventListener('click', async () => {
     const files = await levis.openFileDialog(true);
     if (!files || files.length === 0) return;
@@ -1160,6 +1218,18 @@ async function createWorkspace(projectPath: string, projectName: string, project
   setTimeout(attachTermStateWatcher, 500);
   const termWatchInterval = setInterval(attachTermStateWatcher, 2000);
   cleanups.push(() => clearInterval(termWatchInterval));
+
+  // Checkpoint — ukládej HEAD hash po každé CC akci
+  ccDoneCallbacks.push(async () => {
+    try {
+      const hash = await levis.gitRevparse(projectPath);
+      if (typeof hash !== 'string' || hash.length < 6) return;
+      if (checkpoints.length > 0 && checkpoints[0].hash === hash) return;
+      checkpoints.unshift({ hash, ts: Date.now(), files: 0 });
+      if (checkpoints.length > 20) checkpoints.length = 20;
+      btnRevert.disabled = false;
+    } catch {}
+  });
 
   STAGE('returning');
   return {

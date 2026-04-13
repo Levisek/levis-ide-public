@@ -109,4 +109,35 @@ export function registerGitHandlers(): void {
       return { error: String(err) };
     }
   });
+
+  // ── Checkpoint / Revert ──
+
+  ipcMain.handle('git:revparse', async (_event, projectPath: string) => {
+    try {
+      const git = simpleGit(projectPath);
+      return (await git.revparse(['HEAD'])).trim();
+    } catch (err) {
+      return { error: String(err) };
+    }
+  });
+
+  ipcMain.handle('git:resetHard', async (_event, projectPath: string, hash: string) => {
+    try {
+      const git = simpleGit(projectPath);
+      await git.reset(['--hard', hash]);
+      return { success: true };
+    } catch (err) {
+      return { error: String(err) };
+    }
+  });
+
+  ipcMain.handle('git:diffRange', async (_event, projectPath: string, fromHash: string) => {
+    try {
+      const git = simpleGit(projectPath);
+      const stat = await git.diffSummary([fromHash, 'HEAD']);
+      return { files: stat.files.length, insertions: stat.insertions, deletions: stat.deletions };
+    } catch (err) {
+      return { error: String(err) };
+    }
+  });
 }
