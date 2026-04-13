@@ -169,9 +169,10 @@ async function createWorkspace(projectPath: string, projectName: string, project
   const statusBar = document.createElement('div');
   statusBar.className = 'status-bar';
   statusBar.innerHTML = `
-    <span class="status-project">${projectName}</span>
-    <span class="status-branch">...</span>
-    <span class="status-sizes"></span>
+    <span class="status-branch" title="Git branch">...</span>
+    <span class="status-dirty" title="Změněné soubory"></span>
+    <span class="status-sync" title="Ahead / Behind"></span>
+    <span class="status-cc-state" title="CC stav"></span>
     <span style="flex:1"></span>
     <button class="status-btn status-btn-save" title="${t('ws.takjo')}">${I('save')} ${t('ws.btnSave')}</button>
     <button class="status-btn status-btn-push" title="${t('ws.jeb')}">${I('upload')} ${t('ws.btnSend')}</button>
@@ -687,14 +688,36 @@ async function createWorkspace(projectPath: string, projectName: string, project
 
   // ── Git branch for status bar ─────────
   const branchEl = statusBar.querySelector('.status-branch') as HTMLElement;
+  const dirtyEl = statusBar.querySelector('.status-dirty') as HTMLElement;
+  const syncEl = statusBar.querySelector('.status-sync') as HTMLElement;
+  const ccStateEl = statusBar.querySelector('.status-cc-state') as HTMLElement;
+
   function updateGitStatus(): void {
     levis.gitStatus(projectPath).then((status: any) => {
       if (status.current) {
-        const dirty = status.files && status.files.length > 0;
-        branchEl.textContent = status.current + (dirty ? ' \u25CF' : '');
-        branchEl.title = dirty ? `${status.files.length} změněných souborů` : 'Git clean';
+        branchEl.textContent = `${I('git', { size: 12 })} ${status.current}`.trim();
+        branchEl.innerHTML = `${I('git', { size: 12 })} ${status.current}`;
+
+        const fileCount = status.files?.length || 0;
+        if (fileCount > 0) {
+          dirtyEl.textContent = `${fileCount} ${fileCount === 1 ? 'změna' : fileCount < 5 ? 'změny' : 'změn'}`;
+          dirtyEl.classList.add('status-dirty-active');
+        } else {
+          dirtyEl.textContent = '';
+          dirtyEl.classList.remove('status-dirty-active');
+        }
+
+        const ahead = status.ahead || 0;
+        const behind = status.behind || 0;
+        if (ahead > 0 || behind > 0) {
+          syncEl.textContent = (ahead > 0 ? `↑${ahead}` : '') + (behind > 0 ? ` ↓${behind}` : '');
+        } else {
+          syncEl.textContent = '';
+        }
       } else {
         branchEl.textContent = '';
+        dirtyEl.textContent = '';
+        syncEl.textContent = '';
       }
     }).catch(() => {});
   }
@@ -980,17 +1003,14 @@ async function createWorkspace(projectPath: string, projectName: string, project
       if (!cp) return;
       dd.remove();
 
-      const status = await levis.gitStatus(projectPath);
-      if (status && !status.error && (status.files?.length > 0)) {
-        if (!confirm('Máš neuložené změny — budou ztraceny. Pokračovat?')) return;
-      }
-
+      showToast('Revertuji…', 'info');
       const result = await levis.gitResetHard(projectPath, cp.hash);
       if (result && result.success) {
         const ago = Math.round((Date.now() - cp.ts) / 60000);
         const label = ago < 1 ? 'právě teď' : `před ${ago} minutami`;
         showToast(`✓ Projekt vrácen do stavu ${label}`, 'success');
-        checkpoints.splice(0, idx);
+        checkpoints.splice(0, idx + 1);
+        updateGitStatus();
       } else {
         showToast('Revert selhal: ' + ((result as any)?.error || 'neznámá chyba'), 'error');
       }
@@ -1223,16 +1243,43 @@ async function createWorkspace(projectPath: string, projectName: string, project
   const termWatchInterval = setInterval(attachTermStateWatcher, 2000);
   cleanups.push(() => clearInterval(termWatchInterval));
 
-  // Checkpoint — ukládej HEAD hash po každé CC akci
-  ccDoneCallbacks.push(async () => {
-    try {
-      const hash = await levis.gitRevparse(projectPath);
-      if (typeof hash !== 'string' || hash.length < 6) return;
-      if (checkpoints.length > 0 && checkpoints[0].hash === hash) return;
-      checkpoints.unshift({ hash, ts: Date.now(), files: 0 });
-      if (checkpoints.length > 20) checkpoints.length = 20;
-      btnRevert.disabled = false;
-    } catch {}
+  // Refresh git status po CC akci
+  ccDoneCallbacks.push(() => updateGitStatus());
+
+  // CC state ve status baru
+  ccStateCallbacks.push((s: string) => {
+    if (s === 'working') {
+      ccStateEl.textContent = '● Working';
+      ccStateEl.className = 'status-cc-state status-cc-working';
+    } else if (s === 'waiting') {
+      ccStateEl.textContent = '● Waiting';
+      ccStateEl.className = 'status-cc-state status-cc-waiting';
+    } else {
+      ccStateEl.textContent = '';
+      ccStateEl.className = 'status-cc-state';
+    }
+  });
+
+  // Checkpoint — ulož HEAD hash PŘED prací CC (při idle→working)
+  let pendingCheckpointHash: string | null = null;
+  ccStateCallbacks.push((s: string) => {
+    if (s === 'working' && !pendingCheckpointHash) {
+      levis.gitRevparse(projectPath).then((hash: any) => {
+        if (typeof hash === 'string' && hash.length >= 6) {
+          pendingCheckpointHash = hash;
+        }
+      }).catch(() => {});
+    }
+  });
+  ccDoneCallbacks.push(() => {
+    if (pendingCheckpointHash) {
+      if (checkpoints.length === 0 || checkpoints[0].hash !== pendingCheckpointHash) {
+        checkpoints.unshift({ hash: pendingCheckpointHash, ts: Date.now(), files: 0 });
+        if (checkpoints.length > 20) checkpoints.length = 20;
+        btnRevert.disabled = false;
+      }
+      pendingCheckpointHash = null;
+    }
   });
 
   STAGE('returning');

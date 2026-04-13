@@ -635,17 +635,26 @@
   border-radius: var(--radius);
   border: 1px solid var(--border);
 }
-.status-project { color: var(--text); font-weight: 600; font-size: 12px; }
 .status-branch {
-  color: var(--success); background: rgba(16,185,129,0.12);
-  padding: 3px var(--space-3); border-radius: var(--radius-pill);
-  font-size: 10px; font-weight: 600;
-  border: 1px solid rgba(16,185,129,0.25);
+  color: var(--text-soft); font-size: 11px; font-weight: 500;
+  display: inline-flex; align-items: center; gap: 4px;
 }
-.status-path {
-  color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 10px;
-  max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+.status-branch svg { color: var(--success); }
+.status-dirty {
+  font-size: 10px; color: var(--text-muted);
 }
+.status-dirty-active {
+  color: var(--warning); font-weight: 600;
+  background: rgba(245,158,11,0.1); padding: 2px 8px;
+  border-radius: var(--radius-pill); border: 1px solid rgba(245,158,11,0.2);
+}
+.status-sync {
+  font-size: 10px; color: var(--accent); font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+}
+.status-cc-state { font-size: 10px; font-weight: 600; }
+.status-cc-working { color: var(--accent); }
+.status-cc-waiting { color: var(--info, #3b82f6); }
 .status-btn {
   background: transparent; border: 1px solid transparent; color: var(--text-soft);
   padding: 6px 12px; border-radius: var(--radius); font-size: 11px;

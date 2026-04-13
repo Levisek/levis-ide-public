@@ -37,7 +37,7 @@
   background: transparent;
   border-radius: var(--radius);
   transition: all var(--t-fast) var(--ease); white-space: nowrap;
-  -webkit-app-region: no-drag; position: relative;
+  -webkit-app-region: no-drag; position: relative; overflow: hidden;
 }
 .tab-label { text-align: center; overflow: hidden; text-overflow: ellipsis; }
 .tab:hover { color: var(--text); background: var(--bg-elev-1); }
@@ -51,11 +51,12 @@
 .tab[style*="--tab-color"] {
   border-left: 3px solid var(--tab-color);
 }
-/* CC pracuje — oranžový proužek nahoře */
+/* CC pracuje — oranžový proužek nahoře (respektuje border-radius) */
 .tab.tab-cc-working::after {
   content: ''; position: absolute;
-  top: 0; left: 0; right: 0; height: 2px;
+  top: 0; left: 0; right: 0; height: 3px;
   background: var(--accent);
+  border-radius: var(--radius) var(--radius) 0 0;
   animation: tab-working-bar 1.4s ease-in-out infinite;
 }
 @keyframes tab-working-bar {
