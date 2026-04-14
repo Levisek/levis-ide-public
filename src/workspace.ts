@@ -172,7 +172,8 @@ async function createWorkspace(projectPath: string, projectName: string, project
     <span class="status-branch" title="Git branch">...</span>
     <span class="status-dirty" title="Změněné soubory"></span>
     <span class="status-sync" title="Ahead / Behind"></span>
-    <span class="status-cc-state" title="CC stav"></span>
+    <span class="status-project-size" title="${t('ws.projectSize')}"></span>
+    <span class="status-file-info" title=""></span>
     <span style="flex:1"></span>
     <button class="status-btn status-btn-save" title="${t('ws.takjo')}">${I('save')} ${t('ws.btnSave')}</button>
     <button class="status-btn status-btn-push" title="${t('ws.jeb')}">${I('upload')} ${t('ws.btnSend')}</button>
@@ -180,6 +181,7 @@ async function createWorkspace(projectPath: string, projectName: string, project
     <button class="status-btn status-btn-restart" title="${t('ws.restartCC')}">${I('restart')} ${t('ws.btnCC')}</button>
     <button class="status-btn status-btn-revert" title="${t('ws.revertTooltip')}" disabled>${I('restart')} ↩</button>
     <button class="status-btn status-btn-attach" title="${t('ws.attachFile')}">${I('attach')} ${t('ws.btnAttach')}</button>
+    <button class="status-btn status-btn-queue" title="${t('ws.queueTooltip')}" style="display:none">${I('list')} <span class="queue-count">0</span></button>
     <button class="status-btn status-btn-devlog" title="${t('ws.devLogTooltip')}" style="display:none">${I('file')} ${t('ws.btnDevLog')}</button>
   `;
   wrapper.appendChild(statusBar);
@@ -723,13 +725,27 @@ async function createWorkspace(projectPath: string, projectName: string, project
   const branchEl = statusBar.querySelector('.status-branch') as HTMLElement;
   const dirtyEl = statusBar.querySelector('.status-dirty') as HTMLElement;
   const syncEl = statusBar.querySelector('.status-sync') as HTMLElement;
-  const ccStateEl = statusBar.querySelector('.status-cc-state') as HTMLElement;
+  const projectSizeEl = statusBar.querySelector('.status-project-size') as HTMLElement;
+  const fileInfoEl = statusBar.querySelector('.status-file-info') as HTMLElement;
+
+  function formatSize(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+  }
+
+  // Načti velikost projektu
+  levis.dirStats(projectPath).then(stats => {
+    projectSizeEl.textContent = `${stats.files} ${t('ws.filesCount')} · ${formatSize(stats.size)}`;
+    projectSizeEl.title = t('ws.projectSize');
+  }).catch(() => {});
 
   function updateGitStatus(): void {
     levis.gitStatus(projectPath).then((status: any) => {
       if (status.current) {
-        branchEl.innerHTML = I('git', { size: 12 });
-        branchEl.appendChild(document.createTextNode(' ' + status.current));
+        branchEl.textContent = `${I('git', { size: 12 })} ${status.current}`.trim();
+        branchEl.innerHTML = `${I('git', { size: 12 })} ${status.current}`;
 
         const fileCount = status.files?.length || 0;
         if (fileCount > 0) {
@@ -938,6 +954,15 @@ async function createWorkspace(projectPath: string, projectName: string, project
   // ── Fronta promptů pro CC ──
   const promptQueue: string[] = [];
   let queueWatcherAttached = false;
+  const btnQueue = statusBar.querySelector('.status-btn-queue') as HTMLButtonElement;
+  const queueCountEl = statusBar.querySelector('.queue-count') as HTMLElement;
+
+  function updateQueueUI(): void {
+    const n = promptQueue.length;
+    btnQueue.style.display = n > 0 ? '' : 'none';
+    queueCountEl.textContent = String(n);
+    btnQueue.title = n > 0 ? t('ws.queueTooltip') + ` (${n})` : t('ws.queueTooltip');
+  }
 
   function drainQueue(): void {
     const first = termInstances[0];
@@ -945,6 +970,7 @@ async function createWorkspace(projectPath: string, projectName: string, project
     const state = first.getState ? first.getState() : 'idle';
     if (state !== 'idle') return;
     const next = promptQueue.shift()!;
+    updateQueueUI();
     levis.writePty(first.ptyId, next + '\r');
     if (promptQueue.length > 0) {
       showToast(t('toast.queueRemaining', { n: promptQueue.length }), 'info');
@@ -965,6 +991,61 @@ async function createWorkspace(projectPath: string, projectName: string, project
 
   let activeTerminalIndex = 0;
 
+  // Queue popup — zobrazení a správa fronty
+  btnQueue.addEventListener('click', () => {
+    // Odstraň existující popup
+    document.querySelectorAll('.queue-popup').forEach(el => el.remove());
+    if (promptQueue.length === 0) return;
+    const popup = document.createElement('div');
+    popup.className = 'queue-popup';
+    const escH = (s: string) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
+    popup.innerHTML = `
+      <div class="queue-popup-header">
+        <span>${t('ws.queueTitle')} (${promptQueue.length})</span>
+        <button class="queue-popup-clear" title="${t('ws.queueClear')}">✕ ${t('ws.queueClear')}</button>
+      </div>
+      <div class="queue-popup-list">
+        ${promptQueue.map((item, i) => `
+          <div class="queue-popup-item">
+            <span class="queue-popup-text">${escH(item.length > 80 ? item.substring(0, 80) + '…' : item)}</span>
+            <button class="queue-popup-remove" data-idx="${i}" title="${t('ws.queueRemove')}">✕</button>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    const rect = btnQueue.getBoundingClientRect();
+    popup.style.left = `${rect.left}px`;
+    popup.style.bottom = `${window.innerHeight - rect.top + 4}px`;
+    document.body.appendChild(popup);
+    // Clear all
+    popup.querySelector('.queue-popup-clear')!.addEventListener('click', () => {
+      promptQueue.length = 0;
+      updateQueueUI();
+      popup.remove();
+      showToast(t('ws.queueCleared'), 'success');
+    });
+    // Remove individual
+    popup.querySelectorAll('.queue-popup-remove').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const idx = parseInt((btn as HTMLElement).dataset.idx || '0', 10);
+        promptQueue.splice(idx, 1);
+        updateQueueUI();
+        popup.remove();
+        if (promptQueue.length > 0) btnQueue.click(); // reopen
+      });
+    });
+    // Close on outside click
+    setTimeout(() => {
+      const close = (ev: MouseEvent) => {
+        if (!popup.contains(ev.target as Node) && ev.target !== btnQueue) {
+          popup.remove();
+          document.removeEventListener('click', close);
+        }
+      };
+      document.addEventListener('click', close);
+    }, 0);
+  });
+
   function sendToFirstTerminal(text: string): void {
     const target = termInstances[activeTerminalIndex] || termInstances[0];
     if (!target) return;
@@ -972,6 +1053,7 @@ async function createWorkspace(projectPath: string, projectName: string, project
     if (state !== 'idle') {
       promptQueue.push(text);
       attachQueueWatcher();
+      updateQueueUI();
       showToast(t('toast.ccBusyQueued', { n: promptQueue.length }), 'info');
       switchLeftPanel('terminal');
       return;
@@ -1216,6 +1298,22 @@ async function createWorkspace(projectPath: string, projectName: string, project
   wrapper.addEventListener('send-to-pty', sendToPtyHandler);
   cleanups.push(() => wrapper.removeEventListener('send-to-pty', sendToPtyHandler));
 
+  // File tree → status bar info (velikost souboru/složky)
+  const fileSelectedHandler = ((e: CustomEvent) => {
+    const { path: fp, isDirectory } = e.detail;
+    levis.fileStats(fp).then((stats: any) => {
+      if (!stats) { fileInfoEl.textContent = ''; return; }
+      const name = fp.replace(/\\/g, '/').split('/').pop() || fp;
+      if (stats.isDirectory) {
+        fileInfoEl.textContent = `${name}/ — ${stats.files} ${t('ws.filesCount')} · ${formatSize(stats.size)}`;
+      } else {
+        fileInfoEl.textContent = `${name} — ${formatSize(stats.size)}`;
+      }
+    }).catch(() => { fileInfoEl.textContent = ''; });
+  }) as EventListener;
+  wrapper.addEventListener('file-selected', fileSelectedHandler);
+  cleanups.push(() => wrapper.removeEventListener('file-selected', fileSelectedHandler));
+
   // Ctrl+Enter — send editor selection to terminal
   // Ctrl+Shift+V — reload artifact preview
   const onWorkspaceKeys = (e: KeyboardEvent) => {
@@ -1279,18 +1377,11 @@ async function createWorkspace(projectPath: string, projectName: string, project
   // Refresh git status po CC akci
   ccDoneCallbacks.push(() => updateGitStatus());
 
-  // CC state ve status baru
-  ccStateCallbacks.push((s: string) => {
-    if (s === 'working') {
-      ccStateEl.textContent = '● Working';
-      ccStateEl.className = 'status-cc-state status-cc-working';
-    } else if (s === 'waiting') {
-      ccStateEl.textContent = '● Waiting';
-      ccStateEl.className = 'status-cc-state status-cc-waiting';
-    } else {
-      ccStateEl.textContent = '';
-      ccStateEl.className = 'status-cc-state';
-    }
+  // Po CC akci aktualizuj velikost projektu
+  ccDoneCallbacks.push(() => {
+    levis.dirStats(projectPath).then(stats => {
+      projectSizeEl.textContent = `${stats.files} ${t('ws.filesCount')} · ${formatSize(stats.size)}`;
+    }).catch(() => {});
   });
 
   // Checkpoint — ulož HEAD hash PŘED prací CC (při idle→working)

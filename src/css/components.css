@@ -541,6 +541,8 @@
 .file-tree-item:hover { background: var(--bg-elev-1); }
 .ft-active { background: var(--accent-dim) !important; }
 .ft-active .ft-name { color: var(--accent) !important; }
+.ft-selected { background: rgba(59, 130, 246, 0.15) !important; }
+.ft-selected .ft-name { color: var(--info) !important; }
 .ft-chevron {
   flex-shrink: 0; width: 14px; height: 14px;
   display: flex; align-items: center; justify-content: center;
@@ -697,8 +699,8 @@
   font-size: 10px; color: var(--accent); font-weight: 600;
   font-family: 'JetBrains Mono', monospace;
 }
-.status-cc-state { font-size: 10px; font-weight: 600; }
-.status-cc-working { color: var(--accent); }
+.status-project-size { font-size: 10px; color: var(--text-muted); }
+.status-file-info { font-size: 10px; color: var(--text-soft); margin-left: 8px; }
 .status-cc-waiting { color: var(--info, #3b82f6); }
 .status-btn {
   background: transparent; border: 1px solid transparent; color: var(--text-soft);
@@ -713,6 +715,46 @@
   border-color: var(--border);
 }
 .status-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* ── Queue badge & popup ── */
+.status-btn-queue { position: relative; }
+.status-btn-queue .queue-count {
+  background: var(--accent); color: white; font-size: 10px; font-weight: 700;
+  padding: 1px 5px; border-radius: var(--radius-pill); min-width: 16px; text-align: center;
+}
+.queue-popup {
+  position: fixed; z-index: 10000;
+  background: var(--bg-elev-1); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow-lg);
+  min-width: 300px; max-width: 450px; max-height: 300px;
+  display: flex; flex-direction: column;
+}
+.queue-popup-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; border-bottom: 1px solid var(--border);
+  font-size: 12px; font-weight: 600; color: var(--text);
+}
+.queue-popup-clear {
+  background: transparent; border: 1px solid var(--error); color: var(--error);
+  padding: 3px 10px; border-radius: var(--radius-sm); font-size: 11px; cursor: pointer;
+  font-family: inherit; transition: all var(--t-fast) var(--ease);
+}
+.queue-popup-clear:hover { background: var(--error); color: white; }
+.queue-popup-list { overflow-y: auto; padding: 6px; }
+.queue-popup-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px; border-radius: var(--radius-sm);
+  font-size: 12px; color: var(--text-soft);
+  transition: background var(--t-fast) var(--ease);
+}
+.queue-popup-item:hover { background: var(--bg-elev-2); }
+.queue-popup-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.queue-popup-remove {
+  background: transparent; border: none; color: var(--text-muted);
+  cursor: pointer; font-size: 14px; padding: 2px 4px; border-radius: var(--radius-xs);
+  transition: all var(--t-fast) var(--ease); flex-shrink: 0;
+}
+.queue-popup-remove:hover { color: var(--error); background: rgba(239, 68, 68, 0.15); }
 .checkpoint-dropdown {
   position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
   margin-bottom: 8px; z-index: 100; min-width: 200px;

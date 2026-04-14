@@ -84,6 +84,7 @@ const api = {
   gitRevparse: (projectPath: string) => ipcRenderer.invoke('git:revparse', projectPath),
   gitResetHard: (projectPath: string, hash: string) => ipcRenderer.invoke('git:resetHard', projectPath, hash),
   gitDiffRange: (projectPath: string, fromHash: string) => ipcRenderer.invoke('git:diffRange', projectPath, fromHash),
+  gitRecentFiles: (projectPath: string) => ipcRenderer.invoke('git:recentFiles', projectPath),
 
   // Capture (screenshot region for lasso → CC)
   captureRegion: (rect: { x: number; y: number; width: number; height: number }, savePath: string) =>
@@ -100,6 +101,8 @@ const api = {
 
   // File system
   readDir: (dirPath: string) => ipcRenderer.invoke('fs:readDir', dirPath),
+  dirStats: (dirPath: string) => ipcRenderer.invoke('fs:dirStats', dirPath),
+  fileStats: (filePath: string) => ipcRenderer.invoke('fs:fileStats', filePath),
   listFilesRecursive: (rootPath: string) => ipcRenderer.invoke('fs:listFilesRecursive', rootPath),
   projectAssetsHash: (rootDir: string) => ipcRenderer.invoke('fs:projectAssetsHash', rootDir),
   projectSearch: (rootPath: string, query: string, opts: any) => ipcRenderer.invoke('fs:projectSearch', rootPath, query, opts),
@@ -127,12 +130,23 @@ const api = {
     return () => { ipcRenderer.off('pty:exit', handler); };
   },
 
+  // GRAL
+  gralAudit: (projectPath: string) => ipcRenderer.invoke('gral:audit', projectPath),
+  gralParseTokens: (projectPath: string) => ipcRenderer.invoke('gral:parseTokens', projectPath),
+  gralFileSizes: (projectPath: string) => ipcRenderer.invoke('gral:fileSizes', projectPath),
+  gralDetectType: (projectPath: string) => ipcRenderer.invoke('gral:detectType', projectPath),
+
   // Project helpers
   generateClaudeMd: (projectPath: string) => ipcRenderer.invoke('project:generateClaudeMd', projectPath),
 
   // Scaffolding
   scaffoldProject: (name: string, targetDir: string, template?: string) =>
     ipcRenderer.invoke('scaffold:create', name, targetDir, template),
+
+  // Deploy (FTP)
+  deployFtp: (projectPath: string) => ipcRenderer.invoke('deploy:ftp', projectPath),
+  deployGetConfig: (projectPath: string) => ipcRenderer.invoke('deploy:getConfig', projectPath),
+  deploySetConfig: (projectPath: string, config: any) => ipcRenderer.invoke('deploy:setConfig', projectPath, config),
 
   // Usage tracker
   usageScan: () => ipcRenderer.invoke('usage:scan'),

@@ -146,32 +146,84 @@ function escapeHtml(str: string): string {
 }
 
 function createTileElement(project: HubProjectInfo, onOpen: (p: HubProjectInfo) => void, onTogglePin: (p: HubProjectInfo) => void, onAction: (action: string, p: HubProjectInfo) => void, color?: string): HTMLElement {
+  const I = (window as any).icon;
   const tile = document.createElement('div');
   tile.className = 'tile' + (project.pinned ? ' tile-pinned' : '') + ((project as any).isRecent ? ' tile-recent' : '');
   if ((project as any).isRecent) tile.dataset.recentLabel = t('hub.recentBadge');
   if (color) tile.style.borderLeftColor = color;
   if (color) tile.classList.add('tile-colored');
+  tile.draggable = true;
+  tile.dataset.projectPath = project.path;
+  tile.addEventListener('dragstart', (e) => {
+    if (!e.dataTransfer) return;
+    e.dataTransfer.setData('text/plain', project.path);
+    e.dataTransfer.effectAllowed = 'move';
+    tile.classList.add('tile-dragging');
+  });
+  tile.addEventListener('dragend', () => {
+    tile.classList.remove('tile-dragging');
+    document.querySelectorAll('.tile-drop-before, .tile-drop-after').forEach(el => el.classList.remove('tile-drop-before', 'tile-drop-after'));
+  });
   tile.innerHTML = `
     <button class="tile-pin ${project.pinned ? 'pinned' : ''}" title="${t(project.pinned ? 'hub.unpin' : 'hub.pin')}">${project.pinned ? '\u2605' : '\u2606'}</button>
     <button class="tile-menu" title="${t('hub.projectOptions')}">⋯</button>
-    <div class="tile-status ${project.gitStatus}" title="${t(project.gitStatus === 'clean' ? 'hub.gitClean' : project.gitStatus === 'dirty' ? 'hub.gitDirty' : 'hub.gitNoRepo')}"></div>
+    <div class="tile-size"></div>
     <div class="tile-name">${color ? `<span class="tile-color-dot" style="background:${color}"></span>` : ''}${escapeHtml(project.name)}</div>
     <div class="tile-domain">${escapeHtml(project.domain || project.path)}</div>
     <div class="tile-meta">
       <span>${formatDate(project.lastModified)}</span>
       <span>${project.unpushedCount > 0 ? t('hub.unpushed', { n: project.unpushedCount }) : project.gitStatus === 'clean' ? t('hub.gitOk') : ''}</span>
     </div>
-    <button class="tile-open" title="${t('hub.openInWorkspace')}">${t('hub.tileOpen')}</button>
+    <div class="tile-recent-files"></div>
+    <div class="tile-actions">
+      <button class="tile-action" data-act="explorer" title="${t('hub.openExplorer')}">${I('folder')}</button>
+      <button class="tile-open" title="${t('hub.openInWorkspace')}">${t('hub.tileOpen')}</button>
+    </div>
   `;
   tile.addEventListener('click', (e) => {
     const t = e.target as HTMLElement;
-    if (t.closest('.tile-pin') || t.closest('.tile-menu')) return;
+    if (t.closest('.tile-pin') || t.closest('.tile-menu') || t.closest('.tile-actions')) return;
+    onOpen(project);
+  });
+  tile.querySelectorAll('.tile-action').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const act = (btn as HTMLElement).dataset.act || '';
+      onAction(act, project);
+    });
+  });
+  tile.querySelector('.tile-open')!.addEventListener('click', (e) => {
+    e.stopPropagation();
     onOpen(project);
   });
   tile.querySelector('.tile-pin')!.addEventListener('click', (e) => {
     e.stopPropagation();
     onTogglePin(project);
   });
+  // Lazy-load recent files
+  const rfHost = tile.querySelector('.tile-recent-files') as HTMLElement;
+  if (rfHost && project.gitStatus !== 'error') {
+    levis.gitRecentFiles(project.path).then(files => {
+      if (files && files.length > 0) {
+        rfHost.innerHTML = files.map(f => {
+          const basename = f.replace(/\\/g, '/').split('/').pop() || f;
+          return `<span class="tile-rf" title="${escapeHtml(f)}">${escapeHtml(basename)}</span>`;
+        }).join('');
+      }
+    }).catch(() => {});
+  }
+  // Lazy-load velikost projektu
+  const sizeHost = tile.querySelector('.tile-size') as HTMLElement;
+  if (sizeHost) {
+    levis.dirStats(project.path).then(stats => {
+      if (stats) {
+        const size = stats.size < 1024 * 1024
+          ? `${(stats.size / 1024).toFixed(0)} KB`
+          : `${(stats.size / (1024 * 1024)).toFixed(1)} MB`;
+        sizeHost.textContent = `${stats.files} ${t('ws.filesCount')} · ${size}`;
+      }
+    }).catch(() => {});
+  }
   function showContextMenu(x: number, y: number): void {
     document.querySelectorAll('.tile-context-menu').forEach(m => m.remove());
     const menu = document.createElement('div');
@@ -209,7 +261,7 @@ function createTileElement(project: HubProjectInfo, onOpen: (p: HubProjectInfo) 
     if (r.right > window.innerWidth) menu.style.left = `${window.innerWidth - r.width - 10}px`;
     if (r.bottom > window.innerHeight) menu.style.top = `${window.innerHeight - r.height - 10}px`;
     menu.querySelectorAll('.tcm-item').forEach(item => {
-      if (item.classList.contains('tcm-color-trigger') || item.classList.contains('tcm-status-trigger')) return; // handled below
+      if (item.classList.contains('tcm-color-trigger') || item.classList.contains('tcm-status-trigger')) return;
       item.addEventListener('click', () => {
         const act = item.getAttribute('data-act') || '';
         menu.remove();
@@ -275,10 +327,10 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
         <div class="hub-greeting">${(() => { const g = getGreeting(); return `${g.text} <span class="hub-greeting-day">· ${g.weekday}</span>`; })()}</div>
         <div class="hub-subtitle">${t('hub.subtitleLoading', { path: escapeHtml(scanPath) })}</div>
         <div class="hub-actions">
-          <button class="hub-btn hub-btn-pull-all" title="${t('hub.tooltipPullAll')}">${I('download')} ${t('hub.gitPullAll')}</button>
-          <button class="hub-btn hub-btn-push-all" title="${t('hub.tooltipPushAll')}">${I('upload')} ${t('hub.gitPushAll')}</button>
-          <button class="hub-btn hub-btn-refresh" title="${t('hub.refresh')}">${I('refresh')} ${t('hub.refresh')}</button>
-          <button class="hub-btn hub-btn-settings" title="${t('hub.settings')}">${I('gear')} ${t('hub.settings')}</button>
+          <button class="hub-btn hub-btn-icon hub-btn-pull-all" title="${t('hub.tooltipPullAll')}">${I('download')}</button>
+          <button class="hub-btn hub-btn-icon hub-btn-push-all" title="${t('hub.tooltipPushAll')}">${I('upload')}</button>
+          <button class="hub-btn hub-btn-icon hub-btn-refresh" title="${t('hub.refresh')}">${I('refresh')}</button>
+          <button class="hub-btn hub-btn-icon hub-btn-settings" title="${t('hub.settings')}">${I('gear')}</button>
         </div>
       </div>
       <div class="hub-filter-bar">
@@ -356,14 +408,20 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
       subtitle.textContent = `${scanPath} — ${t('hub.nProjects', { n: projects.length })}`;
       const usageHost = container.querySelector('#hub-usage') as HTMLElement;
       if (usageHost) usageHost.style.display = projects.length === 0 ? 'none' : '';
-      // Načti barvy a statusy projektů
+      // Načti barvy, statusy a skupiny projektů
       const projectColors: Record<string, string> = (await levis.storeGet('projectColors')) || {};
       const projectStatuses: Record<string, string> = (await levis.storeGet('projectStatuses')) || {};
+      const projectOrder: string[] = (await levis.storeGet('projectOrder')) || [];
       // Načti "naposledy otevřeno" z prefs
       const lastOpened: Record<string, number> = (await levis.storeGet('projectLastOpened')) || {};
-      // Pinned nahoře, pak podle "naposledy otevřeno" (pokud je), jinak fallback na lastModified
+      // Pinned nahoře, pak custom pořadí (projectOrder), fallback na lastOpened/lastModified
       projects.sort((a, b) => {
         if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1;
+        const aIdx = projectOrder.indexOf(a.path);
+        const bIdx = projectOrder.indexOf(b.path);
+        if (aIdx >= 0 && bIdx >= 0) return aIdx - bIdx;
+        if (aIdx >= 0) return -1;
+        if (bIdx >= 0) return 1;
         const aOpened = lastOpened[a.path] || 0;
         const bOpened = lastOpened[b.path] || 0;
         if (aOpened || bOpened) return bOpened - aOpened;
@@ -438,10 +496,46 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
           `;
           grid.appendChild(empty);
         }
-        // Rozděl do skupin podle statusu
-        const active = filtered.filter(p => !projectStatuses[p.path] || projectStatuses[p.path] === 'active');
-        const paused = filtered.filter(p => projectStatuses[p.path] === 'paused');
-        const finished = filtered.filter(p => projectStatuses[p.path] === 'finished');
+        function setupGridDrop(gridEl: HTMLElement): void {
+          gridEl.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+            // Najdi nejbližší tile pro drop indicator
+            gridEl.querySelectorAll('.tile-drop-before, .tile-drop-after').forEach(el => el.classList.remove('tile-drop-before', 'tile-drop-after'));
+            const target = (e.target as HTMLElement).closest('.tile:not(.tile-new)') as HTMLElement;
+            if (target && !target.classList.contains('tile-dragging')) {
+              const rect = target.getBoundingClientRect();
+              if (e.clientX < rect.left + rect.width / 2) target.classList.add('tile-drop-before');
+              else target.classList.add('tile-drop-after');
+            }
+          });
+          gridEl.addEventListener('dragleave', () => {
+            gridEl.querySelectorAll('.tile-drop-before, .tile-drop-after').forEach(el => el.classList.remove('tile-drop-before', 'tile-drop-after'));
+          });
+          gridEl.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            gridEl.querySelectorAll('.tile-drop-before, .tile-drop-after').forEach(el => el.classList.remove('tile-drop-before', 'tile-drop-after'));
+            const draggedPath = e.dataTransfer?.getData('text/plain');
+            if (!draggedPath) return;
+            const target = (e.target as HTMLElement).closest('.tile:not(.tile-new):not(.tile-dragging)') as HTMLElement;
+            const targetPath = target?.dataset?.projectPath;
+            if (!targetPath || draggedPath === targetPath) return;
+            // Aktualizuj projectOrder
+            const order: string[] = (await levis.storeGet('projectOrder')) || [];
+            // Přidej všechny paths co ještě v order nejsou
+            const allPaths = filtered.map(p => p.path);
+            for (const p of allPaths) { if (!order.includes(p)) order.push(p); }
+            // Přesuň dragged na pozici target
+            const fromIdx = order.indexOf(draggedPath);
+            if (fromIdx >= 0) order.splice(fromIdx, 1);
+            let toIdx = order.indexOf(targetPath);
+            const rect = target.getBoundingClientRect();
+            if (e.clientX >= rect.left + rect.width / 2) toIdx++;
+            order.splice(toIdx, 0, draggedPath);
+            await levis.storeSet('projectOrder', order);
+            applyFilter();
+          });
+        }
 
         function renderGroup(label: string, projects: HubProjectInfo[], collapsed?: boolean, addNewTile?: boolean): void {
           if (projects.length === 0 && !addNewTile) return;
@@ -455,6 +549,7 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
           for (const project of projects) groupGrid.appendChild(createTileElement(project, onOpenProject, onTogglePin, onTileAction, projectColors[project.path]));
           if (addNewTile) groupGrid.appendChild(createNewProjectTile(newProjectHandler));
           grid.appendChild(groupGrid);
+          setupGridDrop(groupGrid);
           header.addEventListener('click', () => {
             const hidden = groupGrid.style.display === 'none';
             groupGrid.style.display = hidden ? '' : 'none';
@@ -462,10 +557,14 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
           });
         }
 
-        // Aktivní bez hlavičky pokud jsou jediné
+        const active = filtered.filter(p => !projectStatuses[p.path] || projectStatuses[p.path] === 'active');
+        const paused = filtered.filter(p => projectStatuses[p.path] === 'paused');
+        const finished = filtered.filter(p => projectStatuses[p.path] === 'finished');
+
         if (paused.length === 0 && finished.length === 0) {
           for (const project of active) grid.appendChild(createTileElement(project, onOpenProject, onTogglePin, onTileAction, projectColors[project.path]));
           grid.appendChild(createNewProjectTile(newProjectHandler));
+          setupGridDrop(grid);
         } else {
           renderGroup(t('hub.groupActive'), active, false, true);
           renderGroup(t('hub.groupPaused'), paused, true);
@@ -630,6 +729,9 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
         <label>${t('settings.terminalFontSize')}:
           <input type="number" class="settings-input" id="set-term-font" value="13" min="10" max="24">
         </label>
+        <label>${t('settings.wedosPwd')}:
+          <input type="password" class="settings-input" id="set-wedos-pwd" value="" autocomplete="off" placeholder="${t('settings.wedosPlaceholder')}">
+        </label>
         <label class="settings-checkbox">
           <input type="checkbox" id="set-cc-notifications" checked>
           <span>${t('settings.ccNotifications')}</span>
@@ -646,7 +748,7 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
           <span>${t('settings.theme')}</span>:
           <select class="settings-input" id="set-theme">
             <option value="dark">${t('settings.theme.dark')}</option>
-            <option value="dark-soft">${t('settings.theme.dark-soft')}</option>
+
             <option value="mid">${t('settings.theme.mid')}</option>
             <option value="light">${t('settings.theme.light')}</option>
           </select>
@@ -673,6 +775,7 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
       (settingsPanel.querySelector('#set-email') as HTMLInputElement).value = all.userEmail || '';
       (settingsPanel.querySelector('#set-editor-font') as HTMLInputElement).value = String(all.editorFontSize || 14);
       (settingsPanel.querySelector('#set-term-font') as HTMLInputElement).value = String(all.terminalFontSize || 13);
+      (settingsPanel.querySelector('#set-wedos-pwd') as HTMLInputElement).value = all.deployDefaultPassword || '';
       (settingsPanel.querySelector('#set-cc-notifications') as HTMLInputElement).checked = all.ccNotifications !== false;
       (settingsPanel.querySelector('#set-cc-sound') as HTMLInputElement).checked = all.ccSound !== false;
       (settingsPanel.querySelector('#set-autostart-dev') as HTMLInputElement).checked = all.autostartDev !== false;
@@ -690,6 +793,7 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
       await levis.storeSet('userEmail', (settingsPanel.querySelector('#set-email') as HTMLInputElement).value);
       await levis.storeSet('editorFontSize', parseInt((settingsPanel.querySelector('#set-editor-font') as HTMLInputElement).value));
       await levis.storeSet('terminalFontSize', parseInt((settingsPanel.querySelector('#set-term-font') as HTMLInputElement).value));
+      await levis.storeSet('deployDefaultPassword', (settingsPanel.querySelector('#set-wedos-pwd') as HTMLInputElement).value);
       await levis.storeSet('ccNotifications', (settingsPanel.querySelector('#set-cc-notifications') as HTMLInputElement).checked);
       await levis.storeSet('ccSound', (settingsPanel.querySelector('#set-cc-sound') as HTMLInputElement).checked);
       await levis.storeSet('autostartDev', (settingsPanel.querySelector('#set-autostart-dev') as HTMLInputElement).checked);
@@ -782,7 +886,7 @@ async function renderUsagePanel(host: HTMLElement): Promise<void> {
       <div class="usage-stat-label">${(window as any).t('usage.context')}</div>
       <div class="usage-stat-val">${ctxPct}<span class="usage-stat-pct-unit">%</span></div>
       <div class="usage-progress"><div class="usage-progress-fill" style="width:${ctxPct}%;background:${pctColor(ctxPct)}"></div></div>
-      <div class="usage-stat-sub">${escapeHtml(realLimits?.model?.display_name || '')}</div>
+      <div class="usage-stat-sub">${realLimits?.model?.display_name || ''}</div>
     </div>` : ''}
   ` : `
     <div class="usage-stat">
@@ -817,7 +921,7 @@ async function renderUsagePanel(host: HTMLElement): Promise<void> {
         </div>
         <div class="usage-stat usage-plan">
           <div class="usage-stat-label">${(window as any).t('usage.plan')}</div>
-          <select class="usage-plan-select">${planOptions}</select>
+          <select class="usage-plan-select" aria-label="${(window as any).t('usage.plan')}">${planOptions}</select>
           <div class="usage-stat-sub">${account?.emailAddress ? escapeHtml(account.emailAddress) : (window as any).t('usage.notLoggedIn')}</div>
         </div>
         <button class="usage-toggle" title="${(window as any).t('hub.usageDetail')}">${(window as any).icon('arrow-down', { size: 14 })}</button>

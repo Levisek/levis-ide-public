@@ -9,43 +9,6 @@ const WebLinksAddon: any = (window as any).WebLinksAddon?.WebLinksAddon;
 const SearchAddon: any = (window as any).SearchAddon?.SearchAddon;
 const WebglAddon: any = (window as any).WebglAddon?.WebglAddon || null;
 
-// ── Theme palety pro xterm. light = bílé pozadí + černý text. ──
-const TERM_THEME_DARK = {
-  background: '#0a0a0f', foreground: '#e8e8f0',
-  cursor: '#ff6a00', cursorAccent: '#0a0a0f',
-  selectionBackground: '#ff6a0033', selectionForeground: '#e8e8f0',
-  black: '#1a1a24', red: '#ef4444', green: '#10b981', yellow: '#f59e0b',
-  blue: '#3b82f6', magenta: '#a855f7', cyan: '#06b6d4', white: '#e8e8f0',
-  brightBlack: '#6b6b80', brightRed: '#f87171', brightGreen: '#34d399',
-  brightYellow: '#fbbf24', brightBlue: '#60a5fa', brightMagenta: '#c084fc',
-  brightCyan: '#22d3ee', brightWhite: '#ffffff',
-};
-// GitHub Light terminal palette — kontrastní na bílém pozadí, čitelný i pro modrou/žlutou.
-const TERM_THEME_LIGHT = {
-  background: '#ffffff', foreground: '#24292f',
-  cursor: '#e06000', cursorAccent: '#ffffff',
-  selectionBackground: '#e0600040', selectionForeground: '#24292f',
-  black: '#24292f', red: '#cf222e', green: '#116329', yellow: '#4d2d00',
-  blue: '#0550ae', magenta: '#8250df', cyan: '#1b7c83', white: '#6e7781',
-  brightBlack: '#57606a', brightRed: '#a40e26', brightGreen: '#1a7f37',
-  brightYellow: '#633c01', brightBlue: '#0969da', brightMagenta: '#a475f9',
-  brightCyan: '#3192aa', brightWhite: '#8c959f',
-};
-function getTermTheme(appTheme?: string): any {
-  const t = appTheme || document.documentElement.getAttribute('data-theme') || 'dark';
-  return t === 'light' ? TERM_THEME_LIGHT : TERM_THEME_DARK;
-}
-
-// Registry aktivních termů — pro hromadné přepínání tématu při změně app theme.
-const activeTerms: Set<any> = new Set();
-function applyTermThemeAll(appTheme: string): void {
-  const theme = getTermTheme(appTheme);
-  for (const t of activeTerms) {
-    try { t.options.theme = theme; } catch {}
-  }
-}
-(window as any).applyTermTheme = applyTermThemeAll;
-
 interface TerminalInstance {
   ptyId: string;
   term: any;
@@ -98,7 +61,30 @@ async function createTerminal(
   const fontSize = Number((await levis.storeGet('terminalFontSize'))) || 13;
 
   const term = new Terminal({
-    theme: getTermTheme(),
+    theme: {
+      background: '#0a0a0f',
+      foreground: '#e8e8f0',
+      cursor: '#ff6a00',
+      cursorAccent: '#0a0a0f',
+      selectionBackground: '#ff6a0033',
+      selectionForeground: '#e8e8f0',
+      black: '#1a1a24',
+      red: '#ef4444',
+      green: '#10b981',
+      yellow: '#f59e0b',
+      blue: '#3b82f6',
+      magenta: '#a855f7',
+      cyan: '#06b6d4',
+      white: '#e8e8f0',
+      brightBlack: '#6b6b80',
+      brightRed: '#f87171',
+      brightGreen: '#34d399',
+      brightYellow: '#fbbf24',
+      brightBlue: '#60a5fa',
+      brightMagenta: '#c084fc',
+      brightCyan: '#22d3ee',
+      brightWhite: '#ffffff',
+    },
     fontFamily: "'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace",
     fontSize,
     lineHeight: 1.1,
@@ -106,7 +92,6 @@ async function createTerminal(
     allowTransparency: true,
     scrollback: 10000,
   });
-  activeTerms.add(term);
 
   term.loadAddon(fitAddon);
   term.loadAddon(new WebLinksAddon());
@@ -221,8 +206,38 @@ async function createTerminal(
   });
   termContainer.addEventListener('drop', (e: DragEvent) => {
     e.preventDefault();
+    if (!ptyId) return;
+    // OS file drag (z plochy / průzkumníku)
+    const files = e.dataTransfer?.files;
+    if (files && files.length > 0) {
+      const paths: string[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const fp = (files[i] as any).path;
+        if (fp) paths.push(`"${fp}"`);
+      }
+      if (paths.length > 0) {
+        levis.writePty(ptyId, paths.join(' ') + ' ');
+        return;
+      }
+    }
+    // Fallback: items s getAsFile
+    const items = e.dataTransfer?.items;
+    if (items && items.length > 0) {
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.kind === 'file') {
+          const file = item.getAsFile();
+          const fp = file && (file as any).path;
+          if (fp) {
+            levis.writePty(ptyId, `"${fp}" `);
+            return;
+          }
+        }
+      }
+    }
+    // Interní drag (file tree)
     const path = e.dataTransfer?.getData('text/plain');
-    if (path && ptyId) {
+    if (path) {
       levis.writePty(ptyId, `"${path}" `);
     }
   });
@@ -360,7 +375,6 @@ async function createTerminal(
       unsubExit();
       resizeObserver.disconnect();
       if (stateTimer) clearTimeout(stateTimer);
-      activeTerms.delete(term);
       levis.killPty(ptyId);
       term.dispose();
     },

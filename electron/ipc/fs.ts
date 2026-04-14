@@ -9,8 +9,6 @@ export function registerFsHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle('fs:projectSearch', async (_event, rootPath: string, query: string, opts: { caseSensitive?: boolean; regex?: boolean } = {}) => {
     if (!isPathAllowed(rootPath)) return [];
     if (!query) return [];
-    if (query.length > 500) return [];
-    if (opts.regex && /(\(.*\))[+*]|(\[.*\])[+*][+*]|\(\?[=!].*\)/.test(query)) return [];
     const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.next', '.nuxt', 'out', 'target', '.cache', '.levis-tmp', '.vscode', '.idea']);
     const TEXT_EXTS = new Set([
       '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.json', '.html', '.htm',
@@ -80,10 +78,6 @@ export function registerFsHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle('fs:projectReplace', async (_event, rootPath: string, query: string, replacement: string, opts: { caseSensitive?: boolean; regex?: boolean; targetFiles?: string[] } = {}) => {
     if (!isPathAllowed(rootPath)) return { error: 'Path not allowed', count: 0 };
     if (!query) return { count: 0 };
-    if (query.length > 500) return { error: 'Pattern too long', count: 0 };
-    if (opts.regex && /(\(.*\))[+*]|(\[.*\])[+*][+*]|\(\?[=!].*\)/.test(query)) {
-      return { error: 'Pattern rejected (ReDoS guard)', count: 0 };
-    }
     let pattern: RegExp;
     try {
       if (opts.regex) {
@@ -333,6 +327,52 @@ export function registerFsHandlers(mainWindow: BrowserWindow): void {
       return err ? { error: err } : { success: true };
     } catch (err) {
       return { error: String(err) };
+    }
+  });
+
+  ipcMain.handle('fs:dirStats', async (_event, dirPath: string) => {
+    if (!isPathAllowed(dirPath)) return { files: 0, size: 0 };
+    const SKIP = new Set(['.git', 'node_modules', 'dist', 'build', '.next', '.nuxt', '.levis-tmp']);
+    let totalFiles = 0;
+    let totalSize = 0;
+    function walk(dir: string, depth: number): void {
+      if (depth > 8) return;
+      try {
+        const entries = fs.readdirSync(dir, { withFileTypes: true });
+        for (const e of entries) {
+          if (e.name.startsWith('.') && SKIP.has(e.name)) continue;
+          if (SKIP.has(e.name)) continue;
+          const full = path.join(dir, e.name);
+          if (e.isDirectory()) {
+            walk(full, depth + 1);
+          } else {
+            totalFiles++;
+            try { totalSize += fs.statSync(full).size; } catch {}
+          }
+        }
+      } catch {}
+    }
+    walk(dirPath, 0);
+    return { files: totalFiles, size: totalSize };
+  });
+
+  ipcMain.handle('fs:fileStats', async (_event, filePath: string) => {
+    if (!isPathAllowed(filePath)) return null;
+    try {
+      const stat = fs.statSync(filePath);
+      if (stat.isDirectory()) {
+        // Počet souborů ve složce (nerekurzivně)
+        const entries = fs.readdirSync(filePath, { withFileTypes: true });
+        const files = entries.filter(e => !e.name.startsWith('.') && e.name !== 'node_modules');
+        let totalSize = 0;
+        for (const e of files) {
+          try { if (!e.isDirectory()) totalSize += fs.statSync(path.join(filePath, e.name)).size; } catch {}
+        }
+        return { isDirectory: true, files: files.length, size: totalSize };
+      }
+      return { isDirectory: false, size: stat.size };
+    } catch {
+      return null;
     }
   });
 }

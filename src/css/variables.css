@@ -21,6 +21,7 @@
   /* ── Accent (primary brand) ── */
   --accent:       #ff7a1a;
   --accent-soft:  #ff9648;
+  --accent-text:  #ff7a1a;
   --accent-dim:   #ff7a1a1f;
   --accent-glow:  #ff7a1a3d;
   --accent-ring:  #ff7a1a66;
@@ -122,26 +123,6 @@ body {
    default (:root) = dark
    ═══════════════════════════════════ */
 
-[data-theme="dark-soft"] {
-  --bg-deep:    #131520;
-  --bg-base:    #1b1d27;
-  --bg-elev-1:  #242733;
-  --bg-elev-2:  #2d3040;
-  --bg-elev-3:  #383c4e;
-  --bg-card:    #242733;
-  --bg-card-h:  #2d3040;
-  --bg-tab:     #1e2029;
-
-  --border:        #343848;
-  --border-strong: #454a5e;
-  --border-soft:   #2a2e3e;
-
-  --text:        #ecedf4;
-  --text-soft:   #b4b7c8;
-  --text-muted:  #8a8da2;
-  --text-faint:  #5e6278;
-}
-
 [data-theme="mid"] {
   --bg-deep:    #1e2230;
   --bg-base:    #272b3b;
@@ -169,29 +150,30 @@ body {
 }
 
 [data-theme="light"] {
-  --bg-deep:    #eef0f5;
-  --bg-base:    #f5f6fa;
-  --bg-elev-1:  #ffffff;
-  --bg-elev-2:  #e8eaf0;
-  --bg-elev-3:  #dcdee6;
-  --bg-card:    #ffffff;
-  --bg-card-h:  #f0f1f6;
-  --bg-tab:     #eceef4;
+  --bg-deep:    #e8e4de;
+  --bg-base:    #f0ece6;
+  --bg-elev-1:  #f7f4ee;
+  --bg-elev-2:  #e2ded6;
+  --bg-elev-3:  #d6d2ca;
+  --bg-card:    #f7f4ee;
+  --bg-card-h:  #ece8e0;
+  --bg-tab:     #eae6de;
 
-  --border:        #d0d3de;
-  --border-strong: #b8bcc8;
-  --border-soft:   #e0e2ea;
+  --border:        #cdc8be;
+  --border-strong: #b5b0a6;
+  --border-soft:   #ddd8d0;
 
-  --accent:       #e06000;
-  --accent-soft:  #ff8c30;
-  --accent-dim:   #e060001a;
-  --accent-glow:  #e0600030;
-  --accent-ring:  #e0600055;
+  --accent:       #d45a00;
+  --accent-soft:  #f08030;
+  --accent-text:  #a04000;
+  --accent-dim:   #d45a001a;
+  --accent-glow:  #d45a0030;
+  --accent-ring:  #d45a0055;
 
-  --text:        #1a1c28;
-  --text-soft:   #4a4d5e;
-  --text-muted:  #72768a;
-  --text-faint:  #9ea1b2;
+  --text:        #1c1b18;
+  --text-soft:   #4a4840;
+  --text-muted:  #78756c;
+  --text-faint:  #9e9a90;
 
   --success: #059669;
   --warning: #d97706;
@@ -203,7 +185,7 @@ body {
   --shadow:    0 4px 14px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.12);
   --shadow-xl: 0 24px 60px rgba(0, 0, 0, 0.15);
-  --shadow-glow: 0 0 24px rgba(224, 96, 0, 0.12);
+  --shadow-glow: 0 0 24px rgba(212, 90, 0, 0.12);
 }
 
 /* ── Lucide icons (global) ── */

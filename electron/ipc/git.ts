@@ -140,4 +140,31 @@ export function registerGitHandlers(): void {
       return { error: String(err) };
     }
   });
+
+  ipcMain.handle('git:recentFiles', async (_event, projectPath: string) => {
+    try {
+      const git = simpleGit(projectPath);
+      const log = await Promise.race([
+        git.log({ maxCount: 15, '--diff-filter': 'M', '--name-only': null }),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 500)),
+      ]);
+      const seen = new Set<string>();
+      const result: string[] = [];
+      for (const entry of (log as any).all || []) {
+        const body = (entry as any).body || (entry as any).diff?.files?.map((f: any) => f.file) || [];
+        // git log --name-only puts filenames in body field
+        const names = typeof body === 'string' ? body.split('\n').filter((l: string) => l.trim()) : (Array.isArray(body) ? body : []);
+        for (const name of names) {
+          if (name && !seen.has(name) && !name.startsWith('.') && !name.includes('node_modules')) {
+            seen.add(name);
+            result.push(name);
+            if (result.length >= 3) return result;
+          }
+        }
+      }
+      return result;
+    } catch {
+      return [];
+    }
+  });
 }

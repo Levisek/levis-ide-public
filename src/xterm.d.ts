@@ -40,6 +40,7 @@ interface LevisAPI {
   gitRevparse: (projectPath: string) => Promise<string>;
   gitResetHard: (projectPath: string, hash: string) => Promise<{ success?: boolean; error?: string }>;
   gitDiffRange: (projectPath: string, fromHash: string) => Promise<{ files: number; insertions: number; deletions: number } | { error: string }>;
+  gitRecentFiles: (projectPath: string) => Promise<string[]>;
   captureRegion: (rect: { x: number; y: number; width: number; height: number }, savePath: string) => Promise<{ success?: boolean; path?: string; error?: string }>;
   captureCleanup: (tmpDir: string) => Promise<{ success?: boolean; error?: string }>;
   deleteProject: (projectPath: string) => Promise<{ success?: boolean; error?: string }>;
@@ -49,6 +50,8 @@ interface LevisAPI {
   openExternal: (url: string) => Promise<{ success?: boolean; error?: string }>;
   deleteFile: (filePath: string) => Promise<{ success?: boolean; error?: string }>;
   readDir: (dirPath: string) => Promise<Array<{ name: string; path: string; isDirectory: boolean }>>;
+  dirStats: (dirPath: string) => Promise<{ files: number; size: number }>;
+  fileStats: (filePath: string) => Promise<{ isDirectory?: boolean; files?: number; size: number } | null>;
   listFilesRecursive: (rootPath: string) => Promise<Array<{ path: string; rel: string; name: string }>>;
   projectAssetsHash: (rootDir: string) => Promise<string>;
   projectSearch: (rootPath: string, query: string, opts?: { caseSensitive?: boolean; regex?: boolean }) => Promise<Array<{ path: string; rel: string; line: number; col: number; preview: string }>>;
@@ -65,8 +68,15 @@ interface LevisAPI {
   killPty: (id: string) => void;
   onPtyData: (callback: (id: string, data: string) => void) => () => void;
   onPtyExit: (callback: (id: string) => void) => () => void;
+  gralAudit: (projectPath: string) => Promise<any[]>;
+  gralParseTokens: (projectPath: string) => Promise<Array<{ name: string; value: string; category: string }>>;
+  gralFileSizes: (projectPath: string) => Promise<Record<string, number>>;
+  gralDetectType: (projectPath: string) => Promise<any>;
   generateClaudeMd: (projectPath: string) => Promise<any>;
   scaffoldProject: (name: string, targetDir: string, template?: string) => Promise<any>;
+  deployFtp: (projectPath: string) => Promise<any>;
+  deployGetConfig: (projectPath: string) => Promise<any>;
+  deploySetConfig: (projectPath: string, config: any) => Promise<void>;
   usageScan: () => Promise<any>;
   usageAccount: () => Promise<any>;
   usageRateLimits: () => Promise<any>;

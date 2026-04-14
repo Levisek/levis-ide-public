@@ -13,9 +13,8 @@ const tabs: TabInfo[] = [];
 let activeTabId: string = 'hub';
 
 function applyTheme(theme: string): void {
-  if (theme === 'dark') document.documentElement.removeAttribute('data-theme');
+  if (theme === 'dark' || theme === 'dark-soft') document.documentElement.removeAttribute('data-theme');
   else document.documentElement.setAttribute('data-theme', theme);
-  try { (window as any).applyTermTheme?.(theme); } catch {}
 }
 (window as any).applyTheme = applyTheme;
 

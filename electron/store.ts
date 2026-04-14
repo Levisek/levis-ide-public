@@ -11,7 +11,7 @@ interface StoreSchema {
   scanPath: string;
   userName: string;
   userEmail: string;
-  theme: 'dark' | 'dark-soft' | 'mid' | 'light';
+  theme: 'dark' | 'mid' | 'light';
   projectColors: Record<string, string>;
   projectStatuses: Record<string, 'active' | 'paused' | 'finished'>;
   recentProjects: string[];
@@ -32,6 +32,8 @@ interface StoreSchema {
   monitorDiagonal: number;
   cmdSave: string;
   cmdPush: string;
+  projectGroups: Record<string, string>;
+  projectOrder: string[];
 }
 
 export const store = new Store<StoreSchema>({
@@ -65,6 +67,8 @@ export const store = new Store<StoreSchema>({
     autostartDev: true,
     locale: 'cs',
     monitorDiagonal: 24,
+    projectGroups: {},
+    projectOrder: [],
     cmdSave: '/commit',
     cmdPush: '/commit && git push',
   },
