@@ -9,7 +9,8 @@ log.transports.file.level = 'info';
 autoUpdater.logger = log;
 
 let mainWindow: BrowserWindow | null = null;
-let allowQuit = false;
+// --audit-mode: visual-audit runner, přeskočit confirm-quit dialogy ať proces zavře čistě
+let allowQuit = process.argv.includes('--audit-mode');
 export function setAllowQuit(v: boolean): void { allowQuit = v; }
 export function isAllowQuit(): boolean { return allowQuit; }
 

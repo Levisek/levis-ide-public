@@ -9,3 +9,5 @@ release/
 .env.*
 .claude/
 scripts/
+
+.audit/
