@@ -9,6 +9,7 @@ export function registerEnvHandlers(): void {
   ipcMain.handle('clipboard:read', () => clipboard.readText());
   ipcMain.on('clipboard:write', (_e, text: string) => clipboard.writeText(text));
 
+  // Čtení obrázku z clipboardu — uloží PNG do .levis-tmp/, vrátí cestu
   ipcMain.handle('clipboard:readImage', (_e, projectPath: string) => {
     const img = clipboard.readImage();
     if (img.isEmpty()) return null;
@@ -16,6 +17,7 @@ export function registerEnvHandlers(): void {
     if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
     const filePath = path.join(tmpDir, `paste-${Date.now()}.png`);
     fs.writeFileSync(filePath, img.toPNG());
+    // Auto-smazat po 60s
     setTimeout(() => { try { fs.unlinkSync(filePath); } catch {} }, 60000);
     return filePath;
   });

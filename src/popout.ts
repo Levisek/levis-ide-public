@@ -113,6 +113,7 @@ function initPopout(): void {
     mobile: { w: 2.56, h: 5.69, radius: 20 },
     tablet: { w: 6.58, h: 8.77, radius: 16 },
   };
+  // PPI odhad — default 24" monitor (popout nemá přístup ke store)
   const monitorDiag = 24;
   const cssPPI = Math.sqrt(window.screen.width ** 2 + window.screen.height ** 2) / monitorDiag;
 
@@ -124,6 +125,7 @@ function initPopout(): void {
       btn.classList.add('pop-size-active');
       const content = document.getElementById('popout-content') as HTMLElement;
       const target = useWebview ? webview : iframe;
+      // Reset
       target.style.width = '';
       target.style.height = '';
       target.style.maxHeight = '';
@@ -168,6 +170,7 @@ function initPopout(): void {
   const popZoomLabel = document.querySelector('.pop-zoom-label') as HTMLElement;
   function applyPopZoom(): void {
     popZoomLabel.textContent = Math.round(popZoom * 100) + '%';
+    // Najdi aktivní size
     const activeBtn = document.querySelector('.pop-size-btn.pop-size-active');
     const size = activeBtn?.getAttribute('data-size') || 'full';
     const device = DEVICES[size];
@@ -194,6 +197,7 @@ function initPopout(): void {
   const popoutContent = document.getElementById('popout-content') as HTMLElement;
   let activePopover: HTMLElement | null = null;
 
+  // SVG ikony inline (popout nemá icon() funkci)
   const SVG_INSPECT = '<svg class="lvi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3a2 2 0 0 0-2 2"/><path d="M19 3a2 2 0 0 1 2 2"/><path d="M21 19a2 2 0 0 1-2 2"/><path d="M5 21a2 2 0 0 1-2-2"/><path d="M9 3h1"/><path d="M9 21h2"/><path d="M14 3h1"/><path d="M3 9v1"/><path d="M21 9v2"/><path d="M3 14v1"/><path d="M21 14v1"/></svg>';
   const SVG_CLOSE = '<svg class="lvi" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
   const SVG_SEND = '<svg class="lvi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
@@ -223,6 +227,7 @@ function initPopout(): void {
     popoutContent.appendChild(popover);
     activePopover = popover;
 
+    // Smart placement
     const containerRect = popoutContent.getBoundingClientRect();
     const popW = 380, popH = popover.getBoundingClientRect().height || 80;
     const pad = 12;

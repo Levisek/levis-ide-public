@@ -242,6 +242,7 @@ async function createWorkspace(projectPath: string, projectName: string, project
     if ((prefs as any)?.previewUrl) deployUrl = (prefs as any).previewUrl;
   } catch {}
   if (!deployUrl) {
+    // Vercel: vercel.json → name/alias
     try {
       const vRaw = await levis.readFile(projectPath + '\\vercel.json');
       if (typeof vRaw === 'string') {
@@ -252,6 +253,7 @@ async function createWorkspace(projectPath: string, projectName: string, project
     } catch {}
   }
   if (!deployUrl) {
+    // package.json → homepage (CRA/Vite pattern)
     try {
       const pkgRaw2 = await levis.readFile(projectPath + '\\package.json');
       if (typeof pkgRaw2 === 'string') {
@@ -604,6 +606,7 @@ async function createWorkspace(projectPath: string, projectName: string, project
       (async () => {
         const ok = await probePort(autostartEntry.port!, probeSignal);
         if (probeSignal.aborted) return;
+        // Pokus o detekci jineho portu z dev logu (port collision)
         let actualPort = autostartEntry.port!;
         const m = devLogBuffer.join('').match(/https?:\/\/(?:localhost|127\.0\.0\.1):(\d+)/);
         if (m) actualPort = parseInt(m[1], 10);
@@ -725,8 +728,8 @@ async function createWorkspace(projectPath: string, projectName: string, project
   function updateGitStatus(): void {
     levis.gitStatus(projectPath).then((status: any) => {
       if (status.current) {
-        branchEl.textContent = `${I('git', { size: 12 })} ${status.current}`.trim();
-        branchEl.innerHTML = `${I('git', { size: 12 })} ${status.current}`;
+        branchEl.innerHTML = I('git', { size: 12 });
+        branchEl.appendChild(document.createTextNode(' ' + status.current));
 
         const fileCount = status.files?.length || 0;
         if (fileCount > 0) {
@@ -1061,7 +1064,7 @@ async function createWorkspace(projectPath: string, projectName: string, project
     showToast(t('toast.filesAttached', { n: files.length }), 'info');
   });
 
-  // Save\Push — konfigurovatelné příkazy (default: git commit / git commit+push)
+  // Save/Push — konfigurovatelné příkazy (default: git commit / git commit+push)
   statusBar.querySelector('.status-btn-save')!.addEventListener('click', async () => {
     const cmd = (await levis.storeGet('cmdSave')) || '/commit';
     sendToFirstTerminal(cmd as string);
@@ -1291,6 +1294,7 @@ async function createWorkspace(projectPath: string, projectName: string, project
   });
 
   // Checkpoint — ulož HEAD hash PŘED prací CC (při idle→working)
+  // Tak revert vrátí stav před tím než CC něco změnil
   let pendingCheckpointHash: string | null = null;
   ccStateCallbacks.push((s: string) => {
     if (s === 'working' && !pendingCheckpointHash) {

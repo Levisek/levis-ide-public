@@ -20,10 +20,11 @@ export function isPathAllowed(targetPath: string): boolean {
 
 export function getAllowedRoots(): string[] {
   const scanPath = (store.get('scanPath', '') as string) || '';
-  const home = process.env.USERPROFILE || process.env.HOME || '';
+  const home = process.env.USERPROFILE || process.env.HOME;
+  // Fail-secure: bez HOME jen scanPath, ne relativní cesty (jinak by '../' atak.)
   const roots: string[] = [];
-  if (scanPath) roots.push(scanPath);
-  if (home) {
+  if (scanPath && path.isAbsolute(scanPath)) roots.push(scanPath);
+  if (home && path.isAbsolute(home)) {
     roots.push(path.join(home, 'dev'));
     roots.push(path.join(home, 'Documents'));
     roots.push(path.join(home, 'Desktop'));

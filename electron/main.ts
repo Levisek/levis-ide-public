@@ -60,6 +60,19 @@ function createWindow(): void {
 
   registerIpcHandlers(mainWindow);
 
+  // Webview validátor — povol http(s) (dev servery, mobile preview) + file:// (HTML projekt preview)
+  // + about:blank (init). Bloky data:/javascript:/vbscript: jako XSS exfil vector.
+  mainWindow.webContents.on('will-attach-webview', (e, webPreferences, params) => {
+    webPreferences.nodeIntegration = false;
+    webPreferences.contextIsolation = true;
+    delete (webPreferences as any).preload;
+    const src = params.src || '';
+    if (!/^(https?:\/\/|file:\/\/|about:blank)/i.test(src)) {
+      log.warn(`Blocked webview src: ${src}`);
+      e.preventDefault();
+    }
+  });
+
   // __dirname is dist/electron/, index.html is in src/
   mainWindow.loadFile(path.join(__dirname, '..', '..', 'src', 'index.html'));
 

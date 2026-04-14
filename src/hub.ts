@@ -304,6 +304,7 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
   const btnTrademark = container.querySelector('.hub-trademark') as HTMLElement;
   btnTrademark?.addEventListener('click', showAboutDialog);
 
+  // Dynamická verze z package.json
   levis.getAppVersion().then((v: string) => {
     const el = container.querySelector('#hub-version');
     if (el) el.textContent = `v${v}`;
@@ -629,9 +630,6 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
         <label>${t('settings.terminalFontSize')}:
           <input type="number" class="settings-input" id="set-term-font" value="13" min="10" max="24">
         </label>
-        <label>${t('settings.wedosPwd')}:
-          <input type="password" class="settings-input" id="set-wedos-pwd" value="" autocomplete="off" placeholder="${t('settings.wedosPlaceholder')}">
-        </label>
         <label class="settings-checkbox">
           <input type="checkbox" id="set-cc-notifications" checked>
           <span>${t('settings.ccNotifications')}</span>
@@ -675,7 +673,6 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
       (settingsPanel.querySelector('#set-email') as HTMLInputElement).value = all.userEmail || '';
       (settingsPanel.querySelector('#set-editor-font') as HTMLInputElement).value = String(all.editorFontSize || 14);
       (settingsPanel.querySelector('#set-term-font') as HTMLInputElement).value = String(all.terminalFontSize || 13);
-      (settingsPanel.querySelector('#set-wedos-pwd') as HTMLInputElement).value = all.deployDefaultPassword || '';
       (settingsPanel.querySelector('#set-cc-notifications') as HTMLInputElement).checked = all.ccNotifications !== false;
       (settingsPanel.querySelector('#set-cc-sound') as HTMLInputElement).checked = all.ccSound !== false;
       (settingsPanel.querySelector('#set-autostart-dev') as HTMLInputElement).checked = all.autostartDev !== false;
@@ -693,7 +690,6 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
       await levis.storeSet('userEmail', (settingsPanel.querySelector('#set-email') as HTMLInputElement).value);
       await levis.storeSet('editorFontSize', parseInt((settingsPanel.querySelector('#set-editor-font') as HTMLInputElement).value));
       await levis.storeSet('terminalFontSize', parseInt((settingsPanel.querySelector('#set-term-font') as HTMLInputElement).value));
-      await levis.storeSet('deployDefaultPassword', (settingsPanel.querySelector('#set-wedos-pwd') as HTMLInputElement).value);
       await levis.storeSet('ccNotifications', (settingsPanel.querySelector('#set-cc-notifications') as HTMLInputElement).checked);
       await levis.storeSet('ccSound', (settingsPanel.querySelector('#set-cc-sound') as HTMLInputElement).checked);
       await levis.storeSet('autostartDev', (settingsPanel.querySelector('#set-autostart-dev') as HTMLInputElement).checked);
@@ -786,7 +782,7 @@ async function renderUsagePanel(host: HTMLElement): Promise<void> {
       <div class="usage-stat-label">${(window as any).t('usage.context')}</div>
       <div class="usage-stat-val">${ctxPct}<span class="usage-stat-pct-unit">%</span></div>
       <div class="usage-progress"><div class="usage-progress-fill" style="width:${ctxPct}%;background:${pctColor(ctxPct)}"></div></div>
-      <div class="usage-stat-sub">${realLimits?.model?.display_name || ''}</div>
+      <div class="usage-stat-sub">${escapeHtml(realLimits?.model?.display_name || '')}</div>
     </div>` : ''}
   ` : `
     <div class="usage-stat">

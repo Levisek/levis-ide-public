@@ -12,6 +12,7 @@ interface ProjectInfo {
   lastModified: string;
   gitStatus: 'clean' | 'dirty' | 'error';
   unpushedCount: number;
+  hasGral: boolean;
   pinned: boolean;
 }
 
@@ -47,6 +48,9 @@ export function registerProjectHandlers(): void {
         const skipDirs = ['node_modules', '.git', '$RECYCLE.BIN', 'System Volume Information'];
         if (skipDirs.includes(entry.name) || entry.name.startsWith('.')) continue;
 
+        const gralPath = path.join(projectPath, 'GRAL.md');
+        const hasGral = fs.existsSync(gralPath);
+
         let name = entry.name;
         let domain = '';
 
@@ -55,9 +59,14 @@ export function registerProjectHandlers(): void {
           try {
             const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
             if (pkg.name) name = pkg.name;
-            if (typeof pkg.homepage === 'string') domain = pkg.homepage;
           } catch {}
         }
+
+        try {
+          const gralContent = fs.readFileSync(gralPath, 'utf-8');
+          const domainMatch = gralContent.match(/(?:domain|doména|url)[:\s]+([^\s\n]+)/i);
+          if (domainMatch) domain = domainMatch[1];
+        } catch {}
 
         let lastModified = '';
         try {
@@ -77,7 +86,7 @@ export function registerProjectHandlers(): void {
           }
         } catch {}
 
-        projects.push({ name, path: projectPath, domain, lastModified, gitStatus, unpushedCount, pinned: pinnedSet.has(projectPath) });
+        projects.push({ name, path: projectPath, domain, lastModified, gitStatus, unpushedCount, hasGral, pinned: pinnedSet.has(projectPath) });
       }
     } catch (err) {
       log.error('Failed to scan projects:', err);
@@ -97,6 +106,7 @@ export function registerProjectHandlers(): void {
       let projectName = path.basename(projectPath);
       const files = fs.readdirSync(projectPath);
 
+      const hasGral = files.includes('GRAL.md');
       const hasPkg = files.includes('package.json');
       let pkg: any = {};
 
@@ -108,6 +118,7 @@ export function registerProjectHandlers(): void {
       if (pkg.dependencies?.expo) projectType = 'expo';
       else if (pkg.dependencies?.next) projectType = 'nextjs';
       else if (pkg.dependencies?.electron) projectType = 'electron';
+      else if (hasGral) projectType = 'gral';
       else if (files.includes('index.html')) projectType = 'vanilla';
 
       const rules: string[] = [
@@ -123,7 +134,15 @@ export function registerProjectHandlers(): void {
         '- Commit message pis cesky',
       ];
 
-      if (projectType === 'expo') {
+      if (projectType === 'gral') {
+        rules.push(
+          '- Dodrzuj GRAL.md pravidla bezpodminecne',
+          '- Vanilla only — zadne frameworky, npm, build kroky',
+          '- CSS < 30KB, JS < 20KB',
+          '- Semanticke HTML (nav, main, section, article, footer)',
+          '- Mobile-first, breakpointy: 900px tablet, 680px mobil',
+        );
+      } else if (projectType === 'expo') {
         rules.push(
           '- React Native + Expo — pouzivej hooks a funkcionalni komponenty',
           '- Styly pres StyleSheet.create, ne inline',

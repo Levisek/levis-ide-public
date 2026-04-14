@@ -9,6 +9,8 @@ export function registerFsHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle('fs:projectSearch', async (_event, rootPath: string, query: string, opts: { caseSensitive?: boolean; regex?: boolean } = {}) => {
     if (!isPathAllowed(rootPath)) return [];
     if (!query) return [];
+    if (query.length > 500) return [];
+    if (opts.regex && /(\(.*\))[+*]|(\[.*\])[+*][+*]|\(\?[=!].*\)/.test(query)) return [];
     const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.next', '.nuxt', 'out', 'target', '.cache', '.levis-tmp', '.vscode', '.idea']);
     const TEXT_EXTS = new Set([
       '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.json', '.html', '.htm',
@@ -78,6 +80,10 @@ export function registerFsHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle('fs:projectReplace', async (_event, rootPath: string, query: string, replacement: string, opts: { caseSensitive?: boolean; regex?: boolean; targetFiles?: string[] } = {}) => {
     if (!isPathAllowed(rootPath)) return { error: 'Path not allowed', count: 0 };
     if (!query) return { count: 0 };
+    if (query.length > 500) return { error: 'Pattern too long', count: 0 };
+    if (opts.regex && /(\(.*\))[+*]|(\[.*\])[+*][+*]|\(\?[=!].*\)/.test(query)) {
+      return { error: 'Pattern rejected (ReDoS guard)', count: 0 };
+    }
     let pattern: RegExp;
     try {
       if (opts.regex) {

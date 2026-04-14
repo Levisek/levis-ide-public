@@ -133,9 +133,10 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
   }
 
   // ── 1:1 device simulation ──
+  // Fyzické rozměry zařízení v palcích (šířka × výška displeje)
   const DEVICES: Record<string, { w: number; h: number; radius: number }> = {
-    mobile: { w: 2.56, h: 5.69, radius: 20 },
-    tablet: { w: 6.58, h: 8.77, radius: 16 },
+    mobile: { w: 2.56, h: 5.69, radius: 20 }, // 6" telefon, poměr 20:9
+    tablet: { w: 6.58, h: 8.77, radius: 16 }, // 10.9" iPad, poměr 4:3
   };
 
   async function getMonitorCssPPI(): Promise<number> {
@@ -186,12 +187,14 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
     zoomLabel.textContent = Math.round(zoomLevel * 100) + '%';
     const device = DEVICES[currentSize];
     if (device) {
+      // Device mode — škáluj rozměry frame
       const ppi = await getMonitorCssPPI();
       const w = Math.round(device.w * ppi * zoomLevel);
       const h = Math.round(device.h * ppi * zoomLevel);
       webview.style.width = w + 'px';
       webview.style.height = h + 'px';
     } else {
+      // Full mode — zoomuj obsah webview
       try { (webview as any).setZoomFactor(zoomLevel); } catch {}
     }
   }

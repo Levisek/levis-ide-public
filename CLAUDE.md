@@ -126,17 +126,31 @@ Kompilace: `npx tsc` — output do `dist/`
 - Cross-platform build config (mac/linux targets)
 - Orphaned CSS cleanup, terminál splitter direction fix
 
-## Bugy / known issues
+## Hotovo v1.3
 
-- **Split-handle ucho není vidět** — `::after` pseudo-element se nekreslí na splitter elementech, handle pilulka neviditelná
-- **Term-splitter příliš tlustý** — mezera mezi terminály je širší než mezi grid panely
+- **Browser toolbar overlap fix** — `flex-shrink: 0` na toolbar, webview container `flex:1 1 0;min-height:0`
+- **Grid kompakce** — zavření panelu automaticky zmenší grid (2×1→1×1, 2×2→1×2 atd.)
+- **Zavření workspace zavře plovoucí okna** — `dispose()` volá `closePopoutPanel` na všechny popouty
+- **Settings/Help kontextové zobrazení** — v Hubu jen hub UI tlačítka, v titlebaru jen ve workspace
+- **Okno jde přesunout** — fix `app-region: drag` selektorů, prázdný prostor v tab-baru draggable
+- **Feedback formulář** — built-in formulář s GitHub Issues + PHP endpoint na levinger.cz (CAPTCHA + API klíč + rate limit)
+- **Logo a app icon** — SVG/PNG/ICO v assets/, electron-builder config
+- **Drag-back gesture** — popout panel → tlačítko "Vrátit do workspace" → panel:returned IPC
+- **Editor model handshake** — Monaco modely per-window, sync přes file I/O
+- **Tab badge** — CC dokončil v pozadí → puntík na tabu, zmizí po kliknutí
+- **Zvuková notifikace** — Web Audio 2-tónový beep (opt-in v nastavení)
+- **OS-level notifikace** — Electron Notification API při unfocused okně
+- **Session persistence** — editor taby přežijí restart (electron-store per-projekt)
+- **Split-handle + term-splitter** — opraveno
+- **CC waiting detector** — opraveno
 
-## TODO v1.3
+## TODO v1.4
 
-- Fix split-handle vizualizace (debug ::after na všech splitterech)
-- Term-splitter šířka sjednotit s grid-splitter
-- Drag-back gesture (drag header popout okna zpět nad workspace)
-- Editor model handshake (Monaco model sdílení mezi okny)
+### Bezpečnost (z auditu)
+- **Race condition app.ts** — `Promise.race` gitStatus:91 běží dál po timeoutu, přidat AbortController
+- **Race condition watch interval** — `browser.ts:267`, `artifact.ts:669` async callback může frontovat
+
+### Funkční
 - Cross-platform testování (macOS, Linux)
 
 ## Git

@@ -49,6 +49,16 @@ export function registerWindowHandlers(mainWindow: BrowserWindow): void {
       },
     });
 
+    popoutWindow.webContents.on('will-attach-webview', (e, webPreferences, params) => {
+      webPreferences.nodeIntegration = false;
+      webPreferences.contextIsolation = true;
+      delete (webPreferences as any).preload;
+      const src = params.src || '';
+      if (!/^(https?:\/\/|file:\/\/|about:blank)/i.test(src)) {
+        e.preventDefault();
+      }
+    });
+
     popoutWindow.loadFile(path.join(__dirname, '..', '..', '..', 'src', 'popout.html'));
 
     popoutWindow.webContents.once('did-finish-load', () => {

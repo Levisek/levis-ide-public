@@ -89,6 +89,9 @@ interface Window {
   createEditor: (container: HTMLElement) => Promise<any>;
   createDiffViewer: (container: HTMLElement) => any;
   createInspector: () => any;
+  showGralPicker: (parent: HTMLElement, sablonyPath: string) => Promise<string | null>;
+  createGralAudit: (container: HTMLElement, projectPath: string) => any;
+  createTokenViewer: (container: HTMLElement, projectPath: string) => any;
   showToast: (message: string, type?: 'info' | 'success' | 'warning' | 'error') => void;
   commandPalette: { show: () => void; hide: () => void; registerCommand: (cmd: any) => void };
 }

@@ -15,6 +15,7 @@ let activeTabId: string = 'hub';
 function applyTheme(theme: string): void {
   if (theme === 'dark') document.documentElement.removeAttribute('data-theme');
   else document.documentElement.setAttribute('data-theme', theme);
+  try { (window as any).applyTermTheme?.(theme); } catch {}
 }
 (window as any).applyTheme = applyTheme;
 
@@ -228,7 +229,7 @@ async function init(): Promise<void> {
 
   await renderHub(hubContent, openProject);
 
-  document.getElementById('btn-new-tab')?.addEventListener('click', () => {
+  document.getElementById('btn-new-tab')!.addEventListener('click', () => {
     switchTab('hub');
     setTimeout(() => {
       // Najdi tile "Nový projekt" v Hubu nebo button v empty state a klikni
