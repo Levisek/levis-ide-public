@@ -100,7 +100,7 @@ function showAboutDialog(): void {
   overlay.innerHTML = `
     <div class="about-box">
       <button class="about-close" title="${t('settings.close')}">×</button>
-      <div class="about-logo"><img src="../assets/icon.svg" alt="LevisIDE"></div>
+      <div class="about-logo"><img src="../assets/icon.svg" alt="LevisIDE" width="72" height="72"></div>
       <h1>LevisIDE</h1>
       <div class="about-version" id="about-version">v…</div>
       <div class="about-tagline">${t('welcome.tagline')}</div>
@@ -288,7 +288,7 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
       <div class="hub-grid"></div>
       <div class="hub-usage" id="hub-usage"></div>
       <button class="hub-trademark" type="button" title="${t('hub.tradeTooltip')}">
-        <img class="hub-tm-logo" src="../assets/icon.svg" alt="LevisIDE">
+        <img class="hub-tm-logo" src="../assets/icon.svg" alt="LevisIDE" width="14" height="14">
         <span class="hub-tm-text">LevisIDE™</span>
         <span class="hub-tm-version" id="hub-version">v…</span>
       </button>

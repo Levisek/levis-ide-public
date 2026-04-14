@@ -229,7 +229,7 @@ async function init(): Promise<void> {
 
   await renderHub(hubContent, openProject);
 
-  document.getElementById('btn-new-tab')!.addEventListener('click', () => {
+  document.getElementById('btn-new-tab')?.addEventListener('click', () => {
     switchTab('hub');
     setTimeout(() => {
       // Najdi tile "Nový projekt" v Hubu nebo button v empty state a klikni
@@ -553,7 +553,7 @@ function showWelcomeScreen(): void {
   overlay.className = 'welcome-overlay';
   overlay.innerHTML = `
     <div class="welcome-box">
-      <div class="welcome-logo"><img src="../assets/icon.svg" alt="LevisIDE"></div>
+      <div class="welcome-logo"><img src="../assets/icon.svg" alt="LevisIDE" width="96" height="96"></div>
       <h1>${t('welcome.title')}</h1>
       <p class="welcome-tagline">${t('welcome.tagline')}</p>
       <div class="welcome-tips">
