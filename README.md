@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.4.0-orange" alt="Version">
+  <img src="https://img.shields.io/badge/version-1.4.2-orange" alt="Version">
   <img src="https://img.shields.io/badge/electron-41-blue" alt="Electron">
   <img src="https://img.shields.io/badge/license-ISC-green" alt="License">
 </p>
@@ -27,17 +27,23 @@ LevisIDE je desktopové vývojové prostředí postavené na Electronu. Spojuje 
 
 ### Hub (přehled projektů)
 - Scan projektů s detekcí typu (Next, React, Vue, Svelte, Astro, Nuxt, Electron, Tauri, Node, PHP, Static)
-- Filtr chips, fulltext search, připnutí oblíbených, per-projekt barvy a statusy
+- **Typ filter dropdown** + fulltext search, připnutí oblíbených, per-projekt barvy a statusy
 - **Velikost projektu** na dlaždici (počet souborů, velikost)
 - **Recent files** z git logu na každé dlaždici
-- **Drag & drop řazení** dlaždic s persistencí
+- **Interaktivní drag & drop řazení** (SortableJS — dlaždice se živě odsouvají)
+- **Sort presety** — Naposled upraveno / Název / Velikost / Typ + možnost uložit vlastní pořadí jako pojmenovaný preset
+- **Bulk actions** — Shift/Ctrl klik multi-select → hromadný status / barva / pin / pull / push / smazat
 - Hromadný Pull/Push, scaffolding wizard (Vite, React, Vue, Svelte, Next.js, Astro)
-- Usage panel (Claude Code spotřeba)
+- Kompaktní billing bar s přehledem Session / Weekly / Context / náklady
 
 ### Workspace
 - Layout: sidebar (file tree) + terminál/editor + browser/náhled
+- **Launch picker** — když má projekt víc entry pointů (dev server / statické index.html / Storybook), zeptá se uživatele a pamatuje si volbu per-projekt
+- **Browser loader overlay** — vizuální feedback při startu Vite / Next / Expo dev serveru
+- **Port collision handling** — paralelní detekce alt portu z PTY logu (Vite auto-increment apod.) + actionable error toast
+- **Mobile preview** s default 150% zoomem pro HiDPI čitelnost
 - **Drag-out** panelů do plovoucích oken (multi-monitor)
-- **Pre-quit git check** — kontrola necommitovaných změn při zavření
+- **Pre-quit git check** — kontrola necommitovaných změn + běžících CC instancí při zavření
 
 ### Terminál
 - xterm.js + node-pty, split terminal, WebGL renderer
@@ -61,6 +67,9 @@ LevisIDE je desktopové vývojové prostředí postavené na Electronu. Spojuje 
 - Klikni na element v náhledu → floating popover → napiš prompt → CC dostane instrukci + screenshot
 - Annotation canvas — nakresli oblast, popiš co změnit
 - Screenshot se přiloží automaticky (30s auto-cleanup)
+- **SPA-safe** — blokuje navigaci React/Next/Vue routerů během Inspect módu (window capture + history API override)
+- **Smart selektory** — skip hashed CSS-in-JS classes (Emotion, RN Web), preferuje `aria-label` / `data-testid` / text content / role
+- **Pin URL toggle** — klik pinne aktuální URL jako výchozí pro projekt, druhý klik odepne
 
 ### Témata
 - 3 barevná schémata: **Dark** (default) / **Mid** / **Light** (warm cream/gray)
@@ -69,18 +78,26 @@ LevisIDE je desktopové vývojové prostředí postavené na Electronu. Spojuje 
 
 ## Klávesové zkratky
 
+Globální zkratky jsou sjednocené pod `Ctrl+Shift+` prefix (kromě OS standardů jako F1 a Ctrl+Tab).
+
 | Zkratka | Akce |
 |---------|------|
-| `F1` | Help overlay |
+| `F1` / `?` | Help overlay |
 | `Ctrl+Shift+P` | Command palette |
-| `Ctrl+P` | Quick file open |
+| `Ctrl+Shift+O` | Quick file open |
 | `Ctrl+Shift+F` | Project search & replace |
-| `Ctrl+Tab` | Cyklovat mezi taby |
-| `Ctrl+S` | Uložit (s format) |
-| `Ctrl+W` | Zavřít editor tab |
+| `Ctrl+Shift+T` | Přepnout na Hub |
+| `Ctrl+Shift+R` | Hard reload (bez cache) |
+| `Ctrl+Shift+W` | Zavřít aktivní tab |
+| `Ctrl+Shift+,` | Nastavení |
+| `Ctrl+Tab` / `Ctrl+Shift+Tab` | Cyklovat mezi taby |
+| `Ctrl+S` (editor) | Uložit (s format) |
+| `Ctrl+F` / `Ctrl+H` (editor) | Find / Replace |
 | `Ctrl+A` (file tree) | Vybrat vše |
 | `Delete` (file tree) | Smazat vybrané |
 | `Shift+Enter` (terminál) | Line continuation |
+| `Shift+klik` / `Ctrl+klik` (Hub tile) | Multi-select pro bulk actions |
+| `Escape` (Hub) | Zrušit bulk výběr |
 
 ---
 
@@ -125,6 +142,14 @@ npm run build
 ---
 
 ## Changelog
+
+### v1.4.2
+- **Hub:** interaktivní drag & drop přes SortableJS (dlaždice se živě odsouvají), sort presety, bulk actions (Shift/Ctrl multi-select), Typ filter dropdown místo chip řady
+- **Workspace:** Launch picker pro ambiguous entry pointy, browser loader overlay, port collision handling (paralelní PTY regex + alt port detection), mobile default 150% zoom
+- **Inspector:** SPA-safe (blokuje navigaci React/Next routerů), chytré selektory (filter hashed classes, prefer aria/testid/text), Pin URL toggle
+- **Vizuální:** sjednocené focus indikátory, token-based popover barvy (light theme fix), terminal mid theme bg odlišen, legenda symbolů přesunuta do F1
+- **Kompatibilita:** klávesy sjednoceny pod `Ctrl+Shift+` prefix, dirty modal focus trap + autofocus
+- **Build:** NSIS installer vytvoří desktop + start menu shortcut
 
 ### v1.4.0
 - Témata: 3 schémata (Dark/Mid/Light warm), dark-soft odstraněn
