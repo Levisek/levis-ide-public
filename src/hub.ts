@@ -1,5 +1,8 @@
 // ── Hub View (project tiles) ────────────
 
+// Glow sweep se přehraje jen při prvním loadu a po Refresh / rescan (ne při každém přepnutí tabu)
+let glowShownThisSession = false;
+
 const PROJECT_COLOR_PALETTE = [
   '#ef4444', '#f97316', '#eab308', '#22c55e',
   '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899',
@@ -21,7 +24,7 @@ interface HubProjectInfo {
 }
 
 const PROJECT_TYPES: Record<string, { label: string; icon: string; color: string }> = {
-  expo:     { label: 'Expo',     icon: '', color: '#000020' },
+  expo:     { label: 'Expo',     icon: '', color: '#6366f1' },
   next:     { label: 'Next.js',  icon: '', color: '#9ca3af' },
   vite:     { label: 'Vite',     icon: '', color: '#ffc024' },
   react:    { label: 'React',    icon: '', color: '#61dafb' },
@@ -219,17 +222,13 @@ function createTileElement(project: HubProjectInfo, onOpen: (p: HubProjectInfo) 
     return `<div class="ti-dot ${cls}" title="${label}"></div>`;
   }
 
-  // Tech chipy — framework + language
-  function techChipsHtml(): string {
-    const chips: string[] = [];
+  // Type slot — chip frameworku + jazyk (vlevo ve stats, sjednoceno s horním filter chipem)
+  function typeSlotHtml(): string {
     const meta = project.projectType ? PROJECT_TYPES[project.projectType] : null;
-    if (meta) {
-      chips.push(`<span class="tile-tech-chip" style="--chip-color:${meta.color}">${meta.label}</span>`);
-    }
-    if (project.language) {
-      chips.push(`<span class="tile-tech-chip tech-chip-lang" data-lang="${project.language}">${project.language === 'ts' ? 'TS' : 'JS'}</span>`);
-    }
-    return chips.join('');
+    if (!meta) return '';
+    const typeChip = `<span class="tile-type-chip" data-type="${project.projectType}" style="--chip-color:${meta.color}">${meta.label}</span>`;
+    const langChip = project.language ? `<span class="tile-lang-tag" data-lang="${project.language}">${project.language === 'ts' ? 'TS' : 'JS'}</span>` : '';
+    return typeChip + langChip;
   }
 
   const finishedBadge = project.status === 'finished' ? `<span class="tile-badge-finished" title="${t('hub.tcm.statusFinished')}">${I('check', { size: 12 })}</span>` : '';
@@ -242,7 +241,6 @@ function createTileElement(project: HubProjectInfo, onOpen: (p: HubProjectInfo) 
     <div class="tile-header">
       <div class="tile-name">${escapeHtml(project.name)}</div>
       <div class="tile-path" title="${escapeHtml(project.path)}">${escapeHtml(project.domain || project.path)}</div>
-      <div class="tile-tech">${techChipsHtml()}</div>
     </div>
     <div class="tile-stats">
       <div class="ti-slot"><div class="ti-num" data-files>—</div><div class="ti-label">${t('hub.filesCount')}</div></div>
@@ -250,6 +248,7 @@ function createTileElement(project: HubProjectInfo, onOpen: (p: HubProjectInfo) 
       <div class="ti-slot ti-slot-git">${gitSlotHtml()}</div>
     </div>
     <div class="tile-meta">
+      <div class="tile-meta-type">${typeSlotHtml()}</div>
       <div class="tile-meta-actions">
         <button class="tile-pin ${project.pinned ? 'pinned' : ''}" title="${t(project.pinned ? 'hub.unpin' : 'hub.pin')}">${project.pinned ? '\u2605' : '\u2606'}</button>
         <button class="tile-folder" title="${t('hub.openExplorer')}">${I('folder')}</button>
@@ -461,11 +460,21 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
     showToast(t('hub.pushOkN', { ok, skip }), 'success');
   });
 
-  async function loadProjects(): Promise<void> {
+  async function loadProjects(forceGlow = false): Promise<void> {
     grid.innerHTML = '';
+    // Skeleton placeholdery — počet podle minulého scanu (shodný s velikostí gridu co user naposledy viděl)
+    const lastCount = Number(await levis.storeGet('lastProjectCount')) || 6;
+    const skelCount = Math.max(3, Math.min(lastCount, 14));
+    for (let i = 0; i < skelCount; i++) {
+      const skel = document.createElement('div');
+      skel.className = 'tile-skel';
+      grid.appendChild(skel);
+    }
     subtitle.textContent = t('hub.subtitleLoading', { path: scanPath });
     try {
       const projects: HubProjectInfo[] = await levis.scanProjects(scanPath);
+      // Uložit počet pro příští skeleton
+      await levis.storeSet('lastProjectCount', projects.length);
       subtitle.textContent = `${scanPath} — ${t('hub.nProjects', { n: projects.length })}`;
       const usageHost = container.querySelector('#hub-usage') as HTMLElement;
       if (usageHost) usageHost.style.display = projects.length === 0 ? 'none' : '';
@@ -504,7 +513,7 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
         p.language = det.language;
       }));
 
-      // Render filter chips dle dostupnych typu
+      // Render filter chips dle dostupnych typu — barva chipu = barva frameworku (sjednoceno s .tile-type-chip na kartě)
       const types = Array.from(new Set(projects.map(p => p.projectType || 'other')));
       const chipsHost = container.querySelector('.hub-filter-chips') as HTMLElement;
       const allChip = `<button class="hub-chip hub-chip-active" data-type="all">${t('hub.allFilter', { n: projects.length })}</button>`;
@@ -512,7 +521,7 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
         const meta = PROJECT_TYPES[type] || PROJECT_TYPES.other;
         const count = projects.filter(p => p.projectType === type).length;
         const label = type === 'other' ? t('hub.typeOther') : meta.label;
-        return `<button class="hub-chip" data-type="${type}">${meta.icon} ${label} (${count})</button>`;
+        return `<button class="hub-chip" data-type="${type}" style="--chip-color:${meta.color}">${meta.icon} ${label} (${count})</button>`;
       }).join('');
       chipsHost.innerHTML = allChip + typeChips;
 
@@ -601,11 +610,11 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
           });
         }
 
-        function renderGroup(label: string, projects: HubProjectInfo[], collapsed?: boolean, addNewTile?: boolean): void {
+        function renderGroup(label: string, slug: 'active' | 'paused' | 'finished', projects: HubProjectInfo[], collapsed?: boolean, addNewTile?: boolean): void {
           if (projects.length === 0 && !addNewTile) return;
           const header = document.createElement('div');
-          header.className = 'hub-group-header' + (collapsed ? ' hub-group-collapsed' : '');
-          header.innerHTML = `<span class="hub-group-chevron">▾</span> ${label} <span class="hub-group-count">${projects.length}</span>`;
+          header.className = 'hub-group-header hub-group-' + slug + (collapsed ? ' hub-group-collapsed' : '');
+          header.innerHTML = `<span class="hub-group-chevron">▾</span> <span class="hub-group-label">${label}</span> <span class="hub-group-count">${projects.length}</span> <span class="hub-group-line"></span>`;
           grid.appendChild(header);
           const groupGrid = document.createElement('div');
           groupGrid.className = 'hub-group-grid';
@@ -630,9 +639,9 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
           grid.appendChild(createNewProjectTile(newProjectHandler));
           setupGridDrop(grid);
         } else {
-          renderGroup(t('hub.groupActive'), active, false, true);
-          renderGroup(t('hub.groupPaused'), paused, true);
-          renderGroup(t('hub.groupFinished'), finished, true);
+          renderGroup(t('hub.groupActive'), 'active', active, false, true);
+          renderGroup(t('hub.groupPaused'), 'paused', paused, true);
+          renderGroup(t('hub.groupFinished'), 'finished', finished, true);
         }
       }
 
@@ -708,6 +717,13 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
       });
 
       applyFilter();
+
+      // Glow sweep — jen při prvním otevření aplikace nebo po Refresh / změně scanPath
+      if (forceGlow || !glowShownThisSession) {
+        glowShownThisSession = true;
+        grid.classList.add('hub-grid-revealing');
+        window.setTimeout(() => grid.classList.remove('hub-grid-revealing'), 1550);
+      }
     } catch (err) {
       subtitle.textContent = t('hub.subtitleError', { path: scanPath });
       showToast(t('toast.projectsLoadError'), 'error');
@@ -765,7 +781,7 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
     }
   }
 
-  btnRefresh.addEventListener('click', loadProjects);
+  btnRefresh.addEventListener('click', () => loadProjects(true));
 
   function openSettingsModal(): void {
     let settingsPanel = document.body.querySelector('.settings-panel') as HTMLElement;
@@ -869,7 +885,7 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
       setLocale(newLocale);
       showToast(t('settings.saved'), 'success');
       settingsPanel.remove();
-      loadProjects();
+      loadProjects(true);
     });
 
     settingsPanel.querySelector('.settings-close')!.addEventListener('click', () => settingsPanel.remove());
@@ -905,14 +921,13 @@ async function renderUsagePanel(host: HTMLElement): Promise<void> {
   if (!host) return;
   host.innerHTML = `<div class="usage-bar usage-bar-loading">Načítám usage...</div>`;
   let plan: string = (await levis.storeGet('claudePlan')) || 'max5';
+  const storedCollapsed = await levis.storeGet('usageCollapsed');
+  let collapsed: boolean = storedCollapsed === undefined || storedCollapsed === null ? true : !!storedCollapsed;
   const account = await levis.usageAccount();
   const data = await levis.usageScan();
-  const realLimits = await levis.usageRateLimits(); // realna data od Claude Code (statusline dump)
+  const realLimits = await levis.usageRateLimits();
 
-  const limits = PLAN_LIMITS[plan] || PLAN_LIMITS.max5;
-  const t = data.totals;
-  const block5hPct = Math.round(Math.min(100, (t.block5h.cost / limits.block5h) * 100));
-  const monthPct = Math.round(Math.min(100, (t.month.cost / limits.month) * 100));
+  const tot = data.totals;
 
   // Realna procenta od Claude Code (pokud je statusline dump dostupny)
   const rl = realLimits?.rate_limits || null;
@@ -931,24 +946,48 @@ async function renderUsagePanel(host: HTMLElement): Promise<void> {
   function pctColor(p: number): string {
     return p > 80 ? '#ff6a00' : p > 50 ? '#f59e0b' : '#4ade80';
   }
+  function hbarHtml(pct: number | null, color: string): string {
+    const p = pct ?? 0;
+    return `<div class="usage-progress"><div class="usage-progress-fill" style="width:${p}%;background:${color}"></div></div>`;
+  }
+
+  const sessColor = pctColor(sessionPct ?? 0);
+  const weekColor = pctColor(weeklyPct ?? 0);
+  const ctxColor  = pctColor(ctxPct ?? 0);
+  // Mini indikátory — horizontální bary (zleva doprava)
+  const miniPillsHtml = `
+    <span class="usage-pill" title="Session (5h): ${sessionPct ?? '—'}%">
+      <span>S</span>
+      <span class="usage-pill-bar"><span class="usage-pill-fill" style="width:${sessionPct ?? 0}%;background:${sessColor}"></span></span>
+    </span>
+    <span class="usage-pill" title="Weekly: ${weeklyPct ?? '—'}%">
+      <span>W</span>
+      <span class="usage-pill-bar"><span class="usage-pill-fill" style="width:${weeklyPct ?? 0}%;background:${weekColor}"></span></span>
+    </span>
+    <span class="usage-pill" title="Context: ${ctxPct ?? '—'}%">
+      <span>C</span>
+      <span class="usage-pill-bar"><span class="usage-pill-fill" style="width:${ctxPct ?? 0}%;background:${ctxColor}"></span></span>
+    </span>
+  `;
+
   const realCard = rl ? `
     <div class="usage-stat">
       <div class="usage-stat-label">Session (5h)</div>
       <div class="usage-stat-val">${sessionPct}<span class="usage-stat-pct-unit">%</span></div>
-      <div class="usage-progress"><div class="usage-progress-fill" style="width:${sessionPct ?? 0}%;background:${pctColor(sessionPct ?? 0)}"></div></div>
+      ${hbarHtml(sessionPct, sessColor)}
       <div class="usage-stat-sub">${fmtReset(rl.five_hour?.resets_at)}</div>
     </div>
     <div class="usage-stat">
       <div class="usage-stat-label">Weekly</div>
       <div class="usage-stat-val">${weeklyPct}<span class="usage-stat-pct-unit">%</span></div>
-      <div class="usage-progress"><div class="usage-progress-fill" style="width:${weeklyPct ?? 0}%;background:${pctColor(weeklyPct ?? 0)}"></div></div>
+      ${hbarHtml(weeklyPct, weekColor)}
       <div class="usage-stat-sub">${fmtReset(rl.seven_day?.resets_at)}</div>
     </div>
     ${ctxPct !== null ? `
     <div class="usage-stat">
       <div class="usage-stat-label">${(window as any).t('usage.context')}</div>
       <div class="usage-stat-val">${ctxPct}<span class="usage-stat-pct-unit">%</span></div>
-      <div class="usage-progress"><div class="usage-progress-fill" style="width:${ctxPct}%;background:${pctColor(ctxPct)}"></div></div>
+      ${hbarHtml(ctxPct, ctxColor)}
       <div class="usage-stat-sub">${realLimits?.model?.display_name || ''}</div>
     </div>` : ''}
   ` : `
@@ -963,69 +1002,90 @@ async function renderUsagePanel(host: HTMLElement): Promise<void> {
     `<option value="${k}" ${k === plan ? 'selected' : ''}>${v.label}</option>`
   ).join('');
 
+  const miniCost = `${fmtUsd(tot.today.cost)} dnes · ${fmtUsd(tot.month.cost)} měs`;
+
   host.innerHTML = `
-    <div class="usage-bar">
-      <div class="usage-bar-row">
-        <div class="usage-stat">
-          <div class="usage-stat-label">${(window as any).t('usage.today')}</div>
-          <div class="usage-stat-val">${fmtUsd(t.today.cost)}</div>
-          <div class="usage-stat-sub">${fmtTok(t.today.i + t.today.cw + t.today.cr)} in &middot; ${fmtTok(t.today.o)} out</div>
-        </div>
-        ${realCard}
-        <div class="usage-stat">
-          <div class="usage-stat-label">${(window as any).t('usage.monthEstimate')}</div>
-          <div class="usage-stat-val" style="font-size:14px">${fmtUsd(t.month.cost)}</div>
-          <div class="usage-stat-sub">5h: ${fmtUsd(t.block5h.cost)}</div>
-        </div>
-        <div class="usage-stat">
-          <div class="usage-stat-label">${(window as any).t('usage.total')}</div>
-          <div class="usage-stat-val">${fmtUsd(t.all.cost)}</div>
-          <div class="usage-stat-sub">${(window as any).t('usage.messages', { n: t.all.count })}</div>
-        </div>
-        <div class="usage-stat usage-plan">
-          <div class="usage-stat-label">${(window as any).t('usage.plan')}</div>
-          <select class="usage-plan-select" aria-label="${(window as any).t('usage.plan')}">${planOptions}</select>
-          <div class="usage-stat-sub">${account?.emailAddress ? escapeHtml(account.emailAddress) : (window as any).t('usage.notLoggedIn')}</div>
-        </div>
-        <button class="usage-toggle" title="${(window as any).t('hub.usageDetail')}">${(window as any).icon('arrow-down', { size: 14 })}</button>
+    <div class="usage-bar ${collapsed ? '' : 'usage-bar-expanded'}">
+      <div class="usage-mini">
+        <span class="usage-mini-label">Usage</span>
+        <span class="usage-mini-pills">${miniPillsHtml}</span>
+        <span class="usage-mini-cost">${miniCost}</span>
+        <button class="usage-expand" title="${(window as any).t('hub.usageDetail')}" aria-expanded="${!collapsed}">${(window as any).icon('arrow-down', { size: 14 })}</button>
       </div>
-      <div class="usage-detail" style="display:none"></div>
+      <div class="usage-full" ${collapsed ? 'hidden' : ''}>
+        <div class="usage-bar-row">
+          <div class="usage-stat">
+            <div class="usage-stat-label">${(window as any).t('usage.today')}</div>
+            <div class="usage-stat-val">${fmtUsd(tot.today.cost)}</div>
+            <div class="usage-stat-sub">${fmtTok(tot.today.i + tot.today.cw + tot.today.cr)} in &middot; ${fmtTok(tot.today.o)} out</div>
+          </div>
+          ${realCard}
+          <div class="usage-stat">
+            <div class="usage-stat-label">${(window as any).t('usage.monthEstimate')}</div>
+            <div class="usage-stat-val" style="font-size:14px">${fmtUsd(tot.month.cost)}</div>
+            <div class="usage-stat-sub">5h: ${fmtUsd(tot.block5h.cost)}</div>
+          </div>
+          <div class="usage-stat">
+            <div class="usage-stat-label">${(window as any).t('usage.total')}</div>
+            <div class="usage-stat-val">${fmtUsd(tot.all.cost)}</div>
+            <div class="usage-stat-sub">${(window as any).t('usage.messages', { n: tot.all.count })}</div>
+          </div>
+          <div class="usage-stat usage-plan">
+            <div class="usage-stat-label">${(window as any).t('usage.plan')}</div>
+            <select class="usage-plan-select" aria-label="${(window as any).t('usage.plan')}">${planOptions}</select>
+            <div class="usage-stat-sub">${account?.emailAddress ? escapeHtml(account.emailAddress) : (window as any).t('usage.notLoggedIn')}</div>
+          </div>
+        </div>
+        <div class="usage-detail"></div>
+      </div>
     </div>
   `;
 
-  const planSelect = host.querySelector('.usage-plan-select') as HTMLSelectElement;
-  planSelect.addEventListener('change', async () => {
-    await levis.storeSet('claudePlan', planSelect.value);
-    renderUsagePanel(host);
-  });
-  // Klik na select nesmi togglovat detail
-  planSelect.addEventListener('click', (e) => e.stopPropagation());
-
-  const detail = host.querySelector('.usage-detail') as HTMLElement;
-  const toggle = host.querySelector('.usage-toggle') as HTMLElement;
-  const bar = host.querySelector('.usage-bar') as HTMLElement;
-
-  function expand() {
-    if (detail.style.display !== 'none') {
-      detail.style.display = 'none';
-      toggle.innerHTML = (window as any).icon('arrow-down', { size: 14 });
-      return;
-    }
-    detail.style.display = 'block';
-    toggle.innerHTML = (window as any).icon('arrow-up', { size: 14 });
-    detail.innerHTML = renderUsageDetail(data);
+  const planSelect = host.querySelector('.usage-plan-select') as HTMLSelectElement | null;
+  if (planSelect) {
+    planSelect.addEventListener('change', async () => {
+      await levis.storeSet('claudePlan', planSelect.value);
+      renderUsagePanel(host);
+    });
+    planSelect.addEventListener('click', (e) => e.stopPropagation());
   }
-  toggle.addEventListener('click', (e) => { e.stopPropagation(); expand(); });
-  bar.querySelector('.usage-bar-row')!.addEventListener('click', (e) => {
-    if ((e.target as HTMLElement).closest('.usage-plan, .usage-toggle')) return;
-    expand();
+
+  const bar = host.querySelector('.usage-bar') as HTMLElement;
+  const mini = host.querySelector('.usage-mini') as HTMLElement;
+  const full = host.querySelector('.usage-full') as HTMLElement;
+  const detailHost = host.querySelector('.usage-detail') as HTMLElement;
+  const expandBtn = host.querySelector('.usage-expand') as HTMLElement;
+
+  async function toggleCollapse(): Promise<void> {
+    collapsed = !collapsed;
+    await levis.storeSet('usageCollapsed', collapsed);
+    bar.classList.toggle('usage-bar-expanded', !collapsed);
+    if (collapsed) {
+      full.setAttribute('hidden', '');
+      expandBtn.setAttribute('aria-expanded', 'false');
+    } else {
+      full.removeAttribute('hidden');
+      expandBtn.setAttribute('aria-expanded', 'true');
+      if (detailHost && !detailHost.innerHTML) detailHost.innerHTML = renderUsageDetail(data);
+    }
+  }
+
+  mini.addEventListener('click', (e) => {
+    if ((e.target as HTMLElement).closest('.usage-expand')) return;
+    toggleCollapse();
   });
+  expandBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleCollapse(); });
+
+  // Pokud byl panel rozbalený z předchozí session, rovnou dorenderuj detail
+  if (!collapsed && detailHost && !detailHost.innerHTML) {
+    detailHost.innerHTML = renderUsageDetail(data);
+  }
 }
 
 function renderUsageDetail(data: any): string {
   const projects = Object.entries(data.perProject as Record<string, any>)
     .sort((a, b) => b[1].cost - a[1].cost)
-    .slice(0, 20);
+    .slice(0, 10);
   const maxProj = Math.max(...projects.map(p => (p[1] as any).cost), 0.0001);
 
   const models = Object.entries(data.perModel as Record<string, any>)

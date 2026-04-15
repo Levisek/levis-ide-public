@@ -166,7 +166,7 @@
 .hub-legend-warn    { --dot-color: var(--warning); background: var(--warning); }
 .hub-legend-accent  { --dot-color: var(--info);    background: var(--info); }       /* unpushed = modrá */
 .hub-legend-success { --dot-color: var(--success); background: var(--success); }
-.hub-legend-info    { --dot-color: #d946ef;        background: #d946ef; }           /* finished = fuchsia */
+.hub-legend-info    { --dot-color: #64748b;        background: #64748b; }           /* finished = slate (tlumená) */
 .hub-legend-pin     { --dot-color: var(--accent);  background: var(--accent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 60%, transparent), 0 0 10px var(--accent-glow); }
 
 /* ── Tile ────────────────────────── */
@@ -175,12 +175,12 @@
   background: var(--bg-elev-1);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-lg);
-  padding: 18px 20px;
+  padding: 14px 16px;
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  min-height: 210px;
+  gap: 8px;
+  min-height: 168px;
   transition: transform 250ms cubic-bezier(0.34, 1.56, 0.64, 1),
               border-color 200ms ease,
               box-shadow 300ms ease,
@@ -312,23 +312,113 @@
 /* ── Hub group headers ── */
 .hub-group-header {
   grid-column: 1 / -1;
-  font-size: 12px; font-weight: 600; color: var(--text-muted);
-  text-transform: uppercase; letter-spacing: 0.5px;
-  padding: 16px 4px 6px; cursor: pointer; user-select: none;
-  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.6px;
+  padding: 22px 4px 10px; cursor: pointer; user-select: none;
+  display: flex; align-items: center; gap: 10px;
   transition: color var(--t-fast) var(--ease);
+  --group-color: var(--text-muted);
 }
-.hub-group-header:first-child { padding-top: 0; }
-.hub-group-header:hover { color: var(--text); }
-.hub-group-chevron { transition: transform var(--t-fast) var(--ease); font-size: 10px; }
+.hub-group-header:first-child { padding-top: 4px; }
+.hub-group-header:hover { color: var(--group-color); }
+.hub-group-chevron { transition: transform var(--t-fast) var(--ease); font-size: 10px; color: var(--group-color); }
 .hub-group-collapsed .hub-group-chevron { transform: rotate(-90deg); }
+.hub-group-label { color: var(--group-color); }
 .hub-group-count {
-  font-size: 10px; color: var(--text-faint);
-  background: var(--bg-elev-2); padding: 1px 6px; border-radius: var(--radius-pill);
+  font-size: 10px; color: var(--group-color);
+  background: color-mix(in srgb, var(--group-color) 15%, var(--bg-elev-2));
+  border: 1px solid color-mix(in srgb, var(--group-color) 40%, var(--border));
+  padding: 1px 8px; border-radius: var(--radius-pill);
+  font-weight: 700;
 }
+.hub-group-line {
+  flex: 1; height: 1px;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--group-color) 70%, transparent) 0%,
+    color-mix(in srgb, var(--group-color) 25%, transparent) 40%,
+    transparent 100%);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--group-color) 35%, transparent);
+  transition: background var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+}
+.hub-group-header:hover .hub-group-line {
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--group-color) 90%, transparent) 0%,
+    color-mix(in srgb, var(--group-color) 40%, transparent) 50%,
+    transparent 100%);
+}
+/* Barevné akcenty podle stavu skupiny */
+.hub-group-active   { --group-color: var(--success); }
+.hub-group-paused   { --group-color: var(--warning); }
+.hub-group-finished { --group-color: #64748b; }
 .hub-group-grid {
   grid-column: 1 / -1;
   display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px;
+}
+
+/* ── Glow sweep na uvítanou + skeleton placeholdery ── */
+@keyframes glow-sweep {
+  0%   { transform: translateX(-40%); opacity: 0; }
+  15%  { opacity: 0.95; }
+  100% { transform: translateX(130%); opacity: 0; }
+}
+@keyframes tile-pop-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes skel-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.hub-grid-revealing { position: relative; overflow: hidden; }
+.hub-grid-revealing::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(105deg,
+    transparent 35%,
+    color-mix(in srgb, var(--accent) 30%, transparent) 48%,
+    color-mix(in srgb, var(--accent) 55%, transparent) 50%,
+    color-mix(in srgb, var(--accent) 30%, transparent) 52%,
+    transparent 65%);
+  mix-blend-mode: screen;
+  animation: glow-sweep 1320ms cubic-bezier(0.25, 0.7, 0.3, 1) forwards;
+  pointer-events: none;
+  z-index: 3;
+}
+.hub-grid-revealing .tile,
+.hub-grid-revealing .hub-group-grid > .tile {
+  animation: tile-pop-in 500ms ease-out both;
+}
+/* Stagger prvních 14 karet (48ms × index) */
+.hub-grid-revealing .tile:nth-child(1)  { animation-delay: 0ms; }
+.hub-grid-revealing .tile:nth-child(2)  { animation-delay: 48ms; }
+.hub-grid-revealing .tile:nth-child(3)  { animation-delay: 96ms; }
+.hub-grid-revealing .tile:nth-child(4)  { animation-delay: 144ms; }
+.hub-grid-revealing .tile:nth-child(5)  { animation-delay: 192ms; }
+.hub-grid-revealing .tile:nth-child(6)  { animation-delay: 240ms; }
+.hub-grid-revealing .tile:nth-child(7)  { animation-delay: 288ms; }
+.hub-grid-revealing .tile:nth-child(8)  { animation-delay: 336ms; }
+.hub-grid-revealing .tile:nth-child(9)  { animation-delay: 384ms; }
+.hub-grid-revealing .tile:nth-child(10) { animation-delay: 432ms; }
+.hub-grid-revealing .tile:nth-child(11) { animation-delay: 480ms; }
+.hub-grid-revealing .tile:nth-child(12) { animation-delay: 528ms; }
+.hub-grid-revealing .tile:nth-child(13) { animation-delay: 576ms; }
+.hub-grid-revealing .tile:nth-child(14) { animation-delay: 624ms; }
+
+/* Skeleton placeholder během scanu */
+.tile-skel {
+  background: var(--bg-elev-1);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  min-height: 210px;
+  position: relative; overflow: hidden;
+}
+.tile-skel::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--text-muted) 12%, transparent) 50%,
+    transparent 100%);
+  background-size: 200% 100%;
+  animation: skel-shimmer 1.4s ease-in-out infinite;
 }
 
 /* ── Hub trademark v rohu (button — klikem otevře About) ── */
@@ -445,13 +535,12 @@
 
 /* Recent — pořadí zajišťuje sort, žádný vizuální marker (kolize s tile-colored) */
 
-/* Header — název + path */
-.tile-header { display: flex; flex-direction: column; gap: 3px; padding-right: 86px; min-width: 0; }
+/* Header — název + path (tech chipy se přesunuly do stats, takže padding může být menší) */
+.tile-header { display: flex; flex-direction: column; gap: 3px; padding-right: 40px; min-width: 0; }
 .tile-name {
-  font-size: 19px; font-weight: 700; line-height: 1.25;
+  font-size: 16px; font-weight: 700; line-height: 1.25;
   color: var(--name-color, var(--text));
   letter-spacing: -0.01em;
-  /* Max 2 řádky — dlouhé názvy se zalomí, pak truncate */
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -477,22 +566,48 @@
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
-/* Stats strip — 3 sloty display čísel, uniform výška, baseline zarovnání čísel */
+/* Stats strip — 3 sloty: Soubory | Velikost | Git */
 .tile-stats {
   display: grid; grid-template-columns: 1fr 1fr auto;
-  gap: 16px; padding: 10px 0;
+  gap: 10px; padding: 6px 0;
   border-top: 1px solid var(--border-soft);
   border-bottom: 1px solid var(--border-soft);
   align-items: center;
 }
 .ti-slot {
-  display: flex; flex-direction: column; gap: 3px; min-width: 0;
+  display: flex; flex-direction: column; gap: 2px; min-width: 0;
   justify-content: center; align-items: center;
   text-align: center;
 }
 .ti-slot-git { align-items: center; justify-content: center; min-width: 24px; }
+
+/* Type chip v tile-meta (pod stats) — vlevo, "naproti" actions+ago vpravo */
+.tile-meta-type {
+  display: inline-flex; align-items: center; gap: 5px;
+  margin-right: auto; min-width: 0; max-width: 65%;
+}
+.tile-type-chip {
+  font-size: 10px; font-weight: 600;
+  padding: 2px 8px; border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--chip-color, var(--text-muted)) 16%, var(--bg-elev-2));
+  color: color-mix(in srgb, var(--chip-color, var(--text-soft)) 75%, var(--text));
+  border: 1px solid color-mix(in srgb, var(--chip-color, var(--border)) 50%, var(--border));
+  white-space: nowrap; letter-spacing: 0.02em; line-height: 1.45;
+  display: inline-flex; align-items: center;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+}
+.tile-lang-tag {
+  font-size: 9px; font-weight: 700;
+  padding: 1px 5px; border-radius: var(--radius-xs);
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--lang-color, var(--border-soft)) 55%, var(--border));
+  color: var(--lang-color, var(--text-muted));
+  letter-spacing: 0.05em; line-height: 1.5;
+}
+.tile-lang-tag[data-lang="ts"] { --lang-color: #3178c6; }
+.tile-lang-tag[data-lang="js"] { --lang-color: #b8a42a; }
 .ti-num {
-  font-size: 20px; font-weight: 600; line-height: 1.1;
+  font-size: 16px; font-weight: 600; line-height: 1.1;
   font-variant-numeric: tabular-nums;
   color: var(--text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -519,43 +634,12 @@
 .ti-dot-warn  { background: var(--warning); }
 .ti-dot-muted { background: var(--text-faint); }
 
-/* Meta — zatím jen relativní čas (tech chipy se přesunuly do header) */
+/* Meta — type chip vlevo, actions + ago vpravo */
 .tile-meta {
   display: flex; align-items: center; justify-content: flex-end;
-  gap: 8px; flex-wrap: wrap;
+  gap: 8px; flex-wrap: wrap; min-height: 24px;
 }
-/* Tech chipy — v tile-header, vpravo nahoře pod corner actions */
-.tile-header .tile-tech {
-  display: flex; gap: 5px; flex-wrap: wrap;
-  position: absolute; top: 48px; right: 14px;
-  max-width: 55%; justify-content: flex-end;
-}
-.tile-tech-chip {
-  font-size: 9px; font-weight: 600;
-  padding: 1px 6px; border-radius: var(--radius-xs);
-  background: var(--bg-elev-2);
-  color: var(--text-soft);
-  border: 1px solid var(--border);
-  white-space: nowrap;
-  line-height: 1.5;
-  display: inline-flex; align-items: center; gap: 4px;
-  letter-spacing: 0.02em;
-}
-/* Barevná tečka před názvem frameworku — čitelné na dark i light */
-.tile-tech-chip::before {
-  content: '';
-  width: 5px; height: 5px; border-radius: 50%;
-  background: var(--chip-color, var(--text-muted));
-  flex-shrink: 0;
-  box-shadow: 0 0 4px var(--chip-color, transparent);
-}
-.tech-chip-lang::before { display: none; }
-.tech-chip-lang {
-  color: var(--chip-color, var(--text-soft));
-  border-color: color-mix(in srgb, var(--chip-color, var(--border)) 40%, var(--border));
-}
-.tech-chip-lang[data-lang="ts"] { --chip-color: #3178c6; }
-.tech-chip-lang[data-lang="js"] { --chip-color: #b8a42a; }
+/* .tile-tech přesunuto do .tile-stats (ti-slot-type) v rámci v1.4 reworku */
 .tile-ago {
   font-size: 10px; color: var(--text-muted);
   font-variant-numeric: tabular-nums;
@@ -657,17 +741,66 @@
   box-shadow: var(--shadow-sm);
 }
 .usage-bar-loading { padding: 14px 18px; color: var(--text-muted); font-size: 12px; }
+
+/* Collapsed mini lišta — default stav */
+.usage-mini {
+  display: flex; align-items: center; gap: 18px;
+  padding: 10px 18px; cursor: pointer;
+  transition: background var(--t-fast) var(--ease);
+}
+.usage-mini:hover { background: var(--bg-elev-2); }
+.usage-mini-label {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--text-muted); font-weight: 700;
+}
+.usage-mini-pills {
+  display: inline-flex; gap: 10px; align-items: center;
+}
+.usage-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 10px; color: var(--text-muted); font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.usage-pill-bar {
+  width: 48px; height: 5px; background: var(--bg-deep);
+  border-radius: var(--radius-pill); overflow: hidden; position: relative;
+  border: 1px solid var(--border-soft);
+  display: inline-block;
+}
+.usage-pill-fill {
+  display: block; height: 100%;
+  transition: width 350ms cubic-bezier(0.25, 0.7, 0.3, 1);
+  border-radius: var(--radius-pill);
+}
+.usage-mini-cost {
+  font-size: 11px; color: var(--text-soft); font-variant-numeric: tabular-nums;
+  margin-left: auto;
+}
+.usage-expand {
+  background: transparent; border: none; color: var(--text-muted);
+  cursor: pointer; padding: 4px 8px; font-size: 13px;
+  display: inline-flex; align-items: center;
+  transition: color var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
+}
+.usage-expand:hover { color: var(--accent); }
+.usage-bar-expanded .usage-expand { transform: rotate(180deg); color: var(--accent); }
+
+/* Plná lišta (když je rozbalená) */
 .usage-bar-row {
   display: flex; align-items: stretch; gap: 20px;
   padding: 14px 18px; cursor: pointer;
+  border-top: 1px solid var(--border-soft);
   transition: background var(--t-fast) var(--ease);
 }
 .usage-bar-row:hover { background: var(--bg-elev-2); }
-.usage-stat { flex: 1; min-width: 0; }
+.usage-stat { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .usage-stat-label { font-size: 10px; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.06em; margin-bottom: 4px; font-weight: 600; }
-.usage-stat-val { font-size: 18px; font-weight: 600; color: var(--text); }
+.usage-stat-val { font-size: 18px; font-weight: 600; color: var(--text); display: inline-flex; align-items: baseline; gap: 8px; }
 .usage-stat-pct { font-size: 11px; color: var(--text-muted); font-weight: 400; margin-left: 4px; }
+.usage-stat-pct-unit { font-size: 11px; color: var(--text-muted); font-weight: 500; margin-left: 2px; }
 .usage-stat-sub { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+/* Horizontální progress bar (zleva doprava) — full view */
 .usage-progress { height: 5px; background: var(--bg-deep); border-radius: var(--radius-pill); margin-top: 8px; overflow: hidden; }
 .usage-progress-fill { height: 100%; transition: width 0.3s ease; border-radius: var(--radius-pill); }
 .usage-plan-select {
@@ -676,30 +809,43 @@
   width: 100%; margin-top: 2px; font-family: inherit;
 }
 .usage-plan-select:focus { outline: none; border-color: var(--accent); }
-.usage-toggle {
-  background: transparent; border: none; color: var(--text-muted);
-  cursor: pointer; padding: 4px 8px;
-  align-self: center;
-  display: flex; align-items: center;
-}
-.usage-toggle:hover { color: var(--accent); }
 .usage-detail { padding: var(--space-5); background: var(--bg-deep); border-top: 1px solid var(--border); }
-.usage-detail-grid { display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 24px; }
-.usage-detail-col h4 { margin: 0 0 12px; font-size: 11px; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.06em; font-weight: 600; }
+/* Layout: graf nahoře full-width, pod ním dvě kolony (Models + Top projects) */
+.usage-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 20px 24px;
+  grid-template-areas:
+    "chart chart"
+    "models projects";
+}
+.usage-detail-col:nth-child(1) { grid-area: chart; }
+.usage-detail-col:nth-child(2) { grid-area: models; }
+.usage-detail-col:nth-child(3) { grid-area: projects; }
+.usage-detail-col h4 { margin: 0 0 10px; font-size: 11px; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.06em; font-weight: 600; }
 .usage-row {
   display: flex; align-items: center; gap: 10px; padding: 5px 0; font-size: 11px;
 }
-.usage-row-name { flex: 0 0 110px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.usage-row-name { flex: 0 0 140px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .usage-row-bar { flex: 1; height: 6px; background: var(--bg-elev-1); border-radius: var(--radius-pill); overflow: hidden; }
 .usage-row-bar-fill { height: 100%; background: var(--success); border-radius: var(--radius-pill); }
-.usage-row-val { flex: 0 0 auto; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.usage-row-val { flex: 0 0 auto; color: var(--text-muted); font-variant-numeric: tabular-nums; min-width: 70px; text-align: right; }
 .usage-empty { font-size: 11px; color: var(--text-muted); padding: 8px 0; }
+/* Chart — 14 dní přes celou šířku, fixní výška, dny flexibilní */
 .usage-chart {
-  display: flex; align-items: flex-end; gap: var(--space-1); height: 80px;
-  padding: var(--space-1) 0;
+  display: flex; align-items: flex-end; gap: 4px; height: 100px;
+  padding: 4px 0;
+  background: var(--bg-elev-1);
+  border-radius: var(--radius);
+  padding: 10px 12px;
 }
-.usage-day { flex: 1; height: 100%; display: flex; align-items: flex-end; }
-.usage-day-bar { width: 100%; background: var(--accent); border-radius: var(--radius-sm) var(--radius-sm) 0 0; min-height: 2px; opacity: 0.7; }
+.usage-day { flex: 1; height: 100%; display: flex; align-items: flex-end; min-width: 0; }
+.usage-day-bar {
+  width: 100%; min-height: 2px; opacity: 0.8;
+  background: linear-gradient(to top, var(--accent), color-mix(in srgb, var(--accent) 60%, transparent));
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  transition: opacity var(--t-fast) var(--ease);
+}
 .usage-day:hover .usage-day-bar { opacity: 1; }
 
 /* Hub filter bar */
@@ -735,21 +881,30 @@
   flex: 1;
 }
 .hub-chip {
-  padding: 7px 14px;
-  background: var(--bg-elev-1);
-  border: 1px solid var(--border);
-  color: var(--text-soft);
+  padding: 6px 12px;
+  background: color-mix(in srgb, var(--chip-color, var(--text-muted)) 10%, var(--bg-elev-1));
+  border: 1px solid color-mix(in srgb, var(--chip-color, var(--border)) 35%, var(--border));
+  color: var(--chip-color, var(--text-soft));
   border-radius: var(--radius-pill);
-  font-size: 11px; font-weight: 500;
+  font-size: 11px; font-weight: 600;
   cursor: pointer;
   font-family: inherit;
+  letter-spacing: 0.02em;
   transition: all var(--t-fast) var(--ease);
 }
-.hub-chip:hover { background: var(--bg-elev-2); color: var(--text); border-color: var(--text-muted); }
+.hub-chip:hover {
+  background: color-mix(in srgb, var(--chip-color, var(--text-muted)) 22%, var(--bg-elev-2));
+  border-color: color-mix(in srgb, var(--chip-color, var(--text-muted)) 60%, var(--border));
+  transform: translateY(-1px);
+}
 .hub-chip-active {
   background: var(--accent);
   border-color: var(--accent);
   color: white;
-  font-weight: 600;
+  font-weight: 700;
   box-shadow: var(--shadow-glow);
+}
+.hub-chip-active:hover {
+  background: var(--accent);
+  border-color: var(--accent);
 }

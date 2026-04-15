@@ -462,7 +462,7 @@ const EN: Dict = {
   'hub.noProjectsTitle':   'No projects found in <code>{path}</code>. Start with one of these steps:',
   'hub.pickFolder':        'Pick a projects folder',
   'hub.recentBadge':       'Recently',
-  'hub.topProjects':       'Top projects (top 20)',
+  'hub.topProjects':       'Top projects (top 10)',
 
   // ── Usage panel ────────────────────
   'usage.today':           'Today',
@@ -932,7 +932,7 @@ const CS: Dict = {
   'hub.noProjectsTitle':   'V <code>{path}</code> zatím nejsou žádné projekty. Začni jedním z kroků:',
   'hub.pickFolder':        'Vyber složku s projekty',
   'hub.recentBadge':       'Naposledy',
-  'hub.topProjects':       'Top projekty (top 20)',
+  'hub.topProjects':       'Top projekty (top 10)',
 
   // ── Usage panel ────────────────────
   'usage.today':           'Dnes',
