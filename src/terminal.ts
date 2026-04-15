@@ -60,14 +60,18 @@ async function createTerminal(
   const searchAddon = new SearchAddon();
   const fontSize = Number((await levis.storeGet('terminalFontSize'))) || 13;
 
-  const term = new Terminal({
-    theme: {
-      background: '#0a0a0f',
-      foreground: '#e8e8f0',
-      cursor: '#ff6a00',
-      cursorAccent: '#0a0a0f',
-      selectionBackground: '#ff6a0033',
-      selectionForeground: '#e8e8f0',
+  function buildTermTheme(): any {
+    const cs = getComputedStyle(document.documentElement);
+    const v = (name: string, fallback: string) => (cs.getPropertyValue(name).trim() || fallback);
+    const bg = v('--term-bg', '#15161c');
+    const fg = v('--term-fg', '#c8cbd5');
+    return {
+      background: bg,
+      foreground: fg,
+      cursor: v('--term-cursor', '#ff7a1a'),
+      cursorAccent: bg,
+      selectionBackground: v('--term-selection', '#ff7a1a33'),
+      selectionForeground: fg,
       black: '#1a1a24',
       red: '#ef4444',
       green: '#10b981',
@@ -75,7 +79,7 @@ async function createTerminal(
       blue: '#3b82f6',
       magenta: '#a855f7',
       cyan: '#06b6d4',
-      white: '#e8e8f0',
+      white: fg,
       brightBlack: '#6b6b80',
       brightRed: '#f87171',
       brightGreen: '#34d399',
@@ -84,7 +88,11 @@ async function createTerminal(
       brightMagenta: '#c084fc',
       brightCyan: '#22d3ee',
       brightWhite: '#ffffff',
-    },
+    };
+  }
+
+  const term = new Terminal({
+    theme: buildTermTheme(),
     fontFamily: "'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace",
     fontSize,
     lineHeight: 1.1,
@@ -92,6 +100,12 @@ async function createTerminal(
     allowTransparency: true,
     scrollback: 10000,
   });
+
+  // Reaguj na změnu tématu (data-theme na <html>)
+  const themeObserver = new MutationObserver(() => {
+    try { term.options.theme = buildTermTheme(); } catch {}
+  });
+  themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
   term.loadAddon(fitAddon);
   term.loadAddon(new WebLinksAddon());
@@ -374,6 +388,7 @@ async function createTerminal(
       unsubData();
       unsubExit();
       resizeObserver.disconnect();
+      themeObserver.disconnect();
       if (stateTimer) clearTimeout(stateTimer);
       levis.killPty(ptyId);
       term.dispose();

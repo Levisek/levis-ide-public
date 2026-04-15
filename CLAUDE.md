@@ -152,6 +152,7 @@ Kompilace: `npx tsc` — output do `dist/`
 
 ### Funkční
 - Cross-platform testování (macOS, Linux)
+- **Rozšířit detekci typu projektu** — aktuální `detectProjectType` v `src/hub.ts` je minimalistická (package.json deps + language). TODO: přesnější framework matching, monorepo detection (lerna/nx/turbo), Python/Go/Rust projekty, build tool autodetekce (pnpm/yarn/bun), project meta pro kartu v Hubu (verze, repo URL).
 
 ## Git
 

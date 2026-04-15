@@ -169,10 +169,9 @@ async function createWorkspace(projectPath: string, projectName: string, project
   const statusBar = document.createElement('div');
   statusBar.className = 'status-bar';
   statusBar.innerHTML = `
-    <span class="status-branch" title="Git branch">...</span>
+    <span class="status-project-size" title="${t('ws.projectSize')}"></span>
     <span class="status-dirty" title="Změněné soubory"></span>
     <span class="status-sync" title="Ahead / Behind"></span>
-    <span class="status-project-size" title="${t('ws.projectSize')}"></span>
     <span class="status-file-info" title=""></span>
     <span style="flex:1"></span>
     <button class="status-btn status-btn-save" title="${t('ws.takjo')}">${I('save')} ${t('ws.btnSave')}</button>
@@ -721,8 +720,7 @@ async function createWorkspace(projectPath: string, projectName: string, project
 
 
 
-  // ── Git branch for status bar ─────────
-  const branchEl = statusBar.querySelector('.status-branch') as HTMLElement;
+  // ── Status bar elements ───────────────
   const dirtyEl = statusBar.querySelector('.status-dirty') as HTMLElement;
   const syncEl = statusBar.querySelector('.status-sync') as HTMLElement;
   const projectSizeEl = statusBar.querySelector('.status-project-size') as HTMLElement;
@@ -744,9 +742,6 @@ async function createWorkspace(projectPath: string, projectName: string, project
   function updateGitStatus(): void {
     levis.gitStatus(projectPath).then((status: any) => {
       if (status.current) {
-        branchEl.textContent = `${I('git', { size: 12 })} ${status.current}`.trim();
-        branchEl.innerHTML = `${I('git', { size: 12 })} ${status.current}`;
-
         const fileCount = status.files?.length || 0;
         if (fileCount > 0) {
           dirtyEl.textContent = `${fileCount} ${fileCount === 1 ? 'změna' : fileCount < 5 ? 'změny' : 'změn'}`;
@@ -764,7 +759,6 @@ async function createWorkspace(projectPath: string, projectName: string, project
           syncEl.textContent = '';
         }
       } else {
-        branchEl.textContent = '';
         dirtyEl.textContent = '';
         syncEl.textContent = '';
       }

@@ -13,7 +13,7 @@ const tabs: TabInfo[] = [];
 let activeTabId: string = 'hub';
 
 function applyTheme(theme: string): void {
-  if (theme === 'dark' || theme === 'dark-soft') document.documentElement.removeAttribute('data-theme');
+  if (theme === 'dark') document.documentElement.removeAttribute('data-theme');
   else document.documentElement.setAttribute('data-theme', theme);
 }
 (window as any).applyTheme = applyTheme;
@@ -301,8 +301,7 @@ async function init(): Promise<void> {
       e.preventDefault();
       switchTab('hub');
       setTimeout(() => {
-        const btn = document.querySelector('.hub-btn-settings') as HTMLElement;
-        if (btn) btn.click();
+        if ((window as any).openHubSettings) (window as any).openHubSettings();
       }, 100);
     }
     // F1 nebo ? — help overlay

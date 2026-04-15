@@ -72,6 +72,12 @@
   --t-fast:    120ms;
   --t-base:    200ms;
   --t-slow:    320ms;
+
+  /* ── Terminal / Editor (ztlumený kontrast, přeladěný per téma) ── */
+  --term-bg:        #15161c;
+  --term-fg:        #c8cbd5;
+  --term-cursor:    #ff7a1a;
+  --term-selection: #ff7a1a33;
 }
 
 /* ── Reset ───────────────────────── */
@@ -147,21 +153,24 @@ body {
   --shadow:    0 4px 14px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.35);
   --shadow-xl: 0 24px 60px rgba(0, 0, 0, 0.4);
+
+  --term-bg: #1e2230;
+  --term-fg: #c8cbd5;
 }
 
 [data-theme="light"] {
-  --bg-deep:    #e8e4de;
-  --bg-base:    #f0ece6;
-  --bg-elev-1:  #f7f4ee;
-  --bg-elev-2:  #e2ded6;
-  --bg-elev-3:  #d6d2ca;
-  --bg-card:    #f7f4ee;
-  --bg-card-h:  #ece8e0;
-  --bg-tab:     #eae6de;
+  --bg-deep:    #bdb6a6;
+  --bg-base:    #cbc4b4;
+  --bg-elev-1:  #dad3c3;
+  --bg-elev-2:  #e8e1d1;
+  --bg-elev-3:  #f2ebdb;
+  --bg-card:    #dad3c3;
+  --bg-card-h:  #e8e1d1;
+  --bg-tab:     #d2cbbb;
 
-  --border:        #cdc8be;
-  --border-strong: #b5b0a6;
-  --border-soft:   #ddd8d0;
+  --border:        #aea89a;
+  --border-strong: #948f82;
+  --border-soft:   #c2bdb0;
 
   --accent:       #d45a00;
   --accent-soft:  #f08030;
@@ -186,6 +195,9 @@ body {
   --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.12);
   --shadow-xl: 0 24px 60px rgba(0, 0, 0, 0.15);
   --shadow-glow: 0 0 24px rgba(212, 90, 0, 0.12);
+
+  --term-bg: #1e1b16;
+  --term-fg: #d4cec0;
 }
 
 /* ── Lucide icons (global) ── */

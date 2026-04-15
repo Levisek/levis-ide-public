@@ -12,61 +12,73 @@ interface HubProjectInfo {
   lastModified: string;
   gitStatus: 'clean' | 'dirty' | 'error';
   unpushedCount: number;
+  changedCount?: number; // počet dirty souborů — pro ti-num-warn v kartě
   pinned?: boolean;
   projectType?: string; // detekovano na frontendu
   hasNoPreview?: boolean; // Electron, Tauri, CLI, knihovna — nic k nahledu
+  language?: 'ts' | 'js'; // z tsconfig.json / package.json
+  status?: 'active' | 'paused' | 'finished'; // z projectStatuses
 }
 
-const PROJECT_TYPES: Record<string, { label: string; icon: string }> = {
-  expo:     { label: 'Expo',     icon: '' },
-  next:     { label: 'Next.js',  icon: '' },
-  vite:     { label: 'Vite',     icon: '' },
-  react:    { label: 'React',    icon: '' },
-  svelte:   { label: 'Svelte',   icon: '' },
-  astro:    { label: 'Astro',    icon: '' },
-  nuxt:     { label: 'Nuxt',     icon: '' },
-  electron: { label: 'Electron', icon: '' },
-  tauri:    { label: 'Tauri',    icon: '' },
-  node:     { label: 'Node',     icon: '' },
-  php:      { label: 'PHP',      icon: '' },
-  static:   { label: 'Static',   icon: '' },
-  other:    { label: 'Ostatní',  icon: '' },
+const PROJECT_TYPES: Record<string, { label: string; icon: string; color: string }> = {
+  expo:     { label: 'Expo',     icon: '', color: '#000020' },
+  next:     { label: 'Next.js',  icon: '', color: '#9ca3af' },
+  vite:     { label: 'Vite',     icon: '', color: '#ffc024' },
+  react:    { label: 'React',    icon: '', color: '#61dafb' },
+  svelte:   { label: 'Svelte',   icon: '', color: '#ff3e00' },
+  astro:    { label: 'Astro',    icon: '', color: '#ff5d01' },
+  nuxt:     { label: 'Nuxt',     icon: '', color: '#00dc82' },
+  electron: { label: 'Electron', icon: '', color: '#47848f' },
+  tauri:    { label: 'Tauri',    icon: '', color: '#ffc131' },
+  node:     { label: 'Node',     icon: '', color: '#5fa04e' },
+  php:      { label: 'PHP',      icon: '', color: '#8892bf' },
+  static:   { label: 'Static',   icon: '', color: '#e34c26' },
+  other:    { label: 'Ostatní',  icon: '', color: '#888' },
 };
 
-// Vraci [type, hasNoPreview]. Non-preview = Electron, Tauri, CLI/knihovna (Node bez webove deps).
-async function detectProjectType(projectPath: string): Promise<{ type: string; hasNoPreview: boolean }> {
+// Vraci { type, hasNoPreview, language }. Language = ts|js|undefined podle tsconfig/package.json.
+async function detectProjectType(projectPath: string): Promise<{ type: string; hasNoPreview: boolean; language?: 'ts' | 'js' }> {
+  // language detect — tsconfig → ts, jinak pokud je package.json → js
+  let language: 'ts' | 'js' | undefined;
+  try {
+    const ts = await levis.readFile(projectPath + '\\tsconfig.json');
+    if (typeof ts === 'string') language = 'ts';
+  } catch {}
+
   try {
     const pkgRaw = await levis.readFile(projectPath + '\\package.json');
     if (typeof pkgRaw === 'string') {
+      if (!language) language = 'js';
       const pkg = JSON.parse(pkgRaw);
       const deps = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
-      if (deps.electron) return { type: 'electron', hasNoPreview: true };
-      if (deps['@tauri-apps/api'] || deps['@tauri-apps/cli']) return { type: 'tauri', hasNoPreview: true };
-      if (deps.expo) return { type: 'expo', hasNoPreview: false };
-      if (deps.next) return { type: 'next', hasNoPreview: false };
-      if (deps.nuxt || deps['nuxt3']) return { type: 'nuxt', hasNoPreview: false };
-      if (deps.astro) return { type: 'astro', hasNoPreview: false };
-      if (deps.vite) return { type: 'vite', hasNoPreview: false };
-      if (deps['@sveltejs/kit'] || deps.svelte) return { type: 'svelte', hasNoPreview: false };
-      if (deps.react || deps['react-scripts']) return { type: 'react', hasNoPreview: false };
-      return { type: 'node', hasNoPreview: true }; // CLI / knihovna — nic k preview
+      if (deps.typescript && !language) language = 'ts';
+      if (deps.electron) return { type: 'electron', hasNoPreview: true, language };
+      if (deps['@tauri-apps/api'] || deps['@tauri-apps/cli']) return { type: 'tauri', hasNoPreview: true, language };
+      if (deps.expo) return { type: 'expo', hasNoPreview: false, language };
+      if (deps.next) return { type: 'next', hasNoPreview: false, language };
+      if (deps.nuxt || deps['nuxt3']) return { type: 'nuxt', hasNoPreview: false, language };
+      if (deps.astro) return { type: 'astro', hasNoPreview: false, language };
+      if (deps.vite) return { type: 'vite', hasNoPreview: false, language };
+      if (deps['@sveltejs/kit'] || deps.svelte) return { type: 'svelte', hasNoPreview: false, language };
+      if (deps.react || deps['react-scripts']) return { type: 'react', hasNoPreview: false, language };
+      return { type: 'node', hasNoPreview: true, language }; // CLI / knihovna — nic k preview
     }
   } catch {}
   // Tauri bez package.json (rust binary)
   try {
     const tauriConf = await levis.readFile(projectPath + '\\src-tauri\\tauri.conf.json');
-    if (typeof tauriConf === 'string') return { type: 'tauri', hasNoPreview: true };
+    if (typeof tauriConf === 'string') return { type: 'tauri', hasNoPreview: true, language };
   } catch {}
   // Pokud neni package.json, zkus PHP / static
   try {
     const indexPhp = await levis.readFile(projectPath + '\\index.php');
-    if (typeof indexPhp === 'string') return { type: 'php', hasNoPreview: false };
+    if (typeof indexPhp === 'string') return { type: 'php', hasNoPreview: false, language };
   } catch {}
   try {
     const indexHtml = await levis.readFile(projectPath + '\\index.html');
-    if (typeof indexHtml === 'string') return { type: 'static', hasNoPreview: false };
+    if (typeof indexHtml === 'string') return { type: 'static', hasNoPreview: false, language };
   } catch {}
-  return { type: 'other', hasNoPreview: false };
+  return { type: 'other', hasNoPreview: false, language };
 }
 
 function getGreeting(): { text: string; emoji: string; weekday: string } {
@@ -91,6 +103,31 @@ function formatDate(isoString: string): string {
   if (diffDays === 1) return t('date.yesterday');
   if (diffDays < 7) return t('date.daysAgo', { n: diffDays });
   return d.toLocaleDateString(getLocale() === 'cs' ? 'cs-CZ' : 'en-US');
+}
+
+// Kompaktní relativní čas — "2h", "3d", "2t", "právě teď"
+function formatRelative(isoString: string): string {
+  if (!isoString) return '';
+  const diffMs = Date.now() - new Date(isoString).getTime();
+  const sec = Math.floor(diffMs / 1000);
+  if (sec < 60) return t('hub.justNow');
+  const min = Math.floor(sec / 60);
+  if (min < 60) return t('hub.ago.min', { n: min });
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return t('hub.ago.hour', { n: hr });
+  const day = Math.floor(hr / 24);
+  if (day < 7) return t('hub.ago.day', { n: day });
+  const week = Math.floor(day / 7);
+  if (week < 52) return t('hub.ago.week', { n: week });
+  return new Date(isoString).toLocaleDateString(getLocale() === 'cs' ? 'cs-CZ' : 'en-US');
+}
+
+// Kompaktní velikost bez popisku jednotky — "12.3 MB", "380 KB"
+function formatSizeCompact(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
 
 function showAboutDialog(): void {
@@ -148,10 +185,15 @@ function escapeHtml(str: string): string {
 function createTileElement(project: HubProjectInfo, onOpen: (p: HubProjectInfo) => void, onTogglePin: (p: HubProjectInfo) => void, onAction: (action: string, p: HubProjectInfo) => void, color?: string): HTMLElement {
   const I = (window as any).icon;
   const tile = document.createElement('div');
-  tile.className = 'tile' + (project.pinned ? ' tile-pinned' : '') + ((project as any).isRecent ? ' tile-recent' : '');
+  const statusCls = project.status === 'paused' ? ' tile-paused'
+                   : project.status === 'finished' ? ' tile-finished' : '';
+  tile.className = 'tile' + (project.pinned ? ' tile-pinned' : '') + ((project as any).isRecent ? ' tile-recent' : '') + statusCls;
   if ((project as any).isRecent) tile.dataset.recentLabel = t('hub.recentBadge');
-  if (color) tile.style.borderLeftColor = color;
-  if (color) tile.classList.add('tile-colored');
+  if (color) {
+    tile.style.borderLeftColor = color;
+    tile.style.setProperty('--name-color', color);
+    tile.classList.add('tile-colored');
+  }
   tile.draggable = true;
   tile.dataset.projectPath = project.path;
   tile.addEventListener('dragstart', (e) => {
@@ -164,64 +206,78 @@ function createTileElement(project: HubProjectInfo, onOpen: (p: HubProjectInfo) 
     tile.classList.remove('tile-dragging');
     document.querySelectorAll('.tile-drop-before, .tile-drop-after').forEach(el => el.classList.remove('tile-drop-before', 'tile-drop-after'));
   });
+
+  // Git stats slot — unpushed = číslo+label; jinak glowing dot podle stavu
+  function gitSlotHtml(): string {
+    if (project.unpushedCount > 0) {
+      return `<div class="ti-num ti-num-info">${project.unpushedCount}</div><div class="ti-label">${t('hub.unpushedShort')}</div>`;
+    }
+    let cls = 'ti-dot-muted';
+    let label = t('hub.noCommit');
+    if (project.gitStatus === 'dirty') { cls = 'ti-dot-warn'; label = t('hub.uncommittedShort'); }
+    else if (project.gitStatus === 'clean') { cls = 'ti-dot-ok'; label = t('hub.noCommit'); }
+    return `<div class="ti-dot ${cls}" title="${label}"></div>`;
+  }
+
+  // Tech chipy — framework + language
+  function techChipsHtml(): string {
+    const chips: string[] = [];
+    const meta = project.projectType ? PROJECT_TYPES[project.projectType] : null;
+    if (meta) {
+      chips.push(`<span class="tile-tech-chip" style="--chip-color:${meta.color}">${meta.label}</span>`);
+    }
+    if (project.language) {
+      chips.push(`<span class="tile-tech-chip tech-chip-lang" data-lang="${project.language}">${project.language === 'ts' ? 'TS' : 'JS'}</span>`);
+    }
+    return chips.join('');
+  }
+
+  const finishedBadge = project.status === 'finished' ? `<span class="tile-badge-finished" title="${t('hub.tcm.statusFinished')}">${I('check', { size: 12 })}</span>` : '';
+
   tile.innerHTML = `
-    <button class="tile-pin ${project.pinned ? 'pinned' : ''}" title="${t(project.pinned ? 'hub.unpin' : 'hub.pin')}">${project.pinned ? '\u2605' : '\u2606'}</button>
-    <button class="tile-menu" title="${t('hub.projectOptions')}">⋯</button>
-    <div class="tile-size"></div>
-    <div class="tile-name">${color ? `<span class="tile-color-dot" style="background:${color}"></span>` : ''}${escapeHtml(project.name)}</div>
-    <div class="tile-domain">${escapeHtml(project.domain || project.path)}</div>
-    <div class="tile-meta">
-      <span>${formatDate(project.lastModified)}</span>
-      <span>${project.unpushedCount > 0 ? t('hub.unpushed', { n: project.unpushedCount }) : project.gitStatus === 'clean' ? t('hub.gitOk') : ''}</span>
+    <div class="tile-corner">
+      <button class="tile-menu" title="${t('hub.projectOptions')}">⋯</button>
     </div>
-    <div class="tile-recent-files"></div>
-    <div class="tile-actions">
-      <button class="tile-action" data-act="explorer" title="${t('hub.openExplorer')}">${I('folder')}</button>
-      <button class="tile-open" title="${t('hub.openInWorkspace')}">${t('hub.tileOpen')}</button>
+    ${finishedBadge}
+    <div class="tile-header">
+      <div class="tile-name">${escapeHtml(project.name)}</div>
+      <div class="tile-path" title="${escapeHtml(project.path)}">${escapeHtml(project.domain || project.path)}</div>
+      <div class="tile-tech">${techChipsHtml()}</div>
+    </div>
+    <div class="tile-stats">
+      <div class="ti-slot"><div class="ti-num" data-files>—</div><div class="ti-label">${t('hub.filesCount')}</div></div>
+      <div class="ti-slot"><div class="ti-num" data-size>—</div><div class="ti-label">${t('hub.size')}</div></div>
+      <div class="ti-slot ti-slot-git">${gitSlotHtml()}</div>
+    </div>
+    <div class="tile-meta">
+      <div class="tile-meta-actions">
+        <button class="tile-pin ${project.pinned ? 'pinned' : ''}" title="${t(project.pinned ? 'hub.unpin' : 'hub.pin')}">${project.pinned ? '\u2605' : '\u2606'}</button>
+        <button class="tile-folder" title="${t('hub.openExplorer')}">${I('folder')}</button>
+      </div>
+      <div class="tile-ago" title="${escapeHtml(project.lastModified)}">${formatRelative(project.lastModified)}</div>
     </div>
   `;
   tile.addEventListener('click', (e) => {
-    const t = e.target as HTMLElement;
-    if (t.closest('.tile-pin') || t.closest('.tile-menu') || t.closest('.tile-actions')) return;
+    const tgt = e.target as HTMLElement;
+    if (tgt.closest('.tile-pin, .tile-folder, .tile-menu, .tile-rf')) return;
     onOpen(project);
   });
-  tile.querySelectorAll('.tile-action').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const act = (btn as HTMLElement).dataset.act || '';
-      onAction(act, project);
-    });
-  });
-  tile.querySelector('.tile-open')!.addEventListener('click', (e) => {
+  tile.querySelector('.tile-folder')!.addEventListener('click', (e) => {
     e.stopPropagation();
-    onOpen(project);
+    onAction('explorer', project);
   });
   tile.querySelector('.tile-pin')!.addEventListener('click', (e) => {
     e.stopPropagation();
     onTogglePin(project);
   });
-  // Lazy-load recent files
-  const rfHost = tile.querySelector('.tile-recent-files') as HTMLElement;
-  if (rfHost && project.gitStatus !== 'error') {
-    levis.gitRecentFiles(project.path).then(files => {
-      if (files && files.length > 0) {
-        rfHost.innerHTML = files.map(f => {
-          const basename = f.replace(/\\/g, '/').split('/').pop() || f;
-          return `<span class="tile-rf" title="${escapeHtml(f)}">${escapeHtml(basename)}</span>`;
-        }).join('');
-      }
-    }).catch(() => {});
-  }
-  // Lazy-load velikost projektu
-  const sizeHost = tile.querySelector('.tile-size') as HTMLElement;
-  if (sizeHost) {
+  // Lazy-load velikost projektu — display číslice + label
+  const filesEl = tile.querySelector('[data-files]') as HTMLElement;
+  const sizeEl = tile.querySelector('[data-size]') as HTMLElement;
+  if (filesEl && sizeEl) {
     levis.dirStats(project.path).then(stats => {
-      if (stats) {
-        const size = stats.size < 1024 * 1024
-          ? `${(stats.size / 1024).toFixed(0)} KB`
-          : `${(stats.size / (1024 * 1024)).toFixed(1)} MB`;
-        sizeHost.textContent = `${stats.files} ${t('ws.filesCount')} · ${size}`;
-      }
+      if (!stats) return;
+      filesEl.textContent = String(stats.files);
+      sizeEl.textContent = formatSizeCompact(stats.size);
     }).catch(() => {});
   }
   function showContextMenu(x: number, y: number): void {
@@ -330,7 +386,6 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
           <button class="hub-btn hub-btn-icon hub-btn-pull-all" title="${t('hub.tooltipPullAll')}">${I('download')}</button>
           <button class="hub-btn hub-btn-icon hub-btn-push-all" title="${t('hub.tooltipPushAll')}">${I('upload')}</button>
           <button class="hub-btn hub-btn-icon hub-btn-refresh" title="${t('hub.refresh')}">${I('refresh')}</button>
-          <button class="hub-btn hub-btn-icon hub-btn-settings" title="${t('hub.settings')}">${I('gear')}</button>
         </div>
       </div>
       <div class="hub-filter-bar">
@@ -338,6 +393,13 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
         <div class="hub-filter-chips"></div>
       </div>
       <div class="hub-grid"></div>
+      <div class="hub-legend" title="${t('hub.legend.tooltip')}">
+        <span class="hub-legend-item"><span class="hub-legend-dot hub-legend-accent"></span>${t('hub.legend.unpushed')}</span>
+        <span class="hub-legend-item"><span class="hub-legend-dot hub-legend-warn"></span>${t('hub.legend.changes')}</span>
+        <span class="hub-legend-item"><span class="hub-legend-dot hub-legend-success"></span>${t('hub.legend.clean')}</span>
+        <span class="hub-legend-item"><span class="hub-legend-dot hub-legend-pin"></span>${t('hub.legend.pinned')}</span>
+        <span class="hub-legend-item"><span class="hub-legend-dot hub-legend-info"></span>${t('hub.legend.finished')}</span>
+      </div>
       <div class="hub-usage" id="hub-usage"></div>
       <button class="hub-trademark" type="button" title="${t('hub.tradeTooltip')}">
         <img class="hub-tm-logo" src="../assets/icon.svg" alt="LevisIDE" width="14" height="14">
@@ -350,7 +412,6 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
   const grid = container.querySelector('.hub-grid') as HTMLElement;
   const subtitle = container.querySelector('.hub-subtitle') as HTMLElement;
   const btnRefresh = container.querySelector('.hub-btn-refresh') as HTMLElement;
-  const btnSettings = container.querySelector('.hub-btn-settings') as HTMLElement;
   const btnPullAll = container.querySelector('.hub-btn-pull-all') as HTMLElement;
   const btnPushAll = container.querySelector('.hub-btn-push-all') as HTMLElement;
   const btnTrademark = container.querySelector('.hub-trademark') as HTMLElement;
@@ -432,6 +493,7 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
       const now = Date.now();
       for (const p of projects) {
         (p as any).isRecent = lastOpened[p.path] && (now - lastOpened[p.path] < RECENT_WINDOW);
+        p.status = (projectStatuses[p.path] as any) || 'active';
       }
 
       // Detekce typu paralelne pro vsechny projekty
@@ -439,16 +501,18 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
         const det = await detectProjectType(p.path);
         p.projectType = det.type;
         p.hasNoPreview = det.hasNoPreview;
+        p.language = det.language;
       }));
 
       // Render filter chips dle dostupnych typu
       const types = Array.from(new Set(projects.map(p => p.projectType || 'other')));
       const chipsHost = container.querySelector('.hub-filter-chips') as HTMLElement;
       const allChip = `<button class="hub-chip hub-chip-active" data-type="all">${t('hub.allFilter', { n: projects.length })}</button>`;
-      const typeChips = types.map(t => {
-        const meta = PROJECT_TYPES[t] || PROJECT_TYPES.other;
-        const count = projects.filter(p => p.projectType === t).length;
-        return `<button class="hub-chip" data-type="${t}">${meta.icon} ${meta.label} (${count})</button>`;
+      const typeChips = types.map(type => {
+        const meta = PROJECT_TYPES[type] || PROJECT_TYPES.other;
+        const count = projects.filter(p => p.projectType === type).length;
+        const label = type === 'other' ? t('hub.typeOther') : meta.label;
+        return `<button class="hub-chip" data-type="${type}">${meta.icon} ${label} (${count})</button>`;
       }).join('');
       chipsHost.innerHTML = allChip + typeChips;
 
@@ -480,7 +544,7 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
             </div>
           `;
           grid.appendChild(empty);
-          empty.querySelector('[data-action="scan"]')?.addEventListener('click', () => (btnSettings as HTMLElement).click());
+          empty.querySelector('[data-action="scan"]')?.addEventListener('click', () => (window as any).openHubSettings?.());
           empty.querySelector('[data-action="new"]')?.addEventListener('click', () => newProjectHandler());
           return;
         }
@@ -812,7 +876,6 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
   }
 
   (window as any).openHubSettings = openSettingsModal;
-  btnSettings.addEventListener('click', openSettingsModal);
 
   await loadProjects();
   await renderUsagePanel(container.querySelector('#hub-usage') as HTMLElement);

@@ -68,15 +68,8 @@ interface LevisAPI {
   killPty: (id: string) => void;
   onPtyData: (callback: (id: string, data: string) => void) => () => void;
   onPtyExit: (callback: (id: string) => void) => () => void;
-  gralAudit: (projectPath: string) => Promise<any[]>;
-  gralParseTokens: (projectPath: string) => Promise<Array<{ name: string; value: string; category: string }>>;
-  gralFileSizes: (projectPath: string) => Promise<Record<string, number>>;
-  gralDetectType: (projectPath: string) => Promise<any>;
   generateClaudeMd: (projectPath: string) => Promise<any>;
   scaffoldProject: (name: string, targetDir: string, template?: string) => Promise<any>;
-  deployFtp: (projectPath: string) => Promise<any>;
-  deployGetConfig: (projectPath: string) => Promise<any>;
-  deploySetConfig: (projectPath: string, config: any) => Promise<void>;
   usageScan: () => Promise<any>;
   usageAccount: () => Promise<any>;
   usageRateLimits: () => Promise<any>;

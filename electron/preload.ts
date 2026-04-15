@@ -130,23 +130,12 @@ const api = {
     return () => { ipcRenderer.off('pty:exit', handler); };
   },
 
-  // GRAL
-  gralAudit: (projectPath: string) => ipcRenderer.invoke('gral:audit', projectPath),
-  gralParseTokens: (projectPath: string) => ipcRenderer.invoke('gral:parseTokens', projectPath),
-  gralFileSizes: (projectPath: string) => ipcRenderer.invoke('gral:fileSizes', projectPath),
-  gralDetectType: (projectPath: string) => ipcRenderer.invoke('gral:detectType', projectPath),
-
   // Project helpers
   generateClaudeMd: (projectPath: string) => ipcRenderer.invoke('project:generateClaudeMd', projectPath),
 
   // Scaffolding
   scaffoldProject: (name: string, targetDir: string, template?: string) =>
     ipcRenderer.invoke('scaffold:create', name, targetDir, template),
-
-  // Deploy (FTP)
-  deployFtp: (projectPath: string) => ipcRenderer.invoke('deploy:ftp', projectPath),
-  deployGetConfig: (projectPath: string) => ipcRenderer.invoke('deploy:getConfig', projectPath),
-  deploySetConfig: (projectPath: string, config: any) => ipcRenderer.invoke('deploy:setConfig', projectPath, config),
 
   // Usage tracker
   usageScan: () => ipcRenderer.invoke('usage:scan'),

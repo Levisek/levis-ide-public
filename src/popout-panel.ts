@@ -79,6 +79,22 @@ async function initTerminalPanel(host: HTMLElement, payload: any): Promise<void>
 
   const fontSize = Number(await panelApi.storeGet('terminalFontSize')) || 13;
 
+  function buildTermTheme(): any {
+    const cs = getComputedStyle(document.documentElement);
+    const v = (name: string, fb: string) => (cs.getPropertyValue(name).trim() || fb);
+    const bg = v('--term-bg', '#15161c');
+    const fg = v('--term-fg', '#c8cbd5');
+    return {
+      background: bg, foreground: fg, cursor: v('--term-cursor', '#ff7a1a'),
+      cursorAccent: bg, selectionBackground: v('--term-selection', '#ff7a1a33'),
+      black: '#1a1a24', red: '#ef4444', green: '#10b981', yellow: '#f59e0b',
+      blue: '#3b82f6', magenta: '#a855f7', cyan: '#06b6d4', white: fg,
+      brightBlack: '#6b6b80', brightRed: '#f87171', brightGreen: '#34d399',
+      brightYellow: '#fbbf24', brightBlue: '#60a5fa', brightMagenta: '#c084fc',
+      brightCyan: '#22d3ee', brightWhite: '#ffffff',
+    };
+  }
+
   // Tiled layout — terminály vedle sebe (jako tmux/VS Code split)
   const termContainer = document.createElement('div');
   termContainer.style.cssText = 'flex:1; display:flex; gap:4px; min-height:0; overflow:hidden;';
@@ -89,7 +105,7 @@ async function initTerminalPanel(host: HTMLElement, payload: any): Promise<void>
   for (let i = 0; i < terminals.length; i++) {
     const entry = terminals[i];
     const slot = document.createElement('div');
-    slot.style.cssText = 'flex:1; padding:2px; min-width:0; min-height:0; overflow:hidden; background:#0a0a0f; transition: box-shadow .15s ease;';
+    slot.style.cssText = 'flex:1; padding:2px; min-width:0; min-height:0; overflow:hidden; background:var(--term-bg, #15161c); transition: box-shadow .15s ease;';
     slot.addEventListener('mousedown', () => {
       termContainer.querySelectorAll(':scope > div').forEach((s) => {
         (s as HTMLElement).style.boxShadow = '';
@@ -99,15 +115,7 @@ async function initTerminalPanel(host: HTMLElement, payload: any): Promise<void>
     termContainer.appendChild(slot);
 
     const term = new T({
-      theme: {
-        background: '#0a0a0f', foreground: '#e8e8f0', cursor: '#ff6a00',
-        cursorAccent: '#0a0a0f', selectionBackground: '#ff6a0033',
-        black: '#1a1a24', red: '#ef4444', green: '#10b981', yellow: '#f59e0b',
-        blue: '#3b82f6', magenta: '#a855f7', cyan: '#06b6d4', white: '#e8e8f0',
-        brightBlack: '#6b6b80', brightRed: '#f87171', brightGreen: '#34d399',
-        brightYellow: '#fbbf24', brightBlue: '#60a5fa', brightMagenta: '#c084fc',
-        brightCyan: '#22d3ee', brightWhite: '#ffffff',
-      },
+      theme: buildTermTheme(),
       fontFamily: "'JetBrains Mono', monospace",
       fontSize,
       cursorBlink: true,
@@ -172,9 +180,16 @@ async function initTerminalPanel(host: HTMLElement, payload: any): Promise<void>
   ro.observe(termContainer);
   window.addEventListener('resize', fitAll);
 
+  const themeObs = new MutationObserver(() => {
+    const theme = buildTermTheme();
+    for (const inst of instances) { try { inst.term.options.theme = theme; } catch {} }
+  });
+  themeObs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
   window.addEventListener('beforeunload', () => {
     for (const inst of instances) inst.unsubs.forEach(u => u());
     ro.disconnect();
+    themeObs.disconnect();
   });
 }
 

@@ -119,49 +119,102 @@ async function createEditor(container: HTMLElement): Promise<EditorInstance> {
   });
 
   function initMonaco(): void {
-  // Set dark theme
+  // Tři témata — levis-dark, levis-mid, levis-light (reaktivní na [data-theme])
+  const darkRules = [
+    { token: 'comment', foreground: '6b6b80', fontStyle: 'italic' },
+    { token: 'keyword', foreground: 'c084fc' },
+    { token: 'string', foreground: '10b981' },
+    { token: 'number', foreground: 'f59e0b' },
+    { token: 'type', foreground: '06b6d4' },
+    { token: 'function', foreground: '60a5fa' },
+  ];
+
   monaco.editor.defineTheme('levis-dark', {
-    base: 'vs-dark',
-    inherit: true,
-    rules: [
-      { token: 'comment', foreground: '6b6b80', fontStyle: 'italic' },
-      { token: 'keyword', foreground: 'c084fc' },
-      { token: 'string', foreground: '10b981' },
-      { token: 'number', foreground: 'f59e0b' },
-      { token: 'type', foreground: '06b6d4' },
-      { token: 'function', foreground: '60a5fa' },
-    ],
+    base: 'vs-dark', inherit: true, rules: darkRules,
     colors: {
-      'editor.background': '#0a0a0f',
-      'editor.foreground': '#e8e8f0',
+      'editor.background': '#15161c',
+      'editor.foreground': '#c8cbd5',
       'editor.lineHighlightBackground': '#1a1a2440',
-      'editor.selectionBackground': '#ff6a0033',
-      'editorCursor.foreground': '#ff6a00',
-      'editorLineNumber.foreground': '#6b6b80',
-      'editorLineNumber.activeForeground': '#e8e8f0',
-      'editor.inactiveSelectionBackground': '#ff6a0022',
-      'editorIndentGuide.background': '#2a2a38',
-      'editorIndentGuide.activeBackground': '#ff6a0044',
-      'editorWidget.background': '#111118',
+      'editor.selectionBackground': '#ff7a1a33',
+      'editorCursor.foreground': '#ff7a1a',
+      'editorLineNumber.foreground': '#5a5d72',
+      'editorLineNumber.activeForeground': '#c8cbd5',
+      'editor.inactiveSelectionBackground': '#ff7a1a22',
+      'editorIndentGuide.background': '#242634',
+      'editorIndentGuide.activeBackground': '#ff7a1a44',
+      'editorWidget.background': '#1a1b22',
       'editorWidget.border': '#2a2a38',
       'input.background': '#1a1a24',
       'input.border': '#2a2a38',
-      'input.foreground': '#e8e8f0',
+      'input.foreground': '#c8cbd5',
       'scrollbarSlider.background': '#2a2a3866',
       'scrollbarSlider.hoverBackground': '#6b6b8066',
-      'editor.findMatchBackground': '#ff6a0099',
-      'editor.findMatchHighlightBackground': '#ff6a0044',
-      'editor.findMatchBorder': '#ff6a00',
-      'editor.findMatchHighlightBorder': '#ff6a0066',
+      'editor.findMatchBackground': '#ff7a1a99',
+      'editor.findMatchHighlightBackground': '#ff7a1a44',
+      'editor.findMatchBorder': '#ff7a1a',
+      'editor.findMatchHighlightBorder': '#ff7a1a66',
     },
   });
 
-  monaco.editor.setTheme('levis-dark');
+  monaco.editor.defineTheme('levis-mid', {
+    base: 'vs-dark', inherit: true, rules: darkRules,
+    colors: {
+      'editor.background': '#1e2230',
+      'editor.foreground': '#c8cbd5',
+      'editor.lineHighlightBackground': '#2a2e3e40',
+      'editor.selectionBackground': '#ff7a1a33',
+      'editorCursor.foreground': '#ff7a1a',
+      'editorLineNumber.foreground': '#6b6f88',
+      'editorLineNumber.activeForeground': '#c8cbd5',
+      'editorIndentGuide.background': '#333748',
+      'editorIndentGuide.activeBackground': '#ff7a1a44',
+      'editorWidget.background': '#252a3a',
+      'editorWidget.border': '#3b4158',
+    },
+  });
+
+  monaco.editor.defineTheme('levis-light', {
+    base: 'vs', inherit: true,
+    rules: [
+      { token: 'comment', foreground: '78756c', fontStyle: 'italic' },
+      { token: 'keyword', foreground: '7c3aed' },
+      { token: 'string', foreground: '047857' },
+      { token: 'number', foreground: 'b45309' },
+      { token: 'type', foreground: '0e7490' },
+      { token: 'function', foreground: '1d4ed8' },
+    ],
+    colors: {
+      'editor.background': '#dad3c3',
+      'editor.foreground': '#1c1b18',
+      'editor.lineHighlightBackground': '#e8e1d160',
+      'editor.selectionBackground': '#d45a0033',
+      'editorCursor.foreground': '#d45a00',
+      'editorLineNumber.foreground': '#9e9a90',
+      'editorLineNumber.activeForeground': '#1c1b18',
+      'editorIndentGuide.background': '#c2bdb0',
+      'editorIndentGuide.activeBackground': '#d45a0055',
+      'editorWidget.background': '#e8e1d1',
+      'editorWidget.border': '#aea89a',
+    },
+  });
+
+  function currentMonacoTheme(): string {
+    const t = document.documentElement.getAttribute('data-theme');
+    if (t === 'light') return 'levis-light';
+    if (t === 'mid') return 'levis-mid';
+    return 'levis-dark';
+  }
+
+  monaco.editor.setTheme(currentMonacoTheme());
+
+  new MutationObserver(() => {
+    try { monaco.editor.setTheme(currentMonacoTheme()); } catch {}
+  }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
   editor = monaco.editor.create(monacoContainer, {
     value: '// Otevři soubor ze stromu vlevo\n',
     language: 'typescript',
-    theme: 'levis-dark',
+    theme: currentMonacoTheme(),
     fontFamily: "'JetBrains Mono', monospace",
     fontSize,
     lineNumbers: 'on',

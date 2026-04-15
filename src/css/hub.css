@@ -144,15 +144,43 @@
 }
 
 .hub-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 18px;
 }
+
+/* Legenda symbolů pod gridem projektů */
+.hub-legend {
+  display: flex; flex-wrap: wrap; gap: 16px;
+  padding: 12px 4px 4px;
+  margin-top: 20px;
+  border-top: 1px solid var(--border-soft);
+  font-size: 10px; color: var(--text-muted);
+  opacity: 0.7;
+}
+.hub-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.hub-legend-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--text-soft);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--dot-color, var(--text-soft)) 60%, transparent);
+  --dot-color: var(--text-soft);
+}
+.hub-legend-warn    { --dot-color: var(--warning); background: var(--warning); }
+.hub-legend-accent  { --dot-color: var(--info);    background: var(--info); }       /* unpushed = modrá */
+.hub-legend-success { --dot-color: var(--success); background: var(--success); }
+.hub-legend-info    { --dot-color: #d946ef;        background: #d946ef; }           /* finished = fuchsia */
+.hub-legend-pin     { --dot-color: var(--accent);  background: var(--accent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 60%, transparent), 0 0 10px var(--accent-glow); }
 
 /* ── Tile ────────────────────────── */
 
 .tile {
   background: var(--bg-elev-1);
-  border: 1px solid transparent;
-  border-radius: var(--radius-lg); padding: var(--space-5); cursor: pointer;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 210px;
   transition: transform 250ms cubic-bezier(0.34, 1.56, 0.64, 1),
               border-color 200ms ease,
               box-shadow 300ms ease,
@@ -178,24 +206,36 @@
 }
 .tile:active { transform: translateY(-2px) scale(1.005); transition-duration: 100ms; }
 
-.tile-pin {
-  position: absolute; top: 12px; right: 12px;
-  background: transparent; border: none; color: var(--text-muted);
-  font-size: 16px; line-height: 1; cursor: pointer; padding: 6px;
-  border-radius: var(--radius-sm); opacity: 0.5;
-  transition: all var(--t-fast) var(--ease);
+.tile-corner {
+  position: absolute; top: 10px; right: 10px;
+  display: flex; align-items: center; gap: 2px;
   z-index: 2;
 }
-.tile-pin:hover { opacity: 1; color: var(--accent); background: var(--accent-dim); transform: scale(1.15); }
 .tile-menu {
-  position: absolute; top: 12px; right: 42px;
   background: transparent; border: none; color: var(--text-muted);
-  font-size: 16px; line-height: 1; cursor: pointer; padding: 4px 6px;
-  border-radius: var(--radius-sm); opacity: 0.5;
+  font-size: 15px; line-height: 1; cursor: pointer; padding: 5px 6px;
+  border-radius: var(--radius-sm); opacity: 0.45;
   transition: all var(--t-fast) var(--ease);
-  z-index: 2;
+  display: inline-flex; align-items: center; justify-content: center;
 }
 .tile-menu:hover { opacity: 1; color: var(--accent); background: var(--accent-dim); }
+.tile:hover .tile-menu { opacity: 0.75; }
+
+/* Pin + folder v tile-meta (přesunuté z corneru pod stats) */
+.tile-meta-actions { display: flex; gap: 2px; align-items: center; }
+.tile-meta-actions .tile-pin,
+.tile-meta-actions .tile-folder {
+  background: transparent; border: none; color: var(--text-muted);
+  font-size: 14px; line-height: 1; cursor: pointer; padding: 4px 6px;
+  border-radius: var(--radius-sm); opacity: 0.55;
+  transition: all var(--t-fast) var(--ease);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.tile-meta-actions .tile-pin:hover,
+.tile-meta-actions .tile-folder:hover { opacity: 1; color: var(--accent); background: var(--accent-dim); }
+.tile-meta-actions .tile-pin:hover { transform: scale(1.15); }
+.tile:hover .tile-meta-actions .tile-pin,
+.tile:hover .tile-meta-actions .tile-folder { opacity: 0.85; }
 .tile-context-menu {
   position: fixed; background: var(--bg-elev-2);
   border: 1px solid var(--border);
@@ -228,17 +268,31 @@
 .tcm-color-swatch:hover { transform: scale(1.3); border-color: rgba(255,255,255,0.4); }
 .tcm-color-clear { background: var(--bg-elev-1); border-color: var(--border); }
 
-/* ── Status submenu v context menu ── */
+/* ── Status submenu v context menu — tři zřetelné buttony ── */
 .tcm-status-trigger { position: relative; flex-wrap: wrap; }
 .tcm-status-options {
   display: flex; gap: 4px; align-items: center;
-  margin-left: auto; padding-left: 10px; font-size: 12px;
+  margin-left: auto; padding-left: 10px; font-size: 11px;
 }
 .tcm-status-opt {
-  padding: 3px 8px; border-radius: var(--radius-xs); cursor: pointer;
-  transition: background var(--t-fast) var(--ease); white-space: nowrap;
+  padding: 4px 10px; border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--t-fast) var(--ease);
+  white-space: nowrap;
+  background: var(--bg-elev-1);
+  border: 1px solid var(--border);
+  color: var(--text-soft);
+  font-weight: 500;
 }
-.tcm-status-opt:hover { background: var(--bg-elev-3); color: var(--accent); }
+.tcm-status-opt:hover {
+  background: var(--accent-dim);
+  border-color: var(--accent-ring);
+  color: var(--accent-text);
+  transform: translateY(-1px);
+}
+.tcm-status-opt[data-status="active"]:hover   { --accent-text: var(--success); border-color: var(--success); background: color-mix(in srgb, var(--success) 15%, transparent); }
+.tcm-status-opt[data-status="paused"]:hover   { --accent-text: var(--warning); border-color: var(--warning); background: color-mix(in srgb, var(--warning) 15%, transparent); }
+.tcm-status-opt[data-status="finished"]:hover { --accent-text: var(--info);    border-color: var(--info);    background: color-mix(in srgb, var(--info) 15%, transparent); }
 
 /* ── Group submenu v context menu ── */
 .tcm-group-trigger { position: relative; flex-wrap: wrap; }
@@ -368,69 +422,163 @@
 .tile-drop-after { box-shadow: 3px 0 0 0 var(--accent); }
 
 .tile-pin.pinned { opacity: 1; color: var(--accent); text-shadow: 0 0 8px var(--accent-glow); }
-.tile-pinned { border-color: var(--accent-ring); }
+/* Pinned — levitující karta, glow čistě pod kartou, žádné prosvítání dovnitř */
+.tile-pinned {
+  border-color: var(--border-soft);
+  box-shadow:
+    0 14px 24px -12px color-mix(in srgb, var(--accent) 55%, transparent),
+    0 20px 40px -20px color-mix(in srgb, var(--accent) 40%, transparent),
+    var(--shadow);
+  transform: translateY(-2px);
+}
+.tile-pinned:hover {
+  border-color: var(--border-soft);
+  box-shadow:
+    0 18px 32px -12px color-mix(in srgb, var(--accent) 65%, transparent),
+    0 26px 50px -20px color-mix(in srgb, var(--accent) 50%, transparent),
+    var(--shadow-lg);
+  transform: translateY(-5px) scale(1.01);
+}
 
 /* ── Per-projekt barevný tag ── */
-.tile-colored { border-left-width: 3px; border-left-style: solid; }
+.tile-colored { border-left-width: 4px; border-left-style: solid; }
+
+/* Recent — pořadí zajišťuje sort, žádný vizuální marker (kolize s tile-colored) */
+
+/* Header — název + path */
+.tile-header { display: flex; flex-direction: column; gap: 3px; padding-right: 86px; min-width: 0; }
+.tile-name {
+  font-size: 19px; font-weight: 700; line-height: 1.25;
+  color: var(--name-color, var(--text));
+  letter-spacing: -0.01em;
+  /* Max 2 řádky — dlouhé názvy se zalomí, pak truncate */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+.tile-name .tile-color-dot {
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: middle;
+  transform: translateY(-2px);
+}
+/* Když má projekt přiřazenou barvu, název se jí obarví — vizuální značka projektu */
+.tile-colored .tile-name { color: var(--name-color, var(--text)); }
 .tile-color-dot {
-  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
-  margin-right: 6px; vertical-align: middle; flex-shrink: 0;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--dot); flex-shrink: 0;
+  box-shadow: 0 0 0 2px var(--bg-elev-1), 0 0 10px var(--dot);
+}
+.tile-path {
+  font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
+  font-size: 11px; color: var(--text-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
-/* Recent — projekty otevřené v posledních 7 dnech */
-.tile-recent::after {
-  content: attr(data-recent-label);
-  position: absolute;
-  top: 12px; left: 12px;
-  font-size: 9px; font-weight: 700;
-  text-transform: uppercase; letter-spacing: 0.05em;
-  color: var(--info);
-  background: rgba(59, 130, 246, 0.15);
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  padding: 2px 8px; border-radius: var(--radius-pill);
+/* Stats strip — 3 sloty display čísel, uniform výška, baseline zarovnání čísel */
+.tile-stats {
+  display: grid; grid-template-columns: 1fr 1fr auto;
+  gap: 16px; padding: 10px 0;
+  border-top: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-soft);
+  align-items: center;
 }
-.tile-recent .tile-status { margin-top: 28px; }
-.tile-pinned::after {
-  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-  background: linear-gradient(90deg, transparent, var(--accent), transparent);
-  opacity: 0.6;
+.ti-slot {
+  display: flex; flex-direction: column; gap: 3px; min-width: 0;
+  justify-content: center; align-items: center;
+  text-align: center;
+}
+.ti-slot-git { align-items: center; justify-content: center; min-width: 24px; }
+.ti-num {
+  font-size: 20px; font-weight: 600; line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-align: center;
+}
+.ti-num-accent { color: var(--accent); }
+.ti-num-info   { color: var(--info); }
+.ti-num-warn   { color: var(--warning); }
+.ti-label {
+  font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text-faint); font-weight: 500;
 }
 
-.tile-size {
-  font-size: 10px; color: var(--text-faint); margin-bottom: 8px;
-  min-height: 14px;
+/* Glowing dot — git stav místo čísla u neprojektů s 0 nepushnutými */
+.ti-dot {
+  width: 12px; height: 12px; border-radius: 50%;
+  position: relative;
 }
-.tile-name { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
-.tile-domain { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
-.tile-meta { font-size: 11px; color: var(--text-muted); display: flex; justify-content: space-between; }
-.tile-recent-files {
-  display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px; min-height: 0;
+.ti-dot::after {
+  content: ''; position: absolute; inset: -4px; border-radius: 50%;
+  background: inherit; opacity: 0.35; filter: blur(4px); z-index: -1;
 }
-.tile-rf {
-  font-size: 10px; color: var(--text-faint);
-  background: var(--bg-deep); padding: 1px 6px; border-radius: var(--radius-xs);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px;
+.ti-dot-ok    { background: var(--success); }
+.ti-dot-warn  { background: var(--warning); }
+.ti-dot-muted { background: var(--text-faint); }
+
+/* Meta — zatím jen relativní čas (tech chipy se přesunuly do header) */
+.tile-meta {
+  display: flex; align-items: center; justify-content: flex-end;
+  gap: 8px; flex-wrap: wrap;
 }
-.tile-actions {
-  position: absolute; bottom: 14px; right: 14px;
-  display: flex; align-items: center; gap: 6px;
-  opacity: 0; transform: translateY(4px);
-  transition: all 150ms ease;
+/* Tech chipy — v tile-header, vpravo nahoře pod corner actions */
+.tile-header .tile-tech {
+  display: flex; gap: 5px; flex-wrap: wrap;
+  position: absolute; top: 48px; right: 14px;
+  max-width: 55%; justify-content: flex-end;
 }
-.tile:hover .tile-actions { opacity: 1; transform: translateY(0); }
-.tile-action {
-  background: var(--bg-elev-2); color: var(--text-muted); border: 1px solid var(--border);
-  border-radius: 8px; padding: 5px 7px; cursor: pointer; font-size: 12px; line-height: 1;
+.tile-tech-chip {
+  font-size: 9px; font-weight: 600;
+  padding: 1px 6px; border-radius: var(--radius-xs);
+  background: var(--bg-elev-2);
+  color: var(--text-soft);
+  border: 1px solid var(--border);
+  white-space: nowrap;
+  line-height: 1.5;
+  display: inline-flex; align-items: center; gap: 4px;
+  letter-spacing: 0.02em;
+}
+/* Barevná tečka před názvem frameworku — čitelné na dark i light */
+.tile-tech-chip::before {
+  content: '';
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--chip-color, var(--text-muted));
+  flex-shrink: 0;
+  box-shadow: 0 0 4px var(--chip-color, transparent);
+}
+.tech-chip-lang::before { display: none; }
+.tech-chip-lang {
+  color: var(--chip-color, var(--text-soft));
+  border-color: color-mix(in srgb, var(--chip-color, var(--border)) 40%, var(--border));
+}
+.tech-chip-lang[data-lang="ts"] { --chip-color: #3178c6; }
+.tech-chip-lang[data-lang="js"] { --chip-color: #b8a42a; }
+.tile-ago {
+  font-size: 10px; color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+/* Finished badge — pod corner actions */
+.tile-badge-finished {
+  position: absolute; top: 44px; right: 14px;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--success); color: #fff;
   display: inline-flex; align-items: center; justify-content: center;
-  transition: all 120ms ease;
+  box-shadow: 0 0 0 3px var(--bg-elev-1);
+  z-index: 2;
 }
-.tile-action:hover { background: var(--bg-elev-3); color: var(--text); border-color: var(--text-muted); }
-.tile-open {
-  background: var(--accent); color: white; border: none;
-  border-radius: 10px; padding: 4px 12px; font-size: 11px; font-weight: 600;
-  cursor: pointer; transition: all 120ms ease;
-}
-.tile-open:hover { filter: brightness(1.1); }
+.tile-badge-finished svg { color: #fff; }
+
+/* Stavy */
+.tile.tile-paused { filter: saturate(0.45); opacity: 0.88; }
+.tile.tile-paused:hover { filter: saturate(0.55); opacity: 1; }
+.tile.tile-finished { opacity: 0.88; }
+
+.tile-colored { border-left-width: 4px; }
 
 .tile.tile-new {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -501,7 +649,7 @@
 .settings-close:hover { background: var(--border-strong); }
 
 /* ── Usage tracker panel ── */
-.hub-usage { margin: 16px 0; }
+.hub-usage { margin: 16px 0 60px; }
 .usage-bar {
   background: var(--bg-elev-1);
   border: 1px solid var(--border);
