@@ -1,4 +1,4 @@
-// ── Quick file open (Ctrl+P) ──
+// ── Quick file open (Ctrl+Shift+O) ──
 //
 // Modal s fuzzy file pickerem. Načte rekurzivně všechny soubory projektu,
 // fuzzy match na zadaný query, šipky nahoru/dolů, Enter otevře soubor v editoru.

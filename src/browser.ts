@@ -9,6 +9,10 @@ interface BrowserInstance {
   getUrl: () => string;
   loadFile: (filePath: string) => Promise<void>;
   refresh: () => void;
+  /** True když je aktivní popover / inspect / annotate — refresh-on-focus by neměl běžet. */
+  isInteracting: () => boolean;
+  /** Zobrazí/skryje loading overlay v panelu. message volitelný (např. "Spouštím Vite dev server..."). */
+  setLoading: (on: boolean, message?: string) => void;
   dispose: () => void;
 }
 
@@ -29,7 +33,10 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
   toolbar.innerHTML = `
     <button class="btn-back" title="${t('browser.back')}">‹</button>
     <button class="btn-forward" title="${t('browser.forward')}">›</button>
-    <input type="text" class="browser-url" value="${defaultUrl}" placeholder="URL / file path...">
+    <div class="browser-url-wrap">
+      <input type="text" class="browser-url" value="${defaultUrl}" placeholder="URL / file path...">
+      <button class="artifact-btn browser-pin-url" title="${t('browser.pinUrl')}">${I('pin')}</button>
+    </div>
     <div class="artifact-size-btns">
       <button class="artifact-size-btn" data-size="mobile" title="Mobile (412px)">${I('mobile')}</button>
       <button class="artifact-size-btn" data-size="tablet" title="Tablet (768px)">${I('file')}</button>
@@ -45,8 +52,7 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
     <button class="artifact-btn browser-zoom-out" title="Zoom −">−</button>
     <span class="browser-zoom-label" style="font-size:10px;color:var(--text-muted);min-width:32px;text-align:center;user-select:none;">100%</span>
     <button class="artifact-btn browser-zoom-in" title="Zoom +">+</button>
-    <button class="btn-devtools" title="DevTools">${I('gear')}</button>
-    <button class="artifact-btn browser-pin-url" title="${t('browser.pinUrl')}">${I('pin')}</button>
+    <button class="artifact-btn btn-devtools" title="DevTools">${I('gear')}</button>
   `;
   wrapper.appendChild(toolbar);
 
@@ -65,7 +71,33 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
   webview.setAttribute('webpreferences', 'webSecurity=no');
   if (defaultUrl) webview.setAttribute('src', defaultUrl);
   else webview.setAttribute('src', 'about:blank');
-  webview.addEventListener('did-fail-load', () => {});
+  // Webview loading lifecycle — show/hide loader overlay.
+  // loaderFromDevServer = workspace explicitně zapnul loader pro start dev serveru.
+  // V tom stavu webview eventy (typicky about:blank → did-stop-loading hned po mount)
+  // NESMÍ loader schovat — teprve resolveOnce ve workspace to vypne.
+  let loaderFromDevServer = false;
+  function isRealUrl(): boolean {
+    try { return !!webview.src && webview.src !== 'about:blank' && !webview.src.startsWith('about:'); }
+    catch { return false; }
+  }
+  webview.addEventListener('did-start-loading', () => {
+    if (loaderFromDevServer) return;
+    if (isRealUrl()) setLoading(true);
+  });
+  webview.addEventListener('did-stop-loading', () => {
+    if (loaderFromDevServer) return;
+    setLoading(false);
+  });
+  webview.addEventListener('did-finish-load', () => {
+    if (loaderFromDevServer) return;
+    setLoading(false);
+  });
+  webview.addEventListener('did-fail-load', (e: any) => {
+    // Ignore cancelled loads (code -3 = ERR_ABORTED při rychlém seběmenu set src)
+    if (e.errorCode === -3) return;
+    if (loaderFromDevServer) return;
+    setLoading(false);
+  });
   // Forward console errors z webview jako toast (JS error reporting)
   webview.addEventListener('console-message', (e: any) => {
     if (e.level === 3) { // error
@@ -74,6 +106,36 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
     }
   });
   webviewContainer.appendChild(webview);
+
+  // Loading overlay — zobrazí se během startu dev serveru i při načítání stránky
+  const loaderOverlay = document.createElement('div');
+  loaderOverlay.className = 'browser-loader';
+  loaderOverlay.innerHTML = `
+    <div class="browser-loader-inner">
+      <div class="browser-loader-spinner"></div>
+      <div class="browser-loader-msg">Načítám…</div>
+      <div class="browser-loader-sub"></div>
+    </div>
+  `;
+  loaderOverlay.hidden = true;
+  webviewContainer.appendChild(loaderOverlay);
+
+  function setLoading(on: boolean, message?: string): void {
+    if (!on) {
+      loaderOverlay.hidden = true;
+      return;
+    }
+    const msgEl = loaderOverlay.querySelector('.browser-loader-msg') as HTMLElement;
+    const subEl = loaderOverlay.querySelector('.browser-loader-sub') as HTMLElement;
+    if (message) {
+      msgEl.textContent = message;
+      subEl.textContent = (webview.src && webview.src !== 'about:blank') ? webview.src : '';
+    } else {
+      msgEl.textContent = 'Načítám…';
+      subEl.textContent = (webview.src && webview.src !== 'about:blank') ? webview.src : '';
+    }
+    loaderOverlay.hidden = false;
+  }
 
   // Annotation canvas overlay
   const annotCanvas = document.createElement('canvas');
@@ -165,6 +227,11 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
     webview.style.boxShadow = '0 8px 32px rgba(0,0,0,0.5)';
   }
 
+  // Default zoom per device — mobile je na HiDPI monitorech sám o sobě malý, 150% je čitelnější
+  function defaultZoomFor(size: string): number {
+    return size === 'mobile' ? 1.5 : 1.0;
+  }
+
   const sizeBtns = toolbar.querySelectorAll('.artifact-size-btn');
   sizeBtns.forEach((btn: Element) => {
     btn.addEventListener('click', async () => {
@@ -172,11 +239,13 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
       sizeBtns.forEach(b => b.classList.remove('artifact-size-active'));
       btn.classList.add('artifact-size-active');
       resetWebviewFull();
+      zoomLevel = defaultZoomFor(currentSize);
       const device = DEVICES[currentSize];
       if (device) {
         const ppi = await getMonitorCssPPI();
         applyDeviceFrame(ppi, device);
       }
+      await applyZoom();
     });
   });
 
@@ -346,15 +415,47 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
     }
   });
 
-  // ── Pin URL jako výchozí pro projekt ──
-  toolbar.querySelector('.browser-pin-url')?.addEventListener('click', async () => {
+  // ── Pin URL jako výchozí pro projekt — toggle ──
+  const btnPin = toolbar.querySelector('.browser-pin-url') as HTMLElement | null;
+  async function refreshPinState(): Promise<void> {
+    if (!btnPin || !projectPath) return;
+    try {
+      const prefs = await levis.getProjectPrefs(projectPath);
+      const pinnedUrl = (prefs as any)?.previewUrl;
+      const currentUrl = urlInput.value.trim();
+      const isPinned = !!pinnedUrl && pinnedUrl === currentUrl;
+      btnPin.classList.toggle('artifact-btn-active', isPinned);
+      btnPin.title = isPinned ? t('browser.unpinUrl') : t('browser.pinUrl');
+    } catch {}
+  }
+  btnPin?.addEventListener('click', async () => {
     const url = urlInput.value.trim();
     if (!url || url === 'about:blank') { showToast(t('browser.pinEmpty'), 'warning'); return; }
-    if (projectPath) {
-      await levis.setProjectPref(projectPath, 'previewUrl', url);
-      showToast(t('browser.pinSaved', { url }), 'success');
-    }
+    if (!projectPath) return;
+    try {
+      const prefs = await levis.getProjectPrefs(projectPath);
+      const pinnedUrl = (prefs as any)?.previewUrl;
+      if (pinnedUrl === url) {
+        // Unpin
+        await levis.setProjectPref(projectPath, 'previewUrl', '');
+        btnPin.classList.remove('artifact-btn-active');
+        btnPin.title = t('browser.pinUrl');
+        showToast(t('browser.unpinned'), 'info');
+      } else {
+        // Pin
+        await levis.setProjectPref(projectPath, 'previewUrl', url);
+        btnPin.classList.add('artifact-btn-active');
+        btnPin.title = t('browser.unpinUrl');
+        showToast(t('browser.pinSaved', { url }), 'success');
+      }
+    } catch {}
   });
+  // Sync pin state při navigaci
+  webview.addEventListener('did-navigate', () => refreshPinState());
+  webview.addEventListener('did-navigate-in-page', () => refreshPinState());
+  urlInput.addEventListener('change', () => refreshPinState());
+  // Initial sync po dom-ready
+  setTimeout(() => refreshPinState(), 200);
 
   // ── Drag & drop ──
   wrapper.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); });
@@ -504,7 +605,14 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
       getElementRectInContainer(info.rect),
       info.selector,
       (text) => sendElementPrompt(text),
-      () => { selectedElement = null; },
+      () => {
+        // Cancel (× / Esc) — vyresetovat inspector, aby šlo vybrat další element
+        selectedElement = null;
+        if (inspectActive) {
+          inspector.disable();
+          setTimeout(() => inspector.enable(webview), 150);
+        }
+      },
     );
   });
 
@@ -723,6 +831,11 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
       else if (typeof (webview as any).reloadIgnoringCache === 'function') {
         try { (webview as any).reloadIgnoringCache(); } catch {}
       }
+    },
+    isInteracting: () => inspectActive || annotating || !!activePopover,
+    setLoading: (on: boolean, message?: string) => {
+      loaderFromDevServer = on && !!message;
+      setLoading(on, message);
     },
     dispose: () => {
       stopWatch();

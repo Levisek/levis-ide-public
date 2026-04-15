@@ -27,6 +27,18 @@
   font-size: 16px; padding: 0 4px; transition: color var(--t-fast) var(--ease);
 }
 .toast-close:hover { color: var(--text); }
+.toast-action {
+  background: var(--bg-elev-2); border: 1px solid var(--border);
+  color: var(--text); cursor: pointer;
+  font-size: 11px; font-weight: 600; font-family: inherit;
+  padding: 4px 10px; border-radius: var(--radius-sm);
+  margin-left: auto; margin-right: 6px;
+  transition: all var(--t-fast) var(--ease);
+  white-space: nowrap;
+}
+.toast-action:hover {
+  background: var(--accent-dim); color: var(--accent); border-color: var(--accent);
+}
 .toast-success { box-shadow: var(--shadow-lg), inset 3px 0 0 var(--success); }
 .toast-success .toast-icon { color: var(--success); }
 .toast-error { box-shadow: var(--shadow-lg), inset 3px 0 0 var(--error); }

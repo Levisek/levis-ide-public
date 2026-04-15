@@ -1,5 +1,8 @@
 // ── Hub View (project tiles) ────────────
 
+// Sortable je load-ed jako UMD <script> v index.html a vystaven na window.Sortable
+declare const Sortable: any;
+
 // Glow sweep se přehraje jen při prvním loadu a po Refresh / rescan (ne při každém přepnutí tabu)
 let glowShownThisSession = false;
 
@@ -197,18 +200,9 @@ function createTileElement(project: HubProjectInfo, onOpen: (p: HubProjectInfo) 
     tile.style.setProperty('--name-color', color);
     tile.classList.add('tile-colored');
   }
-  tile.draggable = true;
   tile.dataset.projectPath = project.path;
-  tile.addEventListener('dragstart', (e) => {
-    if (!e.dataTransfer) return;
-    e.dataTransfer.setData('text/plain', project.path);
-    e.dataTransfer.effectAllowed = 'move';
-    tile.classList.add('tile-dragging');
-  });
-  tile.addEventListener('dragend', () => {
-    tile.classList.remove('tile-dragging');
-    document.querySelectorAll('.tile-drop-before, .tile-drop-after').forEach(el => el.classList.remove('tile-drop-before', 'tile-drop-after'));
-  });
+  // HTML5 drag v Electronu produkuje random screenshot — používáme pointer-based drag s custom ghost (viz attachTileDrag v loadProjects)
+  tile.draggable = false;
 
   // Git stats slot — unpushed = číslo+label; jinak glowing dot podle stavu
   function gitSlotHtml(): string {
@@ -256,9 +250,24 @@ function createTileElement(project: HubProjectInfo, onOpen: (p: HubProjectInfo) 
       <div class="tile-ago" title="${escapeHtml(project.lastModified)}">${formatRelative(project.lastModified)}</div>
     </div>
   `;
+  // Zneplatní drag na všech inner obrázcích/SVG — jinak by HTML5 drag vzal jen ten obrázek pod kurzorem
+  tile.querySelectorAll('img, svg').forEach(el => el.setAttribute('draggable', 'false'));
   tile.addEventListener('click', (e) => {
     const tgt = e.target as HTMLElement;
     if (tgt.closest('.tile-pin, .tile-folder, .tile-menu, .tile-rf')) return;
+    // Pokud tahle dlaždice právě skončila drag, klik ignoruj (suppress po reorderingu)
+    if ((tile as any)._dragJustEnded) return;
+    // Shift/Ctrl klik = bulk selection; standard klik = otevřít (nebo pokud je něco už vybrané, přidat tuhle taky)
+    const toggle = (window as any)._hubToggleSelect as undefined | ((p: string, shift: boolean, ctrl: boolean) => void);
+    if (e.shiftKey || e.ctrlKey || e.metaKey) {
+      if (toggle) toggle(project.path, e.shiftKey, e.ctrlKey || e.metaKey);
+      return;
+    }
+    // Pokud je selection mode aktivní (cokoli vybráno), klik bez modifikátoru výběr zruší
+    if (document.querySelector('.tile-selected')) {
+      (window as any)._hubClearSelection?.();
+      return;
+    }
     onOpen(project);
   });
   tile.querySelector('.tile-folder')!.addEventListener('click', (e) => {
@@ -305,6 +314,8 @@ function createTileElement(project: HubProjectInfo, onOpen: (p: HubProjectInfo) 
           <span class="tcm-color-swatch tcm-color-clear" data-color="" title="${t('hub.tcm.colorClear')}">✕</span>
         </div>
       </div>
+      <div class="tcm-sep"></div>
+      <div class="tcm-item" data-act="resetLaunch">${Ic('refresh')} ${t('workspace.launch.reset')}</div>
       <div class="tcm-sep"></div>
       <div class="tcm-item tcm-danger" data-act="delete">${Ic('close')} ${t('hub.tcm.delete')}</div>
     `;
@@ -381,24 +392,31 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
       <div class="hub-header">
         <div class="hub-greeting">${(() => { const g = getGreeting(); return `${g.text} <span class="hub-greeting-day">· ${g.weekday}</span>`; })()}</div>
         <div class="hub-subtitle">${t('hub.subtitleLoading', { path: escapeHtml(scanPath) })}</div>
+      </div>
+      <div class="hub-filter-bar">
         <div class="hub-actions">
           <button class="hub-btn hub-btn-icon hub-btn-pull-all" title="${t('hub.tooltipPullAll')}">${I('download')}</button>
           <button class="hub-btn hub-btn-icon hub-btn-push-all" title="${t('hub.tooltipPushAll')}">${I('upload')}</button>
           <button class="hub-btn hub-btn-icon hub-btn-refresh" title="${t('hub.refresh')}">${I('refresh')}</button>
         </div>
-      </div>
-      <div class="hub-filter-bar">
         <input type="text" class="hub-search" placeholder="${t('hub.search')}">
-        <div class="hub-filter-chips"></div>
+        <div class="hub-type-control">
+          <button class="hub-dropdown-btn hub-type-btn" type="button">
+            <span class="hub-dropdown-label">${t('hub.type.title')}</span>
+            <span class="hub-dropdown-chevron">▾</span>
+          </button>
+          <div class="hub-dropdown hub-type-dropdown" hidden></div>
+        </div>
+        <div class="hub-sort-control">
+          <button class="hub-dropdown-btn hub-sort-btn" type="button">
+            <span class="hub-dropdown-label">${t('hub.sort.title')}</span>
+            <span class="hub-dropdown-chevron">▾</span>
+          </button>
+          <div class="hub-dropdown hub-sort-dropdown" hidden></div>
+        </div>
       </div>
+      <div class="hub-bulk-bar" hidden></div>
       <div class="hub-grid"></div>
-      <div class="hub-legend" title="${t('hub.legend.tooltip')}">
-        <span class="hub-legend-item"><span class="hub-legend-dot hub-legend-accent"></span>${t('hub.legend.unpushed')}</span>
-        <span class="hub-legend-item"><span class="hub-legend-dot hub-legend-warn"></span>${t('hub.legend.changes')}</span>
-        <span class="hub-legend-item"><span class="hub-legend-dot hub-legend-success"></span>${t('hub.legend.clean')}</span>
-        <span class="hub-legend-item"><span class="hub-legend-dot hub-legend-pin"></span>${t('hub.legend.pinned')}</span>
-        <span class="hub-legend-item"><span class="hub-legend-dot hub-legend-info"></span>${t('hub.legend.finished')}</span>
-      </div>
       <div class="hub-usage" id="hub-usage"></div>
       <button class="hub-trademark" type="button" title="${t('hub.tradeTooltip')}">
         <img class="hub-tm-logo" src="../assets/icon.svg" alt="LevisIDE" width="14" height="14">
@@ -513,30 +531,101 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
         p.language = det.language;
       }));
 
-      // Render filter chips dle dostupnych typu — barva chipu = barva frameworku (sjednoceno s .tile-type-chip na kartě)
+      // Zjisti všechny typy projektů pro populaci Typ dropdownu
       const types = Array.from(new Set(projects.map(p => p.projectType || 'other')));
-      const chipsHost = container.querySelector('.hub-filter-chips') as HTMLElement;
-      const allChip = `<button class="hub-chip hub-chip-active" data-type="all">${t('hub.allFilter', { n: projects.length })}</button>`;
-      const typeChips = types.map(type => {
-        const meta = PROJECT_TYPES[type] || PROJECT_TYPES.other;
-        const count = projects.filter(p => p.projectType === type).length;
-        const label = type === 'other' ? t('hub.typeOther') : meta.label;
-        return `<button class="hub-chip" data-type="${type}" style="--chip-color:${meta.color}">${meta.icon} ${label} (${count})</button>`;
-      }).join('');
-      chipsHost.innerHTML = allChip + typeChips;
 
       const searchInput = container.querySelector('.hub-search') as HTMLInputElement;
-      let activeFilter = 'all';
+      const typeControl = container.querySelector('.hub-type-control') as HTMLElement;
+      const typeBtn = typeControl.querySelector('.hub-type-btn') as HTMLButtonElement;
+      const typeBtnLabel = typeBtn.querySelector('.hub-dropdown-label') as HTMLElement;
+      const typeDropdown = typeControl.querySelector('.hub-type-dropdown') as HTMLElement;
+      const sortControl = container.querySelector('.hub-sort-control') as HTMLElement;
+      const sortBtn = sortControl.querySelector('.hub-sort-btn') as HTMLButtonElement;
+      const sortBtnLabel = sortBtn.querySelector('.hub-dropdown-label') as HTMLElement;
+      const sortDropdown = sortControl.querySelector('.hub-sort-dropdown') as HTMLElement;
+      const bulkBar = container.querySelector('.hub-bulk-bar') as HTMLElement;
+
+      // Načti uložený filtr typu + sort mode + custom presety
+      const savedTypes: string[] = (await levis.storeGet('hubTypeFilter')) || [];
+      const activeTypes: Set<string> = new Set(savedTypes.filter(t => types.includes(t)));
+      let hubSortMode: { kind: 'preset' | 'custom'; id: string; dir?: 'asc' | 'desc' } =
+        (await levis.storeGet('hubSortMode')) || { kind: 'preset', id: 'modified', dir: 'desc' };
+      let customPresets: Record<string, { name: string; order: string[] }> =
+        (await levis.storeGet('customSortPresets')) || {};
+      // Pokud je draft aktivní, použij projectOrder jako zdroj pořadí
+      if (hubSortMode.kind === 'custom' && hubSortMode.id === 'draft') {
+        (projects as any)._draftOrder = projectOrder.slice();
+      }
+      // Pokud je aktivní custom preset který byl mezitím smazán, spadni na default
+      if (hubSortMode.kind === 'custom' && hubSortMode.id !== 'draft' && !customPresets[hubSortMode.id]) {
+        hubSortMode = { kind: 'preset', id: 'modified', dir: 'desc' };
+        await levis.storeSet('hubSortMode', hubSortMode);
+      }
+
       let searchQuery = '';
+      const selectedPaths: Set<string> = new Set();
+      let lastSelectedPath: string | null = null;
+
+      function sortProjects(list: HubProjectInfo[]): HubProjectInfo[] {
+        const arr = list.slice();
+        // Pinned vždy nahoře
+        const pinCmp = (a: HubProjectInfo, b: HubProjectInfo) => (!!a.pinned === !!b.pinned) ? 0 : (a.pinned ? -1 : 1);
+        if (hubSortMode.kind === 'custom') {
+          // Custom preset nebo draft: pořadí z customPresets[id].order nebo projectOrder (draft)
+          let order: string[] = [];
+          if (hubSortMode.id === 'draft') {
+            order = (projects as any)._draftOrder || [];
+          } else {
+            order = customPresets[hubSortMode.id]?.order || [];
+          }
+          arr.sort((a, b) => {
+            const pc = pinCmp(a, b); if (pc !== 0) return pc;
+            const aIdx = order.indexOf(a.path);
+            const bIdx = order.indexOf(b.path);
+            if (aIdx >= 0 && bIdx >= 0) return aIdx - bIdx;
+            if (aIdx >= 0) return -1;
+            if (bIdx >= 0) return 1;
+            // Fallback podle názvu
+            return a.name.localeCompare(b.name);
+          });
+          return arr;
+        }
+        // Preset sort
+        const dir = hubSortMode.dir === 'asc' ? 1 : -1;
+        arr.sort((a, b) => {
+          const pc = pinCmp(a, b); if (pc !== 0) return pc;
+          switch (hubSortMode.id) {
+            case 'name': return a.name.localeCompare(b.name) * dir;
+            case 'size': {
+              const as = (a as any).sizeBytes || 0;
+              const bs = (b as any).sizeBytes || 0;
+              return (bs - as) * -dir; // default desc = největší nahoru
+            }
+            case 'type': {
+              const at = a.projectType || 'other';
+              const bt = b.projectType || 'other';
+              return at.localeCompare(bt) * dir;
+            }
+            case 'modified':
+            default: {
+              const at = new Date(a.lastModified).getTime();
+              const bt = new Date(b.lastModified).getTime();
+              return (bt - at) * -dir; // default desc = čerstvé nahoru
+            }
+          }
+        });
+        return arr;
+      }
 
       function applyFilter(): void {
         grid.innerHTML = '';
         const q = searchQuery.toLowerCase().trim();
-        const filtered = projects.filter(p => {
-          if (activeFilter !== 'all' && p.projectType !== activeFilter) return false;
+        const filteredBase = projects.filter(p => {
+          if (activeTypes.size > 0 && !activeTypes.has(p.projectType || 'other')) return false;
           if (q && !p.name.toLowerCase().includes(q) && !p.domain.toLowerCase().includes(q)) return false;
           return true;
         });
+        const filtered = sortProjects(filteredBase);
         if (projects.length === 0) {
           const empty = document.createElement('div');
           empty.className = 'hub-empty hub-empty-onboard';
@@ -570,44 +659,77 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
           grid.appendChild(empty);
         }
         function setupGridDrop(gridEl: HTMLElement): void {
-          gridEl.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-            // Najdi nejbližší tile pro drop indicator
-            gridEl.querySelectorAll('.tile-drop-before, .tile-drop-after').forEach(el => el.classList.remove('tile-drop-before', 'tile-drop-after'));
-            const target = (e.target as HTMLElement).closest('.tile:not(.tile-new)') as HTMLElement;
-            if (target && !target.classList.contains('tile-dragging')) {
-              const rect = target.getBoundingClientRect();
-              if (e.clientX < rect.left + rect.width / 2) target.classList.add('tile-drop-before');
-              else target.classList.add('tile-drop-after');
-            }
+          // SortableJS — interaktivní reorder, ostatní dlaždice se živě odsouvají, placeholder je mezera.
+          // forceFallback=true obchází HTML5 drag API (které v Electronu vyrábí random screenshot ghost).
+          Sortable.create(gridEl, {
+            animation: 170,
+            easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+            forceFallback: true,
+            fallbackOnBody: true,
+            fallbackClass: 'tile-drag-ghost',
+            fallbackTolerance: 0,
+            swapThreshold: 0.6,
+            delay: 0,
+            ghostClass: 'tile-drag-placeholder',
+            chosenClass: 'tile-drag-chosen',
+            dragClass: 'tile-drag-src',
+            filter: '.tile-new, .tile-pin, .tile-folder, .tile-menu, .tile-rf, button, input',
+            preventOnFilter: false,
+            draggable: '.tile:not(.tile-new)',
+            onStart: () => { document.body.classList.add('hub-dragging'); },
+            onEnd: async (evt: any) => {
+              document.body.classList.remove('hub-dragging');
+              const item = evt.item as HTMLElement;
+              // Suppress click po drop — i když user dragnul a pustil zpět na stejné místo, klik neotevřít
+              (item as any)._dragJustEnded = true;
+              window.setTimeout(() => { (item as any)._dragJustEnded = false; }, 300);
+              const draggedPath = item.dataset.projectPath;
+              if (!draggedPath) return;
+              if (evt.oldIndex === evt.newIndex) return;
+              // Najdi nového souseda (tile za dragged) v DOM → jeho path je beforePath
+              const next = item.nextElementSibling as HTMLElement | null;
+              const beforePath = next && next.classList.contains('tile') && !next.classList.contains('tile-new')
+                ? (next.dataset.projectPath || null)
+                : null;
+              await persistReorder(draggedPath, beforePath);
+            },
           });
-          gridEl.addEventListener('dragleave', () => {
-            gridEl.querySelectorAll('.tile-drop-before, .tile-drop-after').forEach(el => el.classList.remove('tile-drop-before', 'tile-drop-after'));
-          });
-          gridEl.addEventListener('drop', async (e) => {
-            e.preventDefault();
-            gridEl.querySelectorAll('.tile-drop-before, .tile-drop-after').forEach(el => el.classList.remove('tile-drop-before', 'tile-drop-after'));
-            const draggedPath = e.dataTransfer?.getData('text/plain');
-            if (!draggedPath) return;
-            const target = (e.target as HTMLElement).closest('.tile:not(.tile-new):not(.tile-dragging)') as HTMLElement;
-            const targetPath = target?.dataset?.projectPath;
-            if (!targetPath || draggedPath === targetPath) return;
-            // Aktualizuj projectOrder
-            const order: string[] = (await levis.storeGet('projectOrder')) || [];
-            // Přidej všechny paths co ještě v order nejsou
-            const allPaths = filtered.map(p => p.path);
-            for (const p of allPaths) { if (!order.includes(p)) order.push(p); }
-            // Přesuň dragged na pozici target
-            const fromIdx = order.indexOf(draggedPath);
-            if (fromIdx >= 0) order.splice(fromIdx, 1);
-            let toIdx = order.indexOf(targetPath);
-            const rect = target.getBoundingClientRect();
-            if (e.clientX >= rect.left + rect.width / 2) toIdx++;
-            order.splice(toIdx, 0, draggedPath);
+        }
+
+        async function persistReorder(draggedPath: string, beforePath: string | null): Promise<void> {
+          // Vezmi aktuální pořadí — pokud user edituje uložený custom preset, pokračuje v něm;
+          // jinak začne od projectOrder (draft)
+          let order: string[];
+          if (hubSortMode.kind === 'custom' && hubSortMode.id !== 'draft' && customPresets[hubSortMode.id]) {
+            order = customPresets[hubSortMode.id].order.slice();
+          } else {
+            order = (await levis.storeGet('projectOrder')) || [];
+          }
+          // Doplň všechny ostatní paths aby nic nevypadlo (nové projekty po scanu)
+          const allPaths = projects.map(p => p.path);
+          for (const p of allPaths) { if (!order.includes(p)) order.push(p); }
+          // Přesuň dragged před beforePath (nebo na konec pokud beforePath je null)
+          const fromIdx = order.indexOf(draggedPath);
+          if (fromIdx >= 0) order.splice(fromIdx, 1);
+          if (beforePath === null) {
+            order.push(draggedPath);
+          } else {
+            const toIdx = order.indexOf(beforePath);
+            if (toIdx >= 0) order.splice(toIdx, 0, draggedPath);
+            else order.push(draggedPath);
+          }
+          // Zapiš zpět: do presetu pokud editujem existující, nebo do projectOrder (draft)
+          if (hubSortMode.kind === 'custom' && hubSortMode.id !== 'draft' && customPresets[hubSortMode.id]) {
+            customPresets[hubSortMode.id].order = order;
+            await levis.storeSet('customSortPresets', { ...customPresets });
+          } else {
             await levis.storeSet('projectOrder', order);
-            applyFilter();
-          });
+            hubSortMode = { kind: 'custom', id: 'draft' };
+            await levis.storeSet('hubSortMode', hubSortMode);
+          }
+          (projects as any)._draftOrder = order;
+          renderSortDropdown();
+          applyFilter();
         }
 
         function renderGroup(label: string, slug: 'active' | 'paused' | 'finished', projects: HubProjectInfo[], collapsed?: boolean, addNewTile?: boolean): void {
@@ -664,6 +786,17 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
         }
         if (action === 'explorer') {
           await levis.shellOpenPath(p.path);
+        } else if (action === 'resetLaunch') {
+          try {
+            const map = (await levis.storeGet('hubProjectLaunchChoice')) || {};
+            if (map[p.path]) {
+              delete map[p.path];
+              await levis.storeSet('hubProjectLaunchChoice', map);
+            }
+            showToast(t('workspace.launch.resetDone'), 'success');
+          } catch (err) {
+            showToast(t('hub.toast.error', { msg: (err as any)?.message || '' }), 'error');
+          }
         } else if (action === 'copyPath') {
           levis.clipboardWrite(p.path);
           showToast(t('toast.pathCopied'), 'success');
@@ -703,14 +836,323 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
         showToast(t(nowPinned ? 'hub.toast.pinned' : 'hub.toast.unpinned'), 'info');
       }
 
-      chipsHost.querySelectorAll('.hub-chip').forEach((chip) => {
-        chip.addEventListener('click', () => {
-          activeFilter = chip.getAttribute('data-type') || 'all';
-          chipsHost.querySelectorAll('.hub-chip').forEach(c => c.classList.remove('hub-chip-active'));
-          chip.classList.add('hub-chip-active');
+      // ── Type dropdown ──
+      function updateTypeBtnLabel(): void {
+        if (activeTypes.size === 0) typeBtnLabel.textContent = t('hub.type.title');
+        else typeBtnLabel.textContent = t('hub.type.countSelected', { n: activeTypes.size });
+      }
+      function renderTypeDropdown(): void {
+        const rows = types.map(type => {
+          const meta = PROJECT_TYPES[type] || PROJECT_TYPES.other;
+          const count = projects.filter(p => (p.projectType || 'other') === type).length;
+          const label = type === 'other' ? t('hub.typeOther') : meta.label;
+          const isActive = activeTypes.has(type);
+          return `<div class="hub-dropdown-option hub-type-opt${isActive ? ' hub-sort-opt-active' : ''}" data-type="${type}">
+            <span class="hub-type-chip-inline" style="--chip-color:${meta.color}">${meta.icon}</span>
+            <span class="hub-type-opt-name">${label}</span>
+            <span class="hub-type-opt-count">${count}</span>
+          </div>`;
+        }).join('');
+        typeDropdown.innerHTML = `
+          <div class="hub-dropdown-header">
+            <button class="hub-dropdown-reset" type="button">${t('hub.type.all')}</button>
+          </div>
+          <div class="hub-dropdown-body">${rows}</div>
+        `;
+        typeDropdown.querySelector('.hub-dropdown-reset')?.addEventListener('click', async () => {
+          activeTypes.clear();
+          await levis.storeSet('hubTypeFilter', []);
+          renderTypeDropdown();
+          updateTypeBtnLabel();
           applyFilter();
         });
+        typeDropdown.querySelectorAll('.hub-type-opt').forEach(opt => {
+          opt.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const type = (opt as HTMLElement).dataset.type!;
+            if (activeTypes.has(type)) activeTypes.delete(type);
+            else activeTypes.add(type);
+            await levis.storeSet('hubTypeFilter', Array.from(activeTypes));
+            opt.classList.toggle('hub-sort-opt-active', activeTypes.has(type));
+            updateTypeBtnLabel();
+            applyFilter();
+          });
+        });
+      }
+      updateTypeBtnLabel();
+      renderTypeDropdown();
+
+      // ── Sort dropdown ──
+      function updateSortBtnLabel(): void {
+        if (hubSortMode.kind === 'custom') {
+          if (hubSortMode.id === 'draft') sortBtnLabel.textContent = t('hub.sort.draftLabel');
+          else sortBtnLabel.textContent = customPresets[hubSortMode.id]?.name || t('hub.sort.title');
+        } else {
+          const idMap: Record<string, string> = {
+            modified: t('hub.sort.modified'),
+            name: t('hub.sort.name'),
+            size: t('hub.sort.size'),
+            type: t('hub.sort.typeKind'),
+          };
+          const arrow = hubSortMode.dir === 'asc' ? '↑' : '↓';
+          sortBtnLabel.textContent = `${idMap[hubSortMode.id] || t('hub.sort.title')} ${arrow}`;
+        }
+      }
+      function renderSortDropdown(): void {
+        const presets: Array<{ id: string; label: string }> = [
+          { id: 'modified', label: t('hub.sort.modified') },
+          { id: 'name', label: t('hub.sort.name') },
+          { id: 'size', label: t('hub.sort.size') },
+          { id: 'type', label: t('hub.sort.typeKind') },
+        ];
+        const presetRows = presets.map(p => {
+          const isActive = hubSortMode.kind === 'preset' && hubSortMode.id === p.id;
+          const arrow = isActive ? (hubSortMode.dir === 'asc' ? '↑' : '↓') : '';
+          return `<div class="hub-dropdown-option hub-sort-opt${isActive ? ' hub-sort-opt-active' : ''}" data-kind="preset" data-id="${p.id}">
+            <span class="hub-sort-opt-name">${p.label}</span>
+            <span class="hub-sort-opt-arrow">${arrow}</span>
+          </div>`;
+        }).join('');
+        const customIds = Object.keys(customPresets);
+        let customSection = '';
+        if (customIds.length > 0) {
+          const customRows = customIds.map(id => {
+            const isActive = hubSortMode.kind === 'custom' && hubSortMode.id === id;
+            return `<div class="hub-dropdown-option hub-sort-opt hub-sort-opt-custom${isActive ? ' hub-sort-opt-active' : ''}" data-kind="custom" data-id="${id}">
+              <span class="hub-sort-opt-star">★</span>
+              <span class="hub-sort-opt-name">${escapeHtml(customPresets[id].name)}</span>
+              <button class="hub-sort-opt-del" data-del="${id}" title="${t('hub.sort.deletePreset')}">✕</button>
+            </div>`;
+          }).join('');
+          customSection = `<div class="hub-dropdown-sep">${t('hub.sort.presets')}</div>${customRows}`;
+        }
+        const draftActive = hubSortMode.kind === 'custom' && hubSortMode.id === 'draft';
+        const saveRow = draftActive
+          ? `<div class="hub-dropdown-option hub-sort-save" data-action="save">${t('hub.sort.savePreset')}</div>`
+          : '';
+        sortDropdown.innerHTML = `
+          <div class="hub-dropdown-body">
+            ${presetRows}
+            ${customSection}
+            ${saveRow ? `<div class="hub-dropdown-sep"></div>${saveRow}` : ''}
+          </div>
+        `;
+        // Preset klik: stejný id → toggle směr, jinak aktivuj
+        sortDropdown.querySelectorAll('.hub-sort-opt[data-kind="preset"]').forEach(opt => {
+          opt.addEventListener('click', async () => {
+            const id = (opt as HTMLElement).dataset.id!;
+            if (hubSortMode.kind === 'preset' && hubSortMode.id === id) {
+              hubSortMode = { kind: 'preset', id, dir: hubSortMode.dir === 'asc' ? 'desc' : 'asc' };
+            } else {
+              const defaultDir: 'asc' | 'desc' = (id === 'name' || id === 'type') ? 'asc' : 'desc';
+              hubSortMode = { kind: 'preset', id, dir: defaultDir };
+            }
+            await levis.storeSet('hubSortMode', hubSortMode);
+            updateSortBtnLabel();
+            renderSortDropdown();
+            applyFilter();
+          });
+        });
+        sortDropdown.querySelectorAll('.hub-sort-opt[data-kind="custom"]').forEach(opt => {
+          opt.addEventListener('click', async (e) => {
+            if ((e.target as HTMLElement).closest('.hub-sort-opt-del')) return;
+            const id = (opt as HTMLElement).dataset.id!;
+            hubSortMode = { kind: 'custom', id };
+            await levis.storeSet('hubSortMode', hubSortMode);
+            updateSortBtnLabel();
+            renderSortDropdown();
+            applyFilter();
+          });
+        });
+        sortDropdown.querySelectorAll('.hub-sort-opt-del').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const id = (btn as HTMLElement).dataset.del!;
+            delete customPresets[id];
+            await levis.storeSet('customSortPresets', { ...customPresets });
+            if (hubSortMode.kind === 'custom' && hubSortMode.id === id) {
+              hubSortMode = { kind: 'preset', id: 'modified', dir: 'desc' };
+              await levis.storeSet('hubSortMode', hubSortMode);
+            }
+            showToast(t('hub.sort.presetDeleted'), 'info');
+            updateSortBtnLabel();
+            renderSortDropdown();
+            applyFilter();
+          });
+        });
+        sortDropdown.querySelector('.hub-sort-save')?.addEventListener('click', async () => {
+          const name = await askModal(t('hub.sort.savePreset'), t('hub.sort.presetName'), '');
+          if (!name) return;
+          const id = 'preset_' + Date.now().toString(36);
+          const order: string[] = (projects as any)._draftOrder || (await levis.storeGet('projectOrder')) || [];
+          customPresets[id] = { name: name.trim(), order: order.slice() };
+          await levis.storeSet('customSortPresets', { ...customPresets });
+          hubSortMode = { kind: 'custom', id };
+          await levis.storeSet('hubSortMode', hubSortMode);
+          sortDropdown.setAttribute('hidden', '');
+          showToast(t('hub.sort.presetSaved'), 'success');
+          updateSortBtnLabel();
+          renderSortDropdown();
+          applyFilter();
+        });
+      }
+      updateSortBtnLabel();
+      renderSortDropdown();
+
+      // ── Dropdown open/close ──
+      function closeAllDropdowns(): void {
+        typeDropdown.setAttribute('hidden', '');
+        sortDropdown.setAttribute('hidden', '');
+      }
+      typeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const was = typeDropdown.hasAttribute('hidden');
+        closeAllDropdowns();
+        if (was) typeDropdown.removeAttribute('hidden');
       });
+      sortBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const was = sortDropdown.hasAttribute('hidden');
+        closeAllDropdowns();
+        if (was) sortDropdown.removeAttribute('hidden');
+      });
+      document.addEventListener('click', (e) => {
+        if (!(e.target as HTMLElement).closest('.hub-type-control, .hub-sort-control')) closeAllDropdowns();
+      });
+
+      // ── Bulk selection ──
+      function updateBulkBar(): void {
+        if (selectedPaths.size === 0) {
+          bulkBar.setAttribute('hidden', '');
+          bulkBar.innerHTML = '';
+          return;
+        }
+        bulkBar.removeAttribute('hidden');
+        bulkBar.innerHTML = `
+          <span class="hub-bulk-count">${t('hub.bulk.selected', { n: selectedPaths.size })}</span>
+          <div class="hub-bulk-sep"></div>
+          <button class="hub-bulk-btn" data-act="pin">${t('hub.bulk.pin')}</button>
+          <button class="hub-bulk-btn" data-act="unpin">${t('hub.bulk.unpin')}</button>
+          <div class="hub-bulk-dd">
+            <button class="hub-bulk-btn" data-act="status">${t('hub.bulk.status')} ▾</button>
+            <div class="hub-bulk-submenu" hidden>
+              <div class="hub-bulk-sub-opt" data-status="active">● ${t('hub.tcm.statusActive')}</div>
+              <div class="hub-bulk-sub-opt" data-status="paused">◐ ${t('hub.tcm.statusPaused')}</div>
+              <div class="hub-bulk-sub-opt" data-status="finished">✓ ${t('hub.tcm.statusFinished')}</div>
+            </div>
+          </div>
+          <button class="hub-bulk-btn" data-act="pull">${t('hub.bulk.pullAll')}</button>
+          <button class="hub-bulk-btn" data-act="push">${t('hub.bulk.pushAll')}</button>
+          <button class="hub-bulk-btn hub-bulk-danger" data-act="delete">${t('hub.bulk.delete')}</button>
+          <div class="hub-bulk-sep"></div>
+          <button class="hub-bulk-btn hub-bulk-cancel" data-act="cancel">${t('hub.bulk.cancel')} <kbd>Esc</kbd></button>
+        `;
+        bulkBar.querySelectorAll('.hub-bulk-btn').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            const act = (btn as HTMLElement).dataset.act;
+            if (act === 'status') {
+              const dd = (btn as HTMLElement).nextElementSibling as HTMLElement;
+              dd?.toggleAttribute('hidden');
+              e.stopPropagation();
+              return;
+            }
+            await runBulkAction(act!);
+          });
+        });
+        bulkBar.querySelectorAll('.hub-bulk-sub-opt').forEach(opt => {
+          opt.addEventListener('click', async () => {
+            const status = (opt as HTMLElement).dataset.status as 'active' | 'paused' | 'finished';
+            for (const p of projects.filter(x => selectedPaths.has(x.path))) {
+              if (status === 'active') delete projectStatuses[p.path];
+              else projectStatuses[p.path] = status;
+            }
+            await levis.storeSet('projectStatuses', { ...projectStatuses });
+            clearSelection();
+            applyFilter();
+          });
+        });
+      }
+      function clearSelection(): void {
+        selectedPaths.clear();
+        lastSelectedPath = null;
+        grid.querySelectorAll('.tile-selected').forEach(el => el.classList.remove('tile-selected'));
+        updateBulkBar();
+      }
+      async function runBulkAction(act: string): Promise<void> {
+        const sel = projects.filter(p => selectedPaths.has(p.path));
+        if (sel.length === 0) return;
+        if (act === 'cancel') { clearSelection(); return; }
+        if (act === 'pin' || act === 'unpin') {
+          const want = act === 'pin';
+          for (const p of sel) {
+            if (!!p.pinned !== want) {
+              const newState = await levis.togglePinProject(p.path);
+              p.pinned = newState;
+            }
+          }
+          clearSelection();
+          applyFilter();
+          return;
+        }
+        if (act === 'pull' || act === 'push') {
+          let ok = 0;
+          for (const p of sel) {
+            const r = act === 'pull' ? await levis.gitPull(p.path) : await levis.gitPush(p.path);
+            if (!r.error) ok++;
+          }
+          showToast(t(act === 'pull' ? 'hub.bulk.pullDone' : 'hub.bulk.pushDone', { ok, total: sel.length }), 'info');
+          clearSelection();
+          applyFilter();
+          return;
+        }
+        if (act === 'delete') {
+          const names = sel.map(p => p.name).join(', ');
+          const confirm = await askModal(t('hub.dialog.delete'), t('hub.bulk.deleteConfirm', { n: sel.length }) + '\n\n' + names);
+          if (!confirm) return;
+          for (const p of sel) await levis.deleteProject(p.path);
+          clearSelection();
+          loadProjects();
+        }
+      }
+      (window as any)._hubClearSelection = clearSelection;
+      (window as any)._hubToggleSelect = (path: string, shift: boolean, ctrl: boolean) => {
+        if (ctrl) {
+          if (selectedPaths.has(path)) selectedPaths.delete(path);
+          else selectedPaths.add(path);
+          lastSelectedPath = path;
+        } else if (shift && lastSelectedPath) {
+          // range select mezi lastSelectedPath a path v rámci aktuálního filtered+sorted pořadí
+          const ordered = Array.from(grid.querySelectorAll('.tile[data-project-path]')).map(el => (el as HTMLElement).dataset.projectPath!);
+          const a = ordered.indexOf(lastSelectedPath);
+          const b = ordered.indexOf(path);
+          if (a >= 0 && b >= 0) {
+            const [lo, hi] = a < b ? [a, b] : [b, a];
+            for (let i = lo; i <= hi; i++) selectedPaths.add(ordered[i]);
+          }
+        } else {
+          selectedPaths.clear();
+          selectedPaths.add(path);
+          lastSelectedPath = path;
+        }
+        grid.querySelectorAll('.tile[data-project-path]').forEach(el => {
+          const p = (el as HTMLElement).dataset.projectPath!;
+          el.classList.toggle('tile-selected', selectedPaths.has(p));
+        });
+        updateBulkBar();
+      };
+
+      // Keyboard: Escape ukončí selection
+      const escHandler = (e: KeyboardEvent) => { if (e.key === 'Escape' && selectedPaths.size > 0) clearSelection(); };
+      document.addEventListener('keydown', escHandler);
+      // Clean up on unmount — hub se re-renderuje přes container.innerHTML, takže listener visí.
+      // Interval-based reaper: kdyby container už nebyl v DOMu, odregistrujem.
+      const reaper = setInterval(() => {
+        if (!document.body.contains(container)) {
+          document.removeEventListener('keydown', escHandler);
+          clearInterval(reaper);
+        }
+      }, 2000);
+
       searchInput.addEventListener('input', () => {
         searchQuery = searchInput.value;
         applyFilter();
@@ -921,8 +1363,8 @@ async function renderUsagePanel(host: HTMLElement): Promise<void> {
   if (!host) return;
   host.innerHTML = `<div class="usage-bar usage-bar-loading">Načítám usage...</div>`;
   let plan: string = (await levis.storeGet('claudePlan')) || 'max5';
-  const storedCollapsed = await levis.storeGet('usageCollapsed');
-  let collapsed: boolean = storedCollapsed === undefined || storedCollapsed === null ? true : !!storedCollapsed;
+  // Billing/usage panel je na startu Hubu vždycky složený, user ho v rámci session může rozbalit
+  let collapsed: boolean = true;
   const account = await levis.usageAccount();
   const data = await levis.usageScan();
   const realLimits = await levis.usageRateLimits();
@@ -954,19 +1396,22 @@ async function renderUsagePanel(host: HTMLElement): Promise<void> {
   const sessColor = pctColor(sessionPct ?? 0);
   const weekColor = pctColor(weeklyPct ?? 0);
   const ctxColor  = pctColor(ctxPct ?? 0);
-  // Mini indikátory — horizontální bary (zleva doprava)
+  // Mini indikátory — label + bar + procenta (aby bylo čitelné bez rozbalení)
   const miniPillsHtml = `
     <span class="usage-pill" title="Session (5h): ${sessionPct ?? '—'}%">
-      <span>S</span>
+      <span class="usage-pill-label">Session</span>
       <span class="usage-pill-bar"><span class="usage-pill-fill" style="width:${sessionPct ?? 0}%;background:${sessColor}"></span></span>
+      <strong>${sessionPct ?? '—'}%</strong>
     </span>
     <span class="usage-pill" title="Weekly: ${weeklyPct ?? '—'}%">
-      <span>W</span>
+      <span class="usage-pill-label">Weekly</span>
       <span class="usage-pill-bar"><span class="usage-pill-fill" style="width:${weeklyPct ?? 0}%;background:${weekColor}"></span></span>
+      <strong>${weeklyPct ?? '—'}%</strong>
     </span>
     <span class="usage-pill" title="Context: ${ctxPct ?? '—'}%">
-      <span>C</span>
+      <span class="usage-pill-label">Context</span>
       <span class="usage-pill-bar"><span class="usage-pill-fill" style="width:${ctxPct ?? 0}%;background:${ctxColor}"></span></span>
+      <strong>${ctxPct ?? '—'}%</strong>
     </span>
   `;
 
@@ -1058,7 +1503,7 @@ async function renderUsagePanel(host: HTMLElement): Promise<void> {
 
   async function toggleCollapse(): Promise<void> {
     collapsed = !collapsed;
-    await levis.storeSet('usageCollapsed', collapsed);
+    // Stav NEukládáme — usage panel se vždy startuje složený
     bar.classList.toggle('usage-bar-expanded', !collapsed);
     if (collapsed) {
       full.setAttribute('hidden', '');

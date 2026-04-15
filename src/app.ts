@@ -255,8 +255,8 @@ async function init(): Promise<void> {
       e.preventDefault();
       (window as any).commandPalette.show();
     }
-    // Ctrl+P — quick file open
-    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'p') {
+    // Ctrl+Shift+O — quick file open
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'O' || e.key === 'o')) {
       e.preventDefault();
       const activeTab = tabs.find(t => t.id === activeTabId);
       if (activeTab?.projectPath) {
@@ -296,8 +296,8 @@ async function init(): Promise<void> {
       e.preventDefault();
       if (activeTabId !== 'hub') closeTab(activeTabId);
     }
-    // Ctrl+, — settings
-    if ((e.ctrlKey || e.metaKey) && e.key === ',') {
+    // Ctrl+Shift+, — settings (layout-agnostic přes e.code)
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.code === 'Comma') {
       e.preventDefault();
       switchTab('hub');
       setTimeout(() => {
@@ -329,13 +329,13 @@ async function init(): Promise<void> {
             <h3>${t('help.global')}</h3>
             <table>
               <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd></td><td>${t('help.row.palette')}</td></tr>
-              <tr><td><kbd>Ctrl</kbd>+<kbd>P</kbd></td><td>${t('help.row.qfo')}</td></tr>
+              <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>O</kbd></td><td>${t('help.row.qfo')}</td></tr>
               <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd></td><td>${t('help.row.search')}</td></tr>
               <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>T</kbd></td><td>${t('help.row.toHub')}</td></tr>
               <tr><td><kbd>Ctrl</kbd>+<kbd>Tab</kbd> / <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Tab</kbd></td><td>${t('help.row.cycleTabs')}</td></tr>
               <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>W</kbd></td><td>${t('help.row.closeTab')}</td></tr>
               <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd></td><td>${t('help.row.reload')}</td></tr>
-              <tr><td><kbd>Ctrl</kbd>+<kbd>,</kbd></td><td>${t('help.row.settings')}</td></tr>
+              <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>,</kbd></td><td>${t('help.row.settings')}</td></tr>
               <tr><td><kbd>F1</kbd> / <kbd>?</kbd></td><td>${t('help.row.help')}</td></tr>
             </table>
           </section>
@@ -383,6 +383,31 @@ async function init(): Promise<void> {
               <li>${t('help.hub3')}</li>
               <li>${t('help.hub4')}</li>
             </ul>
+          </section>
+          <section>
+            <h3>${t('hub.legend.tooltip')}</h3>
+            <div class="hub-legend help-legend">
+              <div class="hub-legend-group">
+                <span class="hub-legend-label">${t('hub.legend.git')}</span>
+                <span class="hub-legend-item"><span class="hub-legend-dot hub-legend-accent"></span>${t('hub.legend.unpushed')}</span>
+                <span class="hub-legend-item"><span class="hub-legend-dot hub-legend-warn"></span>${t('hub.legend.changes')}</span>
+                <span class="hub-legend-item"><span class="hub-legend-dot hub-legend-success"></span>${t('hub.legend.clean')}</span>
+              </div>
+              <div class="hub-legend-group">
+                <span class="hub-legend-label">${t('hub.legend.state')}</span>
+                <span class="hub-legend-item"><span class="hub-legend-glyph">●</span>${t('hub.legend.active')}</span>
+                <span class="hub-legend-item"><span class="hub-legend-glyph">◐</span>${t('hub.legend.paused')}</span>
+                <span class="hub-legend-item"><span class="hub-legend-glyph">✓</span>${t('hub.legend.finished')}</span>
+                <span class="hub-legend-item"><span class="hub-legend-glyph">★</span>${t('hub.legend.pinned')}</span>
+              </div>
+              <div class="hub-legend-group">
+                <span class="hub-legend-label">${t('hub.legend.card')}</span>
+                <span class="hub-legend-item"><span class="hub-legend-chip">VITE</span>${t('hub.legend.type')}</span>
+                <span class="hub-legend-item"><span class="hub-legend-chip hub-legend-chip-lang">TS</span>${t('hub.legend.lang')}</span>
+                <span class="hub-legend-item"><span class="hub-legend-dot hub-legend-user"></span>${t('hub.legend.colorDot')}</span>
+                <span class="hub-legend-item"><span class="hub-legend-glyph">⋯</span>${t('hub.legend.menu')}</span>
+              </div>
+            </div>
           </section>
           <section>
             <h3>${t('help.popout')}</h3>
@@ -527,7 +552,7 @@ async function init(): Promise<void> {
     switchTab('hub');
     renderHub(tabs[0].contentEl, openProject);
   }});
-  cp.registerCommand({ id: 'settings', label: t('cp.openSettings'), shortcut: 'Ctrl+,', category: t('cp.cat.app'), action: () => {
+  cp.registerCommand({ id: 'settings', label: t('cp.openSettings'), shortcut: 'Ctrl+Shift+,', category: t('cp.cat.app'), action: () => {
     switchTab('hub');
     setTimeout(() => {
       const btn = document.querySelector('.hub-btn-settings') as HTMLElement;

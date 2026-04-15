@@ -11,7 +11,16 @@ function ensureContainer(): HTMLElement {
   return toastContainer;
 }
 
-function showToast(message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info'): void {
+interface ToastOptions {
+  action?: { label: string; onClick: () => void };
+  duration?: number;
+}
+
+function showToast(
+  message: string,
+  type: 'info' | 'success' | 'warning' | 'error' = 'info',
+  options?: ToastOptions,
+): void {
   const container = ensureContainer();
   const toast = document.createElement('div');
   toast.className = `toast toast-${type}`;
@@ -29,19 +38,32 @@ function showToast(message: string, type: 'info' | 'success' | 'warning' | 'erro
   const msgEl = document.createElement('span');
   msgEl.className = 'toast-msg';
   msgEl.textContent = message;
+  toast.appendChild(iconEl);
+  toast.appendChild(msgEl);
+
+  if (options?.action) {
+    const actionBtn = document.createElement('button');
+    actionBtn.className = 'toast-action';
+    actionBtn.textContent = options.action.label;
+    actionBtn.addEventListener('click', () => {
+      options.action!.onClick();
+      removeToast(toast);
+    });
+    toast.appendChild(actionBtn);
+  }
+
   const closeBtn = document.createElement('button');
   closeBtn.className = 'toast-close';
   closeBtn.textContent = '\u00D7';
-  toast.appendChild(iconEl);
-  toast.appendChild(msgEl);
-  toast.appendChild(closeBtn);
-
   closeBtn.addEventListener('click', () => removeToast(toast));
+  toast.appendChild(closeBtn);
 
   container.appendChild(toast);
   requestAnimationFrame(() => toast.classList.add('toast-show'));
 
-  setTimeout(() => removeToast(toast), 4000);
+  // Actionable toasty žijou déle — user potřebuje čas na kliknutí
+  const duration = options?.duration ?? (options?.action ? 8000 : 4000);
+  setTimeout(() => removeToast(toast), duration);
 }
 
 function removeToast(toast: HTMLElement): void {

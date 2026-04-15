@@ -231,8 +231,8 @@
   position: relative; background: transparent;
   display: flex; align-items: center; justify-content: center;
 }
-.grid-splitter { background: transparent; }
-.grid-splitter:hover { background: rgba(255,255,255,0.04); }
+/* Grid splitter — sdílí styling se .splitter / .term-splitter (jen .split-handle::after pilulka) */
+.grid-splitter { background: transparent; position: relative; }
 
 /* ── Split Terminals ─────────────── */
 
@@ -241,13 +241,17 @@
 }
 .term-slot {
   flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; min-height: 0;
-  position: relative; background: #0a0a0f;
-  transition: box-shadow var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
+  position: relative; background: var(--term-bg);
+  transition: box-shadow var(--t-fast) var(--ease);
 }
 .term-slot-active {
   box-shadow: inset 0 2px 0 var(--accent);
-  background: rgba(255, 106, 0, 0.03);
 }
+/* Přebíjí global :focus-visible outline (variables.css:118) — ten kreslil
+   oranžový rámeček s 40% alfou kolem xterm canvas/textarea, co vypadá na tmavém pozadí vínově.
+   Aktivní pane má jen oranžový top pruh z .term-slot-active. */
+.term-slot :focus-visible,
+.term-slot *:focus-visible { outline: none; }
 .term-close-btn {
   position: absolute; top: 4px; right: 4px; z-index: 10;
   width: 18px; height: 18px; border-radius: var(--radius-sm);

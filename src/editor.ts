@@ -401,13 +401,14 @@ async function createEditor(container: HTMLElement): Promise<EditorInstance> {
     return true;
   }
 
-  // Modal s 3 volbami pro dirty check
+  // Modal s 3 volbami pro dirty check — autofocus + focus trap + focus restore
   function askChoice(message: string, options: string[]): Promise<string | null> {
     return new Promise((resolve) => {
+      const savedFocus = document.activeElement as HTMLElement | null;
       const overlay = document.createElement('div');
       overlay.className = 'editor-choice-overlay';
       overlay.innerHTML = `
-        <div class="editor-choice-box">
+        <div class="editor-choice-box" role="dialog" aria-modal="true">
           <div class="editor-choice-msg">${escapeHtmlE(message)}</div>
           <div class="editor-choice-btns">
             ${options.map(o => `<button class="editor-choice-btn" data-opt="${escapeHtmlE(o)}">${escapeHtmlE(o)}</button>`).join('')}
@@ -415,8 +416,16 @@ async function createEditor(container: HTMLElement): Promise<EditorInstance> {
         </div>
       `;
       document.body.appendChild(overlay);
-      const cleanup = () => overlay.remove();
-      overlay.querySelectorAll('.editor-choice-btn').forEach(btn => {
+      const buttons = Array.from(overlay.querySelectorAll<HTMLButtonElement>('.editor-choice-btn'));
+      const cleanup = (): void => {
+        overlay.remove();
+        document.removeEventListener('keydown', keyHandler);
+        // Restore focus na element co byl aktivní před otevřením (editor / file tree / tile)
+        if (savedFocus && typeof savedFocus.focus === 'function') {
+          try { savedFocus.focus(); } catch {}
+        }
+      };
+      buttons.forEach(btn => {
         btn.addEventListener('click', () => {
           const opt = btn.getAttribute('data-opt');
           cleanup();
@@ -426,10 +435,26 @@ async function createEditor(container: HTMLElement): Promise<EditorInstance> {
       overlay.addEventListener('click', (e) => {
         if (e.target === overlay) { cleanup(); resolve(null); }
       });
-      const escHandler = (e: KeyboardEvent) => {
-        if (e.key === 'Escape') { cleanup(); document.removeEventListener('keydown', escHandler); resolve(null); }
+      const keyHandler = (e: KeyboardEvent): void => {
+        if (e.key === 'Escape') {
+          cleanup();
+          resolve(null);
+          return;
+        }
+        if (e.key === 'Tab' && buttons.length > 0) {
+          // Focus trap — cyklí jen mezi tlačítky modálu
+          const active = document.activeElement as HTMLElement;
+          const idx = buttons.indexOf(active as HTMLButtonElement);
+          e.preventDefault();
+          const next = e.shiftKey
+            ? (idx <= 0 ? buttons.length - 1 : idx - 1)
+            : (idx < 0 || idx === buttons.length - 1 ? 0 : idx + 1);
+          buttons[next].focus();
+        }
       };
-      document.addEventListener('keydown', escHandler);
+      document.addEventListener('keydown', keyHandler);
+      // Autofocus první tlačítko
+      if (buttons[0]) buttons[0].focus();
     });
   }
 

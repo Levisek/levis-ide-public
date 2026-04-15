@@ -34,6 +34,14 @@ interface StoreSchema {
   cmdPush: string;
   projectGroups: Record<string, string>;
   projectOrder: string[];
+  hubSortMode: {
+    kind: 'preset' | 'custom';
+    id: string;
+    dir?: 'asc' | 'desc';
+  };
+  customSortPresets: Record<string, { name: string; order: string[] }>;
+  hubTypeFilter: string[];
+  hubProjectLaunchChoice: Record<string, string>;
 }
 
 export const store = new Store<StoreSchema>({
@@ -69,6 +77,10 @@ export const store = new Store<StoreSchema>({
     monitorDiagonal: 24,
     projectGroups: {},
     projectOrder: [],
+    hubSortMode: { kind: 'preset', id: 'modified', dir: 'desc' },
+    customSortPresets: {},
+    hubTypeFilter: [],
+    hubProjectLaunchChoice: {},
     cmdSave: '/commit',
     cmdPush: '/commit && git push',
   },

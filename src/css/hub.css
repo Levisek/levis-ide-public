@@ -123,9 +123,21 @@
   50% { background-position: 100% 50%; }
 }
 .hub-subtitle { color: var(--text-muted); font-size: 14px; margin-bottom: 12px; }
-.hub-grid, .hub-filter-bar, .hub-actions, .hub-usage { position: relative; z-index: 1; }
+.hub-grid, .hub-actions, .hub-usage { position: relative; z-index: 1; }
+.hub-filter-bar { position: relative; z-index: 10; }
+.hub-bulk-bar { position: relative; z-index: 9; }
 
-.hub-actions { display: flex; gap: 8px; }
+.hub-actions { display: flex; gap: 6px; align-items: center; }
+.hub-filter-bar .hub-actions {
+  padding-right: 12px;
+  margin-right: 0;
+  border-right: 1px solid var(--border-soft);
+}
+.hub-filter-bar .hub-btn-icon {
+  height: 34px;
+  padding: 0 10px;
+  min-width: 34px;
+}
 .hub-btn {
   background: var(--bg-elev-1); border: 1px solid var(--border);
   color: var(--text-soft); padding: 8px 14px; border-radius: var(--radius);
@@ -147,14 +159,21 @@
   display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 18px;
 }
 
-/* Legenda symbolů pod gridem projektů */
+/* Legenda symbolů — používá se v F1 help overlay */
 .hub-legend {
-  display: flex; flex-wrap: wrap; gap: 16px;
-  padding: 12px 4px 4px;
-  margin-top: 20px;
-  border-top: 1px solid var(--border-soft);
-  font-size: 10px; color: var(--text-muted);
-  opacity: 0.7;
+  display: flex; flex-wrap: wrap; gap: 10px 24px;
+  font-size: 11px; color: var(--text-muted);
+  opacity: 0.95;
+}
+.help-legend { margin-top: 6px; }
+.hub-legend-group {
+  display: inline-flex; flex-wrap: wrap; align-items: center; gap: 10px;
+}
+.hub-legend-label {
+  font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--text-soft); font-size: 9px;
+  padding-right: 4px; border-right: 1px solid var(--border-soft);
+  margin-right: 2px;
 }
 .hub-legend-item { display: inline-flex; align-items: center; gap: 6px; }
 .hub-legend-dot {
@@ -168,6 +187,41 @@
 .hub-legend-success { --dot-color: var(--success); background: var(--success); }
 .hub-legend-info    { --dot-color: #64748b;        background: #64748b; }           /* finished = slate (tlumená) */
 .hub-legend-pin     { --dot-color: var(--accent);  background: var(--accent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 60%, transparent), 0 0 10px var(--accent-glow); }
+.hub-legend-glyph {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 12px; color: var(--text);
+  font-size: 11px; line-height: 1;
+}
+.hub-legend-kbd {
+  font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
+  font-size: 9px;
+  padding: 1px 5px;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border-soft);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  color: var(--text);
+}
+.hub-legend-chip {
+  display: inline-flex; align-items: center;
+  font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
+  font-size: 9px; font-weight: 700; letter-spacing: 0.06em;
+  padding: 1px 5px; border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+}
+.hub-legend-chip-lang {
+  background: var(--bg-elev-2);
+  color: var(--text-muted);
+  border-color: var(--border-soft);
+}
+.hub-legend-user {
+  --dot-color: var(--accent);
+  background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+  box-shadow: 0 0 0 1.5px var(--bg-elev-1), 0 0 6px color-mix(in srgb, #f59e0b 50%, transparent);
+}
+.hub-legend svg { width: 12px; height: 12px; opacity: 0.85; }
 
 /* ── Tile ────────────────────────── */
 
@@ -292,7 +346,7 @@
 }
 .tcm-status-opt[data-status="active"]:hover   { --accent-text: var(--success); border-color: var(--success); background: color-mix(in srgb, var(--success) 15%, transparent); }
 .tcm-status-opt[data-status="paused"]:hover   { --accent-text: var(--warning); border-color: var(--warning); background: color-mix(in srgb, var(--warning) 15%, transparent); }
-.tcm-status-opt[data-status="finished"]:hover { --accent-text: var(--info);    border-color: var(--info);    background: color-mix(in srgb, var(--info) 15%, transparent); }
+.tcm-status-opt[data-status="finished"]:hover { --accent-text: #64748b;        border-color: #64748b;        background: color-mix(in srgb, #64748b 15%, transparent); }
 
 /* ── Group submenu v context menu ── */
 .tcm-group-trigger { position: relative; flex-wrap: wrap; }
@@ -421,11 +475,11 @@
   animation: skel-shimmer 1.4s ease-in-out infinite;
 }
 
-/* ── Hub trademark v rohu (button — klikem otevře About) ── */
+/* ── Hub trademark (button — klikem otevře About) — ve flow, vpravo pod billing barem ── */
 .hub-trademark {
-  position: fixed;
-  bottom: 10px; right: 14px;
-  display: flex; align-items: center; gap: 6px;
+  display: block;
+  margin: 12px 0 20px auto;
+  width: fit-content;
   font-family: 'Inter', sans-serif;
   font-size: 10px;
   color: #6b6b80;
@@ -435,8 +489,11 @@
   cursor: pointer;
   transition: all 200ms ease;
   user-select: none;
-  z-index: 5; max-width: none !important;
+  max-width: none !important;
 }
+.hub-trademark { align-items: center; gap: 6px; }
+.hub-trademark > * { vertical-align: middle; }
+.hub-trademark .hub-tm-logo { display: inline-block; margin-right: 4px; }
 .hub-trademark:hover { opacity: 1; color: var(--accent); background: var(--bg-elev-1); }
 
 /* ── About dialog ── */
@@ -508,8 +565,8 @@
 }
 /* ── Drag & drop reorder ── */
 .tile-dragging { opacity: 0.4; transform: scale(0.95); }
-.tile-drop-before { box-shadow: -3px 0 0 0 var(--accent); }
-.tile-drop-after { box-shadow: 3px 0 0 0 var(--accent); }
+.tile-drop-before { box-shadow: -4px 0 0 0 var(--accent), 0 0 12px color-mix(in srgb, var(--accent) 40%, transparent); }
+.tile-drop-after { box-shadow: 4px 0 0 0 var(--accent), 0 0 12px color-mix(in srgb, var(--accent) 40%, transparent); }
 
 .tile-pin.pinned { opacity: 1; color: var(--accent); text-shadow: 0 0 8px var(--accent-glow); }
 /* Pinned — levitující karta, glow čistě pod kartou, žádné prosvítání dovnitř */
@@ -531,7 +588,7 @@
 }
 
 /* ── Per-projekt barevný tag ── */
-.tile-colored { border-left-width: 4px; border-left-style: solid; }
+.tile-colored { border-left-width: 4px; border-left-style: solid; padding-left: 13px; }
 
 /* Recent — pořadí zajišťuje sort, žádný vizuální marker (kolize s tile-colored) */
 
@@ -541,11 +598,9 @@
   font-size: 16px; font-weight: 700; line-height: 1.25;
   color: var(--name-color, var(--text));
   letter-spacing: -0.01em;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  white-space: nowrap;
   overflow: hidden;
-  word-break: break-word;
+  text-overflow: ellipsis;
 }
 .tile-name .tile-color-dot {
   display: inline-block;
@@ -742,27 +797,39 @@
 }
 .usage-bar-loading { padding: 14px 18px; color: var(--text-muted); font-size: 12px; }
 
-/* Collapsed mini lišta — default stav */
+/* Collapsed mini lišta — čitelný kompromis mezi mini a full */
 .usage-mini {
-  display: flex; align-items: center; gap: 18px;
-  padding: 10px 18px; cursor: pointer;
+  display: flex; align-items: center; gap: 22px;
+  padding: 14px 20px; cursor: pointer;
   transition: background var(--t-fast) var(--ease);
 }
 .usage-mini:hover { background: var(--bg-elev-2); }
 .usage-mini-label {
-  font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
-  color: var(--text-muted); font-weight: 700;
+  font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--text); font-weight: 700;
 }
 .usage-mini-pills {
-  display: inline-flex; gap: 10px; align-items: center;
+  display: inline-flex; gap: 16px; align-items: center;
 }
 .usage-pill {
-  display: inline-flex; align-items: center; gap: 6px;
-  font-size: 10px; color: var(--text-muted); font-weight: 600;
-  letter-spacing: 0.04em;
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 12px; color: var(--text-soft); font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.usage-pill-label {
+  color: var(--text-muted); font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  font-size: 10px;
+  min-width: 48px;
+}
+.usage-pill strong {
+  font-weight: 700; color: var(--text);
+  font-variant-numeric: tabular-nums;
+  min-width: 38px; text-align: right;
+  font-size: 12px;
 }
 .usage-pill-bar {
-  width: 48px; height: 5px; background: var(--bg-deep);
+  width: 80px; height: 7px; background: var(--bg-deep);
   border-radius: var(--radius-pill); overflow: hidden; position: relative;
   border: 1px solid var(--border-soft);
   display: inline-block;
@@ -773,7 +840,8 @@
   border-radius: var(--radius-pill);
 }
 .usage-mini-cost {
-  font-size: 11px; color: var(--text-soft); font-variant-numeric: tabular-nums;
+  font-size: 13px; color: var(--text); font-variant-numeric: tabular-nums;
+  font-weight: 500;
   margin-left: auto;
 }
 .usage-expand {
@@ -874,37 +942,245 @@
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-dim);
 }
-.hub-filter-chips {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  flex: 1;
-}
-.hub-chip {
-  padding: 6px 12px;
-  background: color-mix(in srgb, var(--chip-color, var(--text-muted)) 10%, var(--bg-elev-1));
-  border: 1px solid color-mix(in srgb, var(--chip-color, var(--border)) 35%, var(--border));
-  color: var(--chip-color, var(--text-soft));
-  border-radius: var(--radius-pill);
-  font-size: 11px; font-weight: 600;
+/* ── Filter bar dropdowny (Typ, Řadit) ── */
+.hub-type-control, .hub-sort-control { position: relative; }
+.hub-dropdown-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 10px;
+  background: var(--bg-elev-1);
+  border: 1px solid var(--border);
+  color: var(--text-soft);
+  border-radius: var(--radius);
+  font-family: inherit; font-size: 12px; font-weight: 500;
   cursor: pointer;
-  font-family: inherit;
-  letter-spacing: 0.02em;
+  transition: all var(--t-fast) var(--ease);
+  white-space: nowrap;
+  height: 34px;
+}
+.hub-dropdown-btn .hub-dropdown-label { max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+.hub-dropdown-btn:hover {
+  background: var(--bg-elev-2);
+  border-color: var(--accent);
+  color: var(--text);
+}
+.hub-dropdown-chevron { font-size: 10px; opacity: 0.7; }
+.hub-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 240px;
+  max-width: 360px;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  z-index: 1000;
+  padding: 4px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+/* Parent control potřebuje vysoký z-index, aby dropdown nešel pod tile glow/recent styly */
+.hub-type-control, .hub-sort-control { z-index: 1000; }
+.hub-dropdown[hidden] { display: none; }
+.hub-dropdown-header {
+  padding: 4px 6px 8px;
+  border-bottom: 1px solid var(--border-soft);
+  margin-bottom: 4px;
+}
+.hub-dropdown-reset {
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  font-family: inherit; font-size: 11px; font-weight: 600;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background var(--t-fast);
+}
+.hub-dropdown-reset:hover { background: var(--accent-dim); }
+.hub-dropdown-body { display: flex; flex-direction: column; gap: 2px; }
+.hub-dropdown-option {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+  transition: background var(--t-fast);
+}
+.hub-dropdown-option:hover { background: var(--bg-elev-1); }
+.hub-dropdown-sep {
+  padding: 8px 10px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-soft);
+  margin-top: 4px;
+}
+.hub-type-opt input[type="checkbox"] {
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.hub-type-chip-inline {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 4px;
+  background: color-mix(in srgb, var(--chip-color, var(--text-muted)) 16%, transparent);
+  color: var(--chip-color, var(--text-soft));
+}
+.hub-type-chip-inline svg { width: 12px; height: 12px; }
+.hub-type-opt-name { flex: 1; }
+.hub-type-opt-count {
+  font-size: 10px; color: var(--text-muted);
+  background: var(--bg-elev-1);
+  padding: 1px 6px; border-radius: 8px;
+}
+.hub-sort-opt-active {
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-weight: 600;
+}
+.hub-sort-opt-active:hover { background: var(--accent-dim); }
+.hub-sort-opt-name { flex: 1; }
+.hub-sort-opt-arrow { font-size: 11px; opacity: 0.85; }
+.hub-sort-opt-star { color: var(--accent); font-size: 11px; }
+.hub-sort-opt-del {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  opacity: 0;
+  transition: all var(--t-fast);
+}
+.hub-sort-opt:hover .hub-sort-opt-del { opacity: 1; }
+.hub-sort-opt-del:hover { background: var(--danger-dim, #ff33661a); color: var(--danger, #ff3366); }
+.hub-sort-save {
+  color: var(--accent);
+  font-weight: 600;
+  justify-content: center;
+}
+
+/* ── Bulk actions toolbar ── */
+.hub-bulk-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  margin: 0 0 14px;
+  background: linear-gradient(135deg, var(--accent-dim) 0%, color-mix(in srgb, var(--accent) 8%, var(--bg-elev-1)) 100%);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
+  border-radius: var(--radius);
+  flex-wrap: wrap;
+  animation: bulkBarSlideIn 0.2s var(--ease);
+}
+.hub-bulk-bar[hidden] { display: none; }
+@keyframes bulkBarSlideIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.hub-bulk-count {
+  font-size: 12px; font-weight: 700;
+  color: var(--accent);
+  padding: 4px 10px;
+  background: color-mix(in srgb, var(--accent) 18%, var(--bg-elev-1));
+  border-radius: 12px;
+}
+.hub-bulk-sep {
+  width: 1px; height: 20px;
+  background: var(--border-soft);
+}
+.hub-bulk-btn {
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  font-family: inherit; font-size: 12px; font-weight: 500;
+  cursor: pointer;
   transition: all var(--t-fast) var(--ease);
 }
-.hub-chip:hover {
-  background: color-mix(in srgb, var(--chip-color, var(--text-muted)) 22%, var(--bg-elev-2));
-  border-color: color-mix(in srgb, var(--chip-color, var(--text-muted)) 60%, var(--border));
-  transform: translateY(-1px);
-}
-.hub-chip-active {
-  background: var(--accent);
+.hub-bulk-btn:hover {
+  background: var(--accent-dim);
   border-color: var(--accent);
-  color: white;
-  font-weight: 700;
-  box-shadow: var(--shadow-glow);
+  color: var(--accent);
 }
-.hub-chip-active:hover {
-  background: var(--accent);
-  border-color: var(--accent);
+.hub-bulk-btn kbd {
+  font-size: 10px;
+  padding: 1px 4px;
+  background: var(--bg-deep);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  margin-left: 4px;
+}
+.hub-bulk-danger:hover {
+  background: color-mix(in srgb, var(--danger, #ff3366) 18%, var(--bg-elev-1));
+  border-color: var(--danger, #ff3366);
+  color: var(--danger, #ff3366);
+}
+.hub-bulk-cancel { margin-left: auto; }
+.hub-bulk-dd { position: relative; }
+.hub-bulk-submenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px;
+  min-width: 140px;
+  z-index: 60;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+.hub-bulk-submenu[hidden] { display: none; }
+.hub-bulk-sub-opt {
+  padding: 7px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background var(--t-fast);
+}
+.hub-bulk-sub-opt:hover { background: var(--bg-elev-1); }
+
+/* Selected tile state — accent outline, žádná fajfka */
+.tile.tile-selected {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 4px var(--accent-dim), var(--shadow-md, 0 4px 12px rgba(0,0,0,0.2));
+}
+
+/* SortableJS drag styly:
+   - fallbackClass (tile-drag-ghost) = floating klon dlaždice, follows kurzor
+   - ghostClass (tile-drag-placeholder) = mezera v gridu, kam se pustí
+   - chosenClass (tile-drag-chosen) = na vybrané dlaždici (aktivovaná drag source)
+*/
+.tile-drag-ghost {
+  opacity: 0.85 !important;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.38), 0 0 0 1px color-mix(in srgb, var(--accent) 70%, transparent);
+  cursor: grabbing;
+  z-index: 9999;
+  /* Přebíjí .tile transition (250ms transform) — jinak se ghost "rozmazává" za kurzorem */
+  transition: none !important;
+}
+.tile-drag-ghost::before, .tile-drag-ghost::after { transition: none !important; }
+.tile-drag-placeholder {
+  background: color-mix(in srgb, var(--accent) 10%, transparent) !important;
+  border: 2px dashed color-mix(in srgb, var(--accent) 55%, transparent) !important;
+  border-radius: var(--radius-lg);
+  opacity: 1 !important;
+}
+.tile-drag-placeholder > * { visibility: hidden; }
+.tile-drag-chosen {
+  cursor: grabbing;
+}
+.tile-drag-src { opacity: 0.5; }
+/* Během dragu schováme text selection aby kurzor nevybíral */
+body.hub-dragging,
+body.hub-dragging * {
+  user-select: none;
+  cursor: grabbing !important;
 }

@@ -63,6 +63,66 @@ async function probePort(port: number, signal: { aborted: boolean }): Promise<bo
   return false;
 }
 
+interface LaunchCandidate { id: string; label: string; kind: 'dev' | 'static' | 'storybook' }
+
+// Modal picker pro ambiguous launch — tlačítka + "Zapamatovat" checkbox
+function askLaunchChoice(candidates: LaunchCandidate[]): Promise<{ id: string; remember: boolean } | null> {
+  return new Promise((resolve) => {
+    const t = (window as any).t || ((k: string) => k);
+    const savedFocus = document.activeElement as HTMLElement | null;
+    const overlay = document.createElement('div');
+    overlay.className = 'editor-choice-overlay launch-choice-overlay';
+    const esc = (s: string) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
+    overlay.innerHTML = `
+      <div class="editor-choice-box launch-choice-box" role="dialog" aria-modal="true">
+        <div class="editor-choice-msg">${esc(t('workspace.launch.title'))}</div>
+        <div class="launch-choice-list">
+          ${candidates.map(c => `<button class="editor-choice-btn launch-choice-btn" data-id="${esc(c.id)}">${esc(c.label)}</button>`).join('')}
+        </div>
+        <label class="launch-choice-remember">
+          <input type="checkbox" class="launch-choice-remember-cb" checked>
+          <span>${esc(t('workspace.launch.remember'))}</span>
+        </label>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    const buttons = Array.from(overlay.querySelectorAll<HTMLButtonElement>('.launch-choice-btn'));
+    const checkbox = overlay.querySelector<HTMLInputElement>('.launch-choice-remember-cb')!;
+    const cleanup = (): void => {
+      overlay.remove();
+      document.removeEventListener('keydown', keyHandler);
+      if (savedFocus && typeof savedFocus.focus === 'function') { try { savedFocus.focus(); } catch {} }
+    };
+    buttons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-id');
+        if (!id) return;
+        const remember = checkbox.checked;
+        cleanup();
+        resolve({ id, remember });
+      });
+    });
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) { cleanup(); resolve(null); }
+    });
+    const focusable: HTMLElement[] = [...buttons, checkbox];
+    const keyHandler = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') { cleanup(); resolve(null); return; }
+      if (e.key === 'Tab') {
+        const active = document.activeElement as HTMLElement;
+        const idx = focusable.indexOf(active);
+        e.preventDefault();
+        const next = e.shiftKey
+          ? (idx <= 0 ? focusable.length - 1 : idx - 1)
+          : (idx < 0 || idx === focusable.length - 1 ? 0 : idx + 1);
+        focusable[next].focus();
+      }
+    };
+    document.addEventListener('keydown', keyHandler);
+    if (buttons[0]) buttons[0].focus();
+  });
+}
+
 async function createWorkspace(projectPath: string, projectName: string, projectType?: string): Promise<WorkspaceInstance> {
   const STAGE = (_s: string) => {};
   const wrapper = document.createElement('div');
@@ -271,6 +331,52 @@ async function createWorkspace(projectPath: string, projectName: string, project
     else if (pkgScripts.start) devCommand = 'npm start';
     else if (pkgScripts.serve) devCommand = 'npm run serve';
     else devCommand = null;
+  }
+
+  // ── Launch picker — detekce víc možných entry pointů ──
+  const launchCandidates: Array<{ id: string; label: string; kind: 'dev' | 'static' | 'storybook' }> = [];
+  if (devCommand && autostartEntry.cmd !== null) {
+    const portPart = autostartEntry.port != null ? autostartEntry.port : '?';
+    launchCandidates.push({
+      id: 'dev',
+      kind: 'dev',
+      label: t('workspace.launch.dev', { cmd: devCommand, port: portPart }),
+    });
+  }
+  // Static index.html jako samostatná volba — jen pokud projekt NEMÁ dev server v AUTOSTART
+  // (Vite/Next mají index.html jako součást dev serveru, nechceme duplicitní volbu).
+  if (!devCommand || autostartEntry.cmd === null) {
+    try {
+      const hasIndex = await levis.readFile(projectPath + '\\index.html');
+      if (typeof hasIndex === 'string') {
+        launchCandidates.push({
+          id: 'static',
+          kind: 'static',
+          label: t('workspace.launch.static'),
+        });
+      }
+    } catch {}
+  }
+  if (pkgScripts.storybook) {
+    launchCandidates.push({
+      id: 'storybook',
+      kind: 'storybook',
+      label: t('workspace.launch.storybook'),
+    });
+  }
+
+  // Per-projekt stored volba
+  let launchChoice: string | null = null;
+  if (launchCandidates.length >= 2) {
+    try {
+      const storedMap = (await levis.storeGet('hubProjectLaunchChoice')) || {};
+      const stored = storedMap[projectPath];
+      if (stored && launchCandidates.some(c => c.id === stored)) {
+        launchChoice = stored;
+      }
+    } catch {}
+  } else if (launchCandidates.length === 1) {
+    launchChoice = launchCandidates[0].id;
   }
 
 
@@ -590,13 +696,30 @@ async function createWorkspace(projectPath: string, projectName: string, project
     if (v === false) autostartEnabled = false;
   } catch {}
 
+  // Pokud máme víc kandidátů a uložená volba není, zeptej se
+  if (!deployUrl && launchChoice === null && launchCandidates.length >= 2 && autostartEnabled) {
+    const picked = await askLaunchChoice(launchCandidates);
+    if (picked) {
+      launchChoice = picked.id;
+      if (picked.remember) {
+        try {
+          const map = (await levis.storeGet('hubProjectLaunchChoice')) || {};
+          map[projectPath] = picked.id;
+          await levis.storeSet('hubProjectLaunchChoice', map);
+        } catch {}
+      }
+    }
+  }
+
   // Deploy URL má nejvyšší prioritu — pokud existuje, načti rovnou
   if (deployUrl) {
     switchRightPanel('browser');
     browserInstance.setUrl(deployUrl);
     showToast(t('toast.deployUrl', { url: deployUrl }), 'info');
-  } else if (autostartEnabled && devCommand && autostartEntry.cmd !== null) {
+  } else if (autostartEnabled && launchChoice === 'dev' && devCommand && autostartEntry.cmd !== null) {
     switchRightPanel('browser');
+    // Ukaž loader s labelem podle typu (Vite / Next / Expo / ...)
+    browserInstance.setLoading?.(true, t('workspace.launch.startingDev', { type: resolvedType }));
     startBackgroundDevPty(termCwd, devCommand);
     const btnDevLog = statusBar.querySelector('.status-btn-devlog') as HTMLElement;
     if (btnDevLog) btnDevLog.style.display = '';
@@ -604,22 +727,59 @@ async function createWorkspace(projectPath: string, projectName: string, project
     if (autostartEntry.port != null) {
       const probeSignal = { aborted: false };
       cleanups.push(() => { probeSignal.aborted = true; });
+      // Paralelní race: [A] default port probe, [B] detekce alt portu v PTY logu (port collision / Vite auto-increment)
+      let resolved = false;
+      const resolveOnce = (port: number, fromLog: boolean): void => {
+        if (resolved || probeSignal.aborted) return;
+        resolved = true;
+        const url = `http://localhost:${port}`;
+        // Webview začne načítat URL → did-start-loading si loader řídí sám
+        browserInstance.setLoading?.(false);
+        browserInstance.setUrl(url);
+        if (fromLog && port !== autostartEntry.port) {
+          showToast(t('workspace.launch.altPortDetected', { port }), 'success');
+        } else {
+          showToast(t('toast.devStarted', { name: resolvedType, port }), 'success');
+        }
+      };
+      // [A] Probe default port
       (async () => {
         const ok = await probePort(autostartEntry.port!, probeSignal);
-        if (probeSignal.aborted) return;
-        // Pokus o detekci jineho portu z dev logu (port collision)
-        let actualPort = autostartEntry.port!;
-        const m = devLogBuffer.join('').match(/https?:\/\/(?:localhost|127\.0\.0\.1):(\d+)/);
-        if (m) actualPort = parseInt(m[1], 10);
-        const url = `http://localhost:${actualPort}`;
-        if (ok || m) {
-          browserInstance.setUrl(url);
-          showToast(t('toast.devStarted', { name: resolvedType, port: actualPort }), 'success');
-        } else {
-          showToast(t('toast.devTimeout'), 'error');
-        }
+        if (!probeSignal.aborted && ok) resolveOnce(autostartEntry.port!, false);
       })();
+      // [B] Průběžný polling logu — jakmile najde Local: http://localhost:PORT, vyřeš
+      const logRegex = /https?:\/\/(?:localhost|127\.0\.0\.1):(\d+)/;
+      const logPollId = window.setInterval(() => {
+        if (resolved || probeSignal.aborted) { window.clearInterval(logPollId); return; }
+        const m = devLogBuffer.join('').match(logRegex);
+        if (m) {
+          const port = parseInt(m[1], 10);
+          resolveOnce(port, port !== autostartEntry.port);
+          window.clearInterval(logPollId);
+        }
+      }, 400);
+      cleanups.push(() => window.clearInterval(logPollId));
+      // Timeout fallback — po 30 s bez výsledku actionable toast
+      window.setTimeout(() => {
+        window.clearInterval(logPollId);
+        if (resolved || probeSignal.aborted) return;
+        resolved = true;
+        browserInstance.setLoading?.(false);
+        showToast(t('workspace.launch.portTimeout', { port: autostartEntry.port! }), 'error', {
+          action: { label: t('workspace.launch.showTerminal'), onClick: () => {
+            const btn = statusBar.querySelector('.status-btn-devlog') as HTMLElement | null;
+            if (btn) btn.click();
+          }},
+        });
+      }, 30_000);
     }
+  } else if (launchChoice === 'static') {
+    switchRightPanel('browser');
+    const fileUrl = 'file:///' + projectPath.replace(/\\/g, '/').replace(/ /g, '%20') + '/index.html';
+    browserInstance.setUrl(fileUrl);
+  } else if (launchChoice === 'storybook') {
+    // Storybook spustí handler status-btn-storybook níže (detekuje launchChoice === 'storybook')
+    switchRightPanel('browser');
   } else if (hasNoPreview) {
     // Electron/Tauri/CLI/knihovna — pravy panel je k nicemu, defaultne editor pres celou sirku
     switchRightPanel('hidden');
@@ -662,6 +822,10 @@ async function createWorkspace(projectPath: string, projectName: string, project
       }
     });
     statusBar.appendChild(btnSb);
+    // Pokud user zvolil Storybook v launch pickeru, spusť ho auto
+    if (launchChoice === 'storybook') {
+      setTimeout(() => btnSb.click(), 0);
+    }
   }
 
   // Dev log floating panel toggle
@@ -1182,8 +1346,12 @@ async function createWorkspace(projectPath: string, projectName: string, project
   // ── Refresh on window focus ───────────
   // Pouze artifact + git branch — file tree a velikosti se obnovuji jen
   // po dojeti commandu (PTY idle) nebo manualnim refreshi z toolbaru.
+  // Skip refresh kdyz user pracuje v inspect/annotate/popoveru — jinak se mu stranka
+  // reloaduje hned po kliknutí (focus window event).
   const onWindowFocus = () => {
-    browserInstance.refresh();
+    if (!browserInstance.isInteracting?.()) {
+      browserInstance.refresh();
+    }
     updateGitStatus();
   };
   window.addEventListener('focus', onWindowFocus);
