@@ -24,9 +24,10 @@ function getCurrentPkgVersion() {
 
 function shortenSummary(msg) {
   // Odstraní conventional-commit prefix (feat:, fix(scope):, chore(release):, …)
+  // a "vX.Y.Z —" / "vX.Y.Z:" version label, zachová zbytek popisu.
   return msg
     .replace(/^[a-z]+(?:\([^)]+\))?:\s*/i, '')
-    .replace(/\s+—\s+.*$/, '')   // useknout vše za "—" (delší doplnění)
+    .replace(/^v\d+(?:\.\d+){1,2}\s*[—:-]\s*/i, '')
     .trim();
 }
 
