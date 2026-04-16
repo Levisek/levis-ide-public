@@ -1391,26 +1391,23 @@ async function createWorkspace(projectPath: string, projectName: string, project
   }
 
   // ── Refresh on window focus ───────────
-  // Jen po skutečném přepnutí aplikací/oken — ne při interních klicích v rámci okna.
-  // V Electronu focus event padá i při kliku z webview na jinou komponentu (sidebar/toolbar),
-  // což by refreshnulo stránku a uživatele to dráždilo. Proto refreshujeme pouze pokud
-  // okno předtím skutečně dostalo blur (ztratilo focus → OS apka/okno přepnuto).
-  let windowWasBlurred = false;
-  const onWindowBlur = () => { windowWasBlurred = true; };
-  const onWindowFocus = () => {
-    if (!windowWasBlurred) return;
-    windowWasBlurred = false;
+  // Použijeme OS-level BrowserWindow blur/focus posílané z main procesu.
+  // DOM window focus/blur v rendereru fire i při interním kliku na webview
+  // (Chromium přesouvá DOM focus do webview guest view), takže přes window events
+  // se refresh triggeroval i při běžném klikání uvnitř okna. BrowserWindow.on('blur')
+  // se naopak firuje jen při OS přepnutí aplikace (Alt+Tab, taskbar, jiné okno).
+  let osWasBlurred = false;
+  const unsubBlur = levis.onWindowOsBlur?.(() => { osWasBlurred = true; });
+  const unsubFocus = levis.onWindowOsFocus?.(() => {
+    if (!osWasBlurred) return;
+    osWasBlurred = false;
     if (!browserInstance.isInteracting?.()) {
       browserInstance.refresh();
     }
     updateGitStatus();
-  };
-  window.addEventListener('focus', onWindowFocus);
-  window.addEventListener('blur', onWindowBlur);
-  cleanups.push(() => {
-    window.removeEventListener('focus', onWindowFocus);
-    window.removeEventListener('blur', onWindowBlur);
   });
+  if (unsubBlur) cleanups.push(unsubBlur);
+  if (unsubFocus) cleanups.push(unsubFocus);
 
   // ── Pop-out button ────────────────────
   let poppedOut = false;

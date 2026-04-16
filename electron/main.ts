@@ -61,6 +61,16 @@ function createWindow(): void {
 
   registerIpcHandlers(mainWindow);
 
+  // OS-level focus/blur — posíláme do rendereru místo window.addEventListener(focus|blur),
+  // které v rendereru fire i při interním kliku na webview (Chromium DOM focus capture).
+  // BrowserWindow.on('blur'/'focus') se fire jen při přepnutí OS okna/aplikace.
+  mainWindow.on('blur', () => {
+    try { mainWindow?.webContents.send('window:osBlur'); } catch {}
+  });
+  mainWindow.on('focus', () => {
+    try { mainWindow?.webContents.send('window:osFocus'); } catch {}
+  });
+
   // Webview validátor — povol http(s) (dev servery, mobile preview) + file:// (HTML projekt preview)
   // + about:blank (init). Bloky data:/javascript:/vbscript: jako XSS exfil vector.
   mainWindow.webContents.on('will-attach-webview', (e, webPreferences, params) => {

@@ -7,6 +7,16 @@ const api = {
   close: () => ipcRenderer.send('window:close'),
   hardReload: () => ipcRenderer.send('window:hardReload'),
   forceQuit: () => ipcRenderer.send('app:forceQuit'),
+  onWindowOsFocus: (cb: () => void) => {
+    const handler = () => cb();
+    ipcRenderer.on('window:osFocus', handler);
+    return () => { ipcRenderer.off('window:osFocus', handler); };
+  },
+  onWindowOsBlur: (cb: () => void) => {
+    const handler = () => cb();
+    ipcRenderer.on('window:osBlur', handler);
+    return () => { ipcRenderer.off('window:osBlur', handler); };
+  },
   onConfirmQuit: (cb: () => void) => {
     const handler = () => cb();
     ipcRenderer.on('app:confirmQuit', handler);
