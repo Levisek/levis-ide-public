@@ -56,6 +56,12 @@ const EN: Dict = {
   'settings.save':             'Save',
   'settings.close':            'Close',
   'settings.saved':            'Settings saved',
+  'settings.desktopShortcut':  'Desktop shortcut',
+  'settings.createShortcut':   'Create desktop shortcut',
+  'settings.shortcutOk':       'Desktop shortcut created',
+  'settings.shortcutDev':      'Shortcut created (dev build — points to electron.exe)',
+  'settings.shortcutWinOnly':  'Desktop shortcut is Windows-only',
+  'settings.shortcutFail':     'Failed to create shortcut: {err}',
 
   // ── Workspace toolbar / panels ──────
   'ws.terminal':         'Terminal',
@@ -590,6 +596,12 @@ const CS: Dict = {
   'settings.save':             'Uložit',
   'settings.close':            'Zavřít',
   'settings.saved':            'Nastavení uloženo',
+  'settings.desktopShortcut':  'Zástupce na ploše',
+  'settings.createShortcut':   'Vytvořit zástupce na ploše',
+  'settings.shortcutOk':       'Zástupce vytvořen na ploše',
+  'settings.shortcutDev':      'Zástupce vytvořen (dev build — míří na electron.exe)',
+  'settings.shortcutWinOnly':  'Zástupce na ploše je jen pro Windows',
+  'settings.shortcutFail':     'Nepodařilo se vytvořit zástupce: {err}',
 
   // ── Workspace toolbar / panels ──────
   'ws.terminal':         'Terminál',

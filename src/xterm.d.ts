@@ -4,6 +4,7 @@ interface LevisAPI {
   clipboardRead: () => Promise<string>;
   clipboardReadImage: (projectPath: string) => Promise<string | null>;
   clipboardWrite: (text: string) => void;
+  createDesktopShortcut: () => Promise<{ success: boolean; path?: string; dev?: boolean; error?: string; message?: string }>;
   mobileEnableTouch: (webContentsId: number) => Promise<boolean>;
   mobileDisableTouch: (webContentsId: number) => Promise<boolean>;
   mobileSetColorScheme: (webContentsId: number, scheme: 'dark' | 'light') => Promise<boolean>;

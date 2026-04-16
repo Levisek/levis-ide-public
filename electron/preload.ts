@@ -53,6 +53,7 @@ const api = {
   clipboardRead: () => ipcRenderer.invoke('clipboard:read'),
   clipboardReadImage: (projectPath: string) => ipcRenderer.invoke('clipboard:readImage', projectPath),
   clipboardWrite: (text: string) => ipcRenderer.send('clipboard:write', text),
+  createDesktopShortcut: () => ipcRenderer.invoke('shell:createDesktopShortcut'),
 
   // Touch input do webview pres CDP
   mobileEnableTouch: (webContentsId: number) => ipcRenderer.invoke('mobile:enableTouch', webContentsId),

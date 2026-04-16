@@ -1,4 +1,4 @@
-import { ipcMain, clipboard, nativeImage, app } from 'electron';
+import { ipcMain, clipboard, nativeImage, app, shell } from 'electron';
 import * as os from 'os';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -20,5 +20,30 @@ export function registerEnvHandlers(): void {
     // Auto-smazat po 60s
     setTimeout(() => { try { fs.unlinkSync(filePath); } catch {} }, 60000);
     return filePath;
+  });
+
+  // Vytvoří zástupce LevisIDE na ploše (Windows .lnk)
+  ipcMain.handle('shell:createDesktopShortcut', () => {
+    if (process.platform !== 'win32') {
+      return { success: false, error: 'platform', message: 'Jen Windows (.lnk)' };
+    }
+    try {
+      const desktop = app.getPath('desktop');
+      const target = process.execPath;
+      const isDev = /[\\/]electron[\\/]dist[\\/]electron\.exe$/i.test(target)
+                 || /[\\/]node_modules[\\/]electron[\\/]/i.test(target);
+      const shortcutPath = path.join(desktop, 'LevisIDE.lnk');
+      const ok = shell.writeShortcutLink(shortcutPath, 'replace', {
+        target,
+        cwd: path.dirname(target),
+        description: 'LevisIDE — Project Hub & Workspace',
+        icon: target,
+        iconIndex: 0,
+      });
+      if (!ok) return { success: false, error: 'write', message: 'writeShortcutLink selhalo' };
+      return { success: true, path: shortcutPath, dev: isDev };
+    } catch (e: any) {
+      return { success: false, error: 'exception', message: String(e?.message || e) };
+    }
   });
 }

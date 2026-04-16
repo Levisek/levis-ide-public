@@ -1282,6 +1282,10 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
             <option value="cs">Čeština</option>
           </select>
         </label>
+        <div class="settings-row">
+          <span>${t('settings.desktopShortcut')}</span>
+          <button class="settings-btn-shortcut" type="button">${t('settings.createShortcut')}</button>
+        </div>
         <div class="settings-actions">
           <button class="settings-save">${t('settings.save')}</button>
           <button class="settings-close">${t('settings.close')}</button>
@@ -1331,6 +1335,25 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
     });
 
     settingsPanel.querySelector('.settings-close')!.addEventListener('click', () => settingsPanel.remove());
+
+    settingsPanel.querySelector('.settings-btn-shortcut')?.addEventListener('click', async () => {
+      const btn = settingsPanel.querySelector('.settings-btn-shortcut') as HTMLButtonElement;
+      btn.disabled = true;
+      try {
+        const res = await (levis as any).createDesktopShortcut();
+        if (res?.success) {
+          showToast(res.dev ? t('settings.shortcutDev') : t('settings.shortcutOk'), 'success');
+        } else if (res?.error === 'platform') {
+          showToast(t('settings.shortcutWinOnly'), 'warning');
+        } else {
+          showToast(t('settings.shortcutFail', { err: res?.message || res?.error || '?' }), 'error');
+        }
+      } catch (e: any) {
+        showToast(t('settings.shortcutFail', { err: String(e?.message || e) }), 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    });
   }
 
   (window as any).openHubSettings = openSettingsModal;
