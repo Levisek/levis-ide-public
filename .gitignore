@@ -8,6 +8,6 @@ release/
 .env
 .env.*
 .claude/
-scripts/
+/scripts/
 
 .audit/

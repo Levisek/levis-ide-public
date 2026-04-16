@@ -766,6 +766,21 @@
   gap: var(--space-3); margin-bottom: var(--space-3);
   font-size: 13px; color: var(--text);
 }
+.settings-row-hint {
+  display: block;
+  color: var(--text-muted);
+  font-size: 11px;
+  margin-top: 2px;
+  font-weight: 400;
+}
+.settings-btn-billing {
+  background: var(--bg-elev-2); color: var(--text); border: 1px solid var(--border);
+  border-radius: var(--radius-pill); padding: 6px var(--space-4); cursor: pointer;
+  font-size: 12px; font-weight: 500;
+  transition: all var(--t-fast) var(--ease);
+}
+.settings-btn-billing:hover { border-color: var(--accent); color: var(--accent); }
+.settings-btn-billing:disabled { opacity: 0.5; cursor: wait; }
 .settings-btn-shortcut {
   background: var(--bg-elev-2); color: var(--text); border: 1px solid var(--border);
   border-radius: var(--radius-pill); padding: 6px var(--space-4); cursor: pointer;

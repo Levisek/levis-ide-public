@@ -75,6 +75,16 @@ interface LevisAPI {
   usageAccount: () => Promise<any>;
   usageRateLimits: () => Promise<any>;
   onUsageUpdated: (cb: () => void) => () => void;
+  billingGetHookStatus: () => Promise<{
+    scriptInstalled: boolean;
+    ourHookActive: boolean;
+    hasOtherStatusline: boolean;
+    otherStatuslineCmd: string | null;
+    dumpAgeMs: number | null;
+    wrapperActive: boolean;
+  }>;
+  billingInstallHook: (opts?: { wrapExisting?: boolean }) => Promise<{ success: boolean; error?: string; status?: any }>;
+  billingUninstallHook: () => Promise<{ success: boolean; restored?: boolean; error?: string; status?: any }>;
 }
 
 declare const levis: LevisAPI;

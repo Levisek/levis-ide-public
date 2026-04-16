@@ -281,6 +281,30 @@ function formatSizeCompact(bytes: number): string {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
 
+function askBillingInstallChoice(): Promise<'wrap' | 'replace' | 'cancel'> {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'about-overlay';
+    overlay.innerHTML = `
+      <div class="about-box" style="max-width:420px;text-align:left">
+        <h3 style="margin:0 0 12px">${t('settings.liveBilling')}</h3>
+        <p style="color:var(--text-soft);font-size:13px;line-height:1.55;margin:0 0 16px">${t('settings.liveBillingReplaceQ')}</p>
+        <div style="display:flex;gap:8px;flex-direction:column">
+          <button class="settings-save" data-ch="wrap">${t('settings.liveBillingWrap')}</button>
+          <button class="settings-close" data-ch="replace">${t('settings.liveBillingReplace')}</button>
+          <button class="settings-close" data-ch="cancel" style="opacity:0.7">${t('settings.liveBillingCancel')}</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    const close = (v: 'wrap' | 'replace' | 'cancel') => { overlay.remove(); resolve(v); };
+    overlay.querySelectorAll('[data-ch]').forEach((b) => {
+      b.addEventListener('click', () => close((b as HTMLElement).dataset.ch as any));
+    });
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close('cancel'); });
+  });
+}
+
 function showAboutDialog(): void {
   if (document.querySelector('.about-overlay')) return;
   const overlay = document.createElement('div');
@@ -1451,6 +1475,10 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
           <span>${t('settings.desktopShortcut')}</span>
           <button class="settings-btn-shortcut" type="button">${t('settings.createShortcut')}</button>
         </div>
+        <div class="settings-row" data-billing-row>
+          <span>${t('settings.liveBilling')}<br><small class="settings-row-hint" data-billing-state></small></span>
+          <button class="settings-btn-billing" type="button" data-billing-action="">…</button>
+        </div>
         <div class="settings-actions">
           <button class="settings-save">${t('settings.save')}</button>
           <button class="settings-close">${t('settings.close')}</button>
@@ -1500,6 +1528,53 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
     });
 
     settingsPanel.querySelector('.settings-close')!.addEventListener('click', () => settingsPanel.remove());
+
+    // Billing hook install / uninstall
+    async function refreshBillingRow(): Promise<void> {
+      const btn = settingsPanel.querySelector('.settings-btn-billing') as HTMLButtonElement | null;
+      const stateEl = settingsPanel.querySelector('[data-billing-state]') as HTMLElement | null;
+      if (!btn || !stateEl) return;
+      try {
+        const status = await (levis as any).billingGetHookStatus();
+        if (status?.ourHookActive) {
+          stateEl.textContent = t('settings.liveBillingActive');
+          btn.textContent = t('settings.liveBillingUninstall');
+          btn.dataset.billingAction = 'uninstall';
+        } else {
+          stateEl.textContent = t('settings.liveBillingInactive');
+          btn.textContent = t('settings.liveBillingInstall');
+          btn.dataset.billingAction = 'install';
+        }
+      } catch {}
+    }
+    refreshBillingRow();
+
+    settingsPanel.querySelector('.settings-btn-billing')?.addEventListener('click', async () => {
+      const btn = settingsPanel.querySelector('.settings-btn-billing') as HTMLButtonElement;
+      const action = btn.dataset.billingAction;
+      btn.disabled = true;
+      try {
+        if (action === 'install') {
+          const status = await (levis as any).billingGetHookStatus();
+          let wrapExisting = false;
+          if (status?.hasOtherStatusline) {
+            const choice = await askBillingInstallChoice();
+            if (choice === 'cancel') { btn.disabled = false; return; }
+            wrapExisting = choice === 'wrap';
+          }
+          const r = await (levis as any).billingInstallHook({ wrapExisting });
+          if (r?.success) showToast(t('settings.liveBillingInstalled'), 'success');
+          else showToast(String(r?.error || '?'), 'error');
+        } else if (action === 'uninstall') {
+          const r = await (levis as any).billingUninstallHook();
+          if (r?.success) showToast(t('settings.liveBillingUninstalled'), 'success');
+          else showToast(String(r?.error || '?'), 'error');
+        }
+        await refreshBillingRow();
+      } finally {
+        btn.disabled = false;
+      }
+    });
 
     settingsPanel.querySelector('.settings-btn-shortcut')?.addEventListener('click', async () => {
       const btn = settingsPanel.querySelector('.settings-btn-shortcut') as HTMLButtonElement;

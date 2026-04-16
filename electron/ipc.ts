@@ -10,6 +10,7 @@ import { registerUsageHandlers } from './ipc/usage';
 import { registerEnvHandlers } from './ipc/env';
 import { registerTouchInputHandlers } from './ipc/touch-input';
 import { registerCaptureHandlers } from './ipc/capture';
+import { registerBillingHandlers } from './ipc/billing';
 
 export function registerIpcHandlers(mainWindow: BrowserWindow): void {
   registerWindowHandlers(mainWindow);
@@ -23,6 +24,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
   registerEnvHandlers();
   registerTouchInputHandlers();
   registerCaptureHandlers();
+  registerBillingHandlers();
 }
 
 export const killAllPty = _killAllPty;

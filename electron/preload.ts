@@ -147,6 +147,11 @@ const api = {
     ipcRenderer.on('usage:updated', handler);
     return () => { ipcRenderer.off('usage:updated', handler); };
   },
+
+  // Billing hook install (Claude Code statusLine dump)
+  billingGetHookStatus: () => ipcRenderer.invoke('billing:getHookStatus'),
+  billingInstallHook: (opts?: { wrapExisting?: boolean }) => ipcRenderer.invoke('billing:installHook', opts || {}),
+  billingUninstallHook: () => ipcRenderer.invoke('billing:uninstallHook'),
 };
 
 contextBridge.exposeInMainWorld('levis', api);
