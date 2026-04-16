@@ -100,9 +100,6 @@
   50% { opacity: 1; }
 }
 .tab-icon { font-size: 14px; }
-.tab-hub { min-width: auto !important; padding: 0 var(--space-3) !important; gap: 0 !important; }
-.tab-hub .tab-icon { color: var(--accent); }
-.tab-hub.active .tab-icon { color: var(--accent); filter: drop-shadow(0 0 4px var(--accent-glow)); }
 .tab-close {
   position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
   font-size: 11px; opacity: 0;
