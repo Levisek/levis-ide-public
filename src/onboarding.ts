@@ -59,8 +59,8 @@ function showModal(opts: {
   modal.style.cssText = [
     `max-width:${opts.wide ? '680px' : '520px'}`,
     'width:90vw',
-    'background:var(--bg-panel,#1a1a24)',
-    'border:1px solid var(--border,#2d303c)',
+    'background:var(--bg-elev-1,#1e2029)',
+    'border:1px solid var(--border-strong,#3a3d4b)',
     'border-radius:12px',
     'padding:28px 32px',
     'box-shadow:0 20px 60px rgba(0,0,0,0.5)',
@@ -93,8 +93,8 @@ function showModal(opts: {
       'cursor:pointer',
       'font-family:inherit',
       b.primary
-        ? 'background:var(--accent,#ff7a1a);border:none;color:#fff'
-        : 'background:transparent;border:1px solid var(--border,#2d303c);color:var(--text,#e8e8f0)',
+        ? 'background:var(--accent,#ff7a1a);border:1px solid var(--accent,#ff7a1a);color:#fff'
+        : 'background:var(--bg-elev-2,#272a35);border:1px solid var(--border-strong,#3a3d4b);color:var(--text,#e8e8f0)',
     ].join(';');
     btn.addEventListener('click', async () => {
       try { await b.onClick(); } catch (e) { console.error('[onboarding btn]', e); }
@@ -165,7 +165,7 @@ function runCcInstallStep(): Promise<StepResult> {
 
     const bodyHtml = `
       <p>${t('onboarding.ccInstallBody')}</p>
-      <p style="margin-top:12px;padding:10px;background:rgba(0,0,0,0.3);border-radius:6px;font-family:monospace;font-size:12px;color:var(--text,#e8e8f0);overflow-x:auto;white-space:nowrap">${cmd.trim()}</p>
+      <p style="margin-top:12px;padding:10px;background:var(--bg-deep,#0d0f14);border:1px solid var(--border,#2d303c);border-radius:6px;font-family:monospace;font-size:12px;color:var(--text,#e8e8f0);overflow-x:auto;white-space:nowrap">${cmd.trim()}</p>
     `;
 
     showModal({
@@ -266,11 +266,12 @@ function runBillingOptIn(): Promise<StepResult> {
 // ── Main orchestrator ───────────────────────────────────────────────
 export async function runOnboarding(): Promise<void> {
   try {
-    // 1. Welcome tour
-    const welcomeSeen = await levis.storeGet('welcomeSeen');
+    // 1. Welcome tour — vlastní klíč 'welcomeTourV2Seen', aby se tour ukázal
+    // i uživatelům po upgradu z verze, kde běžel legacy 'welcomeSeen' fallback.
+    const welcomeSeen = await levis.storeGet('welcomeTourV2Seen');
     if (!welcomeSeen) {
       await runWelcomeTour();
-      await levis.storeSet('welcomeSeen', true);
+      await levis.storeSet('welcomeTourV2Seen', true);
     }
 
     // 2. CC detection & install

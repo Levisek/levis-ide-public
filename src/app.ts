@@ -22,10 +22,14 @@ async function init(): Promise<void> {
   await initI18n();
   applyI18nDom(document);
 
-  // Apply saved theme
+  // Apply saved theme — default 'mid' (lepší kontrast než dark)
   try {
-    const savedTheme = await levis.storeGet('theme');
-    if (savedTheme && savedTheme !== 'dark') applyTheme(savedTheme);
+    let savedTheme = await levis.storeGet('theme');
+    if (!savedTheme) {
+      savedTheme = 'mid';
+      await levis.storeSet('theme', 'mid');
+    }
+    if (savedTheme !== 'dark') applyTheme(savedTheme);
   } catch {}
   document.getElementById('btn-min')!.addEventListener('click', () => levis.minimize());
   document.getElementById('btn-max')!.addEventListener('click', () => levis.maximize());

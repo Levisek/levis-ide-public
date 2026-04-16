@@ -1504,7 +1504,7 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
       (settingsPanel.querySelector('#set-cc-notifications') as HTMLInputElement).checked = all.ccNotifications !== false;
       (settingsPanel.querySelector('#set-cc-sound') as HTMLInputElement).checked = all.ccSound !== false;
       (settingsPanel.querySelector('#set-autostart-dev') as HTMLInputElement).checked = all.autostartDev !== false;
-      (settingsPanel.querySelector('#set-theme') as HTMLSelectElement).value = all.theme || 'dark';
+      (settingsPanel.querySelector('#set-theme') as HTMLSelectElement).value = all.theme || 'mid';
       (settingsPanel.querySelector('#set-locale') as HTMLSelectElement).value = all.locale || 'en';
     });
 
