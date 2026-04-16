@@ -8,10 +8,16 @@
 // Před uploadem přesune předchozí latest do /history/ (keep last 5 versions).
 //
 // Env (načtené z .env.release nebo shell):
-//   WEDOS_FTP_HOST     = ftp.levinger.cz
+//   WEDOS_FTP_HOST     = 255473.w73.wedos.net (nebo podobné)
 //   WEDOS_FTP_USER     = ...
 //   WEDOS_FTP_PASS     = ...
-//   WEDOS_FTP_SECURE   = "true" (FTPS)|"false"
+//   WEDOS_FTP_SECURE   = "true" (FTPS)|"false"   default: true
+//   WEDOS_REMOTE_BASE  = /www/domains/levinger.cz/levis-ide/updates   (default)
+//
+// Použití:
+//   node scripts/upload-release.mjs            — nahraje artefakty do latest/
+//   node scripts/upload-release.mjs --setup    — navíc nahraje .htaccess a zajistí strukturu
+//   node scripts/upload-release.mjs --dry-run  — jen vypíše co by udělal
 
 import * as ftp from 'basic-ftp';
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
@@ -38,6 +44,10 @@ const HOST = process.env.WEDOS_FTP_HOST;
 const USER = process.env.WEDOS_FTP_USER;
 const PASS = process.env.WEDOS_FTP_PASS;
 const SECURE = (process.env.WEDOS_FTP_SECURE ?? 'true') === 'true';
+const REMOTE_BASE_ENV = process.env.WEDOS_REMOTE_BASE;
+
+const SETUP_MODE = process.argv.includes('--setup');
+const DRY_RUN = process.argv.includes('--dry-run');
 
 if (!HOST || !USER || !PASS) {
   console.error('✗ Chybí FTP credentials (WEDOS_FTP_HOST / USER / PASS).');
@@ -67,21 +77,51 @@ for (const f of FILES) {
   }
 }
 
-const REMOTE_BASE = '/levis-ide/updates';
+// Defaultní cesta: /www/domains/levinger.cz/levis-ide/updates
+// (WEDOS multihosting chroot je root filesystému, webové soubory pod /www/domains/)
+// Lze přepsat přes WEDOS_REMOTE_BASE env.
+const REMOTE_BASE = REMOTE_BASE_ENV || '/www/domains/levinger.cz/levis-ide/updates';
 const REMOTE_LATEST = `${REMOTE_BASE}/latest`;
 const REMOTE_HISTORY = `${REMOTE_BASE}/history`;
+const HTACCESS_LOCAL = resolve(ROOT, 'build', 'updates.htaccess');
+const HTACCESS_REMOTE = `${REMOTE_BASE}/.htaccess`;
 
 const client = new ftp.Client(30000);
 client.ftp.verbose = false;
 
+if (DRY_RUN) {
+  console.log('\n[DRY RUN] Nebudu se připojovat, jen vypíšu co by se stalo:');
+  console.log(`  Host:          ${HOST}`);
+  console.log(`  User:          ${USER}`);
+  console.log(`  Secure:        ${SECURE}`);
+  console.log(`  Remote base:   ${REMOTE_BASE}`);
+  console.log(`  latest path:   ${REMOTE_LATEST}`);
+  console.log(`  history path:  ${REMOTE_HISTORY}`);
+  console.log(`  setup mode:    ${SETUP_MODE} (by nahrál .htaccess do ${REMOTE_BASE})`);
+  console.log(`  Files:`);
+  for (const f of FILES) console.log(`    ${f.remote}`);
+  process.exit(0);
+}
+
 try {
-  console.log(`\n→ Připojuji se k ${HOST}…`);
+  console.log(`\n→ Připojuji se k ${HOST} (secure=${SECURE})…`);
   await client.access({ host: HOST, user: USER, password: PASS, secure: SECURE });
   console.log('✓ connected');
 
   // Zajisti cílové složky
+  console.log(`\n→ ensureDir ${REMOTE_LATEST}`);
   await client.ensureDir(REMOTE_LATEST);
+  console.log(`→ ensureDir ${REMOTE_HISTORY}`);
   await client.ensureDir(REMOTE_HISTORY);
+
+  // Setup mód: nahraj .htaccess do updates/
+  if (SETUP_MODE && existsSync(HTACCESS_LOCAL)) {
+    console.log(`\n→ Setup: upload .htaccess → ${HTACCESS_REMOTE}`);
+    await client.cd(REMOTE_BASE);
+    await client.uploadFrom(HTACCESS_LOCAL, '.htaccess');
+    console.log('  ✓ .htaccess nahrán');
+  }
+
   await client.cd(REMOTE_LATEST);
 
   // Přesuň předchozí EXE (pokud existuje jiné verze než ta, kterou uploadujeme)
@@ -137,7 +177,9 @@ try {
     console.warn(`  ⚠ history cleanup selhal: ${e.message}`);
   }
 
-  console.log(`\n✓ Upload dokončen: https://levinger.cz${REMOTE_LATEST}/latest.yml`);
+  // Konstrukce public HTTPS URL — odřízneme /www/domains/{domain}/ prefix
+  const webPath = REMOTE_LATEST.replace(/^\/www\/domains\/[^/]+\//, '/');
+  console.log(`\n✓ Upload dokončen: https://levinger.cz${webPath}/latest.yml`);
 } catch (e) {
   console.error(`\n✗ FTP selhal: ${e.message}`);
   process.exit(1);
