@@ -1560,13 +1560,31 @@ async function renderUsagePanel(host: HTMLElement): Promise<void> {
   // Realna procenta od Claude Code (pokud je statusline dump dostupny)
   const rl = realLimits?.rate_limits || null;
   const cw = realLimits?.context_window || null;
-  const sessionPct = rl?.five_hour?.used_percentage != null ? Math.round(rl.five_hour.used_percentage) : null;
-  const weeklyPct = rl?.seven_day?.used_percentage != null ? Math.round(rl.seven_day.used_percentage) : null;
+  // Detekce stale dat: pokud resets_at už prošel, snapshot je z doby před resetem,
+  // skutečné procento je 0 — ale soubor se aktualizuje až po dalším CC requestu.
+  const nowMs = Date.now();
+  const sessionResetMs = rl?.five_hour?.resets_at ? rl.five_hour.resets_at * 1000 : 0;
+  const weeklyResetMs = rl?.seven_day?.resets_at ? rl.seven_day.resets_at * 1000 : 0;
+  const sessionStale = sessionResetMs > 0 && sessionResetMs < nowMs;
+  const weeklyStale = weeklyResetMs > 0 && weeklyResetMs < nowMs;
+  const sessionPct = !sessionStale && rl?.five_hour?.used_percentage != null ? Math.round(rl.five_hour.used_percentage) : null;
+  const weeklyPct = !weeklyStale && rl?.seven_day?.used_percentage != null ? Math.round(rl.seven_day.used_percentage) : null;
   const ctxPct = cw?.used_percentage != null ? Math.round(cw.used_percentage) : null;
+  // capturedAt — pro zobrazení "jak stará data"
+  const capturedMs = realLimits?.capturedAt ? Date.parse(realLimits.capturedAt) : 0;
+  function fmtAge(ms: number): string {
+    if (!ms) return '';
+    const diff = Date.now() - ms;
+    if (diff < 60_000) return 'teď';
+    const m = Math.floor(diff / 60_000);
+    if (m < 60) return `${m} min`;
+    const h = Math.floor(m / 60);
+    return `${h}h ${m % 60}m`;
+  }
   function fmtReset(epoch: number | undefined): string {
     if (!epoch) return '';
     const diff = epoch * 1000 - Date.now();
-    if (diff <= 0) return 'reset teď';
+    if (diff <= 0) return 'po resetu — spusť CC';
     const h = Math.floor(diff / 3600000);
     const m = Math.floor((diff % 3600000) / 60000);
     return `reset za ${h}h ${m}m`;
@@ -1601,16 +1619,17 @@ async function renderUsagePanel(host: HTMLElement): Promise<void> {
     </span>
   `;
 
+  const ageStr = capturedMs ? `aktualizováno před ${fmtAge(capturedMs)}` : 'data N/A';
   const realCard = rl ? `
     <div class="usage-stat">
       <div class="usage-stat-label">Session (5h)</div>
-      <div class="usage-stat-val">${sessionPct}<span class="usage-stat-pct-unit">%</span></div>
+      <div class="usage-stat-val">${sessionPct ?? '—'}<span class="usage-stat-pct-unit">${sessionPct !== null ? '%' : ''}</span></div>
       ${hbarHtml(sessionPct, sessColor)}
       <div class="usage-stat-sub">${fmtReset(rl.five_hour?.resets_at)}</div>
     </div>
     <div class="usage-stat">
       <div class="usage-stat-label">Weekly</div>
-      <div class="usage-stat-val">${weeklyPct}<span class="usage-stat-pct-unit">%</span></div>
+      <div class="usage-stat-val">${weeklyPct ?? '—'}<span class="usage-stat-pct-unit">${weeklyPct !== null ? '%' : ''}</span></div>
       ${hbarHtml(weeklyPct, weekColor)}
       <div class="usage-stat-sub">${fmtReset(rl.seven_day?.resets_at)}</div>
     </div>
@@ -1637,7 +1656,7 @@ async function renderUsagePanel(host: HTMLElement): Promise<void> {
 
   host.innerHTML = `
     <div class="usage-bar ${collapsed ? '' : 'usage-bar-expanded'}">
-      <div class="usage-mini">
+      <div class="usage-mini" title="${ageStr}${sessionStale || weeklyStale ? ' — reset proběhl, pusť jakýkoli CC request pro aktualizaci' : ''}">
         <span class="usage-mini-label">Usage</span>
         <span class="usage-mini-pills">${miniPillsHtml}</span>
         <span class="usage-mini-cost">${miniCost}</span>
