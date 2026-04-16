@@ -95,8 +95,10 @@ const AUTOSTART: Record<string, AutostartEntry> = {
   other:      { cmd: null, port: null },
 };
 
+const PORT_PROBE_TIMEOUT_MS = 120_000; // 2 min — stíhají i pomalé Spring Boot / Next build / Flask DB init
+
 async function probePort(port: number, signal: { aborted: boolean }): Promise<boolean> {
-  const deadline = Date.now() + 30_000;
+  const deadline = Date.now() + PORT_PROBE_TIMEOUT_MS;
   while (Date.now() < deadline && !signal.aborted) {
     try {
       await fetch(`http://localhost:${port}`, { method: 'GET', mode: 'no-cors' });
@@ -804,7 +806,7 @@ async function createWorkspace(projectPath: string, projectName: string, project
         }
       }, 400);
       cleanups.push(() => window.clearInterval(logPollId));
-      // Timeout fallback — po 30 s bez výsledku actionable toast
+      // Timeout fallback — po PORT_PROBE_TIMEOUT_MS bez výsledku actionable toast
       window.setTimeout(() => {
         window.clearInterval(logPollId);
         if (resolved || probeSignal.aborted) return;
@@ -816,7 +818,7 @@ async function createWorkspace(projectPath: string, projectName: string, project
             if (btn) btn.click();
           }},
         });
-      }, 30_000);
+      }, PORT_PROBE_TIMEOUT_MS);
     }
   } else if (launchChoice === 'static') {
     switchRightPanel('browser');
@@ -1389,18 +1391,26 @@ async function createWorkspace(projectPath: string, projectName: string, project
   }
 
   // ── Refresh on window focus ───────────
-  // Pouze artifact + git branch — file tree a velikosti se obnovuji jen
-  // po dojeti commandu (PTY idle) nebo manualnim refreshi z toolbaru.
-  // Skip refresh kdyz user pracuje v inspect/annotate/popoveru — jinak se mu stranka
-  // reloaduje hned po kliknutí (focus window event).
+  // Jen po skutečném přepnutí aplikací/oken — ne při interních klicích v rámci okna.
+  // V Electronu focus event padá i při kliku z webview na jinou komponentu (sidebar/toolbar),
+  // což by refreshnulo stránku a uživatele to dráždilo. Proto refreshujeme pouze pokud
+  // okno předtím skutečně dostalo blur (ztratilo focus → OS apka/okno přepnuto).
+  let windowWasBlurred = false;
+  const onWindowBlur = () => { windowWasBlurred = true; };
   const onWindowFocus = () => {
+    if (!windowWasBlurred) return;
+    windowWasBlurred = false;
     if (!browserInstance.isInteracting?.()) {
       browserInstance.refresh();
     }
     updateGitStatus();
   };
   window.addEventListener('focus', onWindowFocus);
-  cleanups.push(() => window.removeEventListener('focus', onWindowFocus));
+  window.addEventListener('blur', onWindowBlur);
+  cleanups.push(() => {
+    window.removeEventListener('focus', onWindowFocus);
+    window.removeEventListener('blur', onWindowBlur);
+  });
 
   // ── Pop-out button ────────────────────
   let poppedOut = false;
