@@ -124,17 +124,17 @@ async function showProjectSearch(projectPath: string, workspace?: any): Promise<
     if (!q) {
       lastHits = [];
       resultsEl.innerHTML = '';
-      statusEl.textContent = 'Začni psát pro hledání';
+      statusEl.textContent = t('search.startTyping');
       return;
     }
-    statusEl.textContent = 'Hledám...';
+    statusEl.textContent = t('search.searching');
     try {
       lastHits = await (window as any).levis.projectSearch(projectPath, q, { caseSensitive, regex: useRegex });
       const fileCount = new Set(lastHits.map(h => h.rel)).size;
-      statusEl.textContent = `${lastHits.length} výskytů v ${fileCount} souborech${lastHits.length >= 200 ? ' (limit 200)' : ''}`;
+      statusEl.textContent = t('search.hitsCount', { hits: lastHits.length, files: fileCount }) + (lastHits.length >= 200 ? ' ' + t('search.limitNote') : '');
       renderResults();
     } catch (err) {
-      statusEl.textContent = 'Chyba: ' + String(err);
+      statusEl.textContent = t('search.errorPrefix', { msg: String(err) });
     }
   }
 
@@ -145,18 +145,18 @@ async function showProjectSearch(projectPath: string, workspace?: any): Promise<
     if (lastHits.length === 0) return;
     if (!confirm(t('search.confirmReplace', { n: lastHits.length, files: new Set(lastHits.map(h => h.rel)).size }))) return;
     const targetFiles = Array.from(new Set(lastHits.map(h => h.path)));
-    statusEl.textContent = 'Nahrazuji...';
+    statusEl.textContent = t('search.replacing');
     try {
       const result = await (window as any).levis.projectReplace(projectPath, q, r, { caseSensitive, regex: useRegex, targetFiles });
       if (result.error) {
-        statusEl.textContent = 'Chyba: ' + result.error;
+        statusEl.textContent = t('search.errorPrefix', { msg: result.error });
       } else {
-        statusEl.textContent = `Nahrazeno ${result.count} výskytů`;
+        statusEl.textContent = t('search.replacedCount', { n: result.count });
         // Refresh search po replace
         setTimeout(runSearch, 300);
       }
     } catch (err) {
-      statusEl.textContent = 'Chyba: ' + String(err);
+      statusEl.textContent = t('search.errorPrefix', { msg: String(err) });
     }
   }
 

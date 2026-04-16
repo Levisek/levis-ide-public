@@ -34,25 +34,25 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
     <button class="btn-back" title="${t('browser.back')}">‹</button>
     <button class="btn-forward" title="${t('browser.forward')}">›</button>
     <div class="browser-url-wrap">
-      <input type="text" class="browser-url" value="${defaultUrl}" placeholder="URL / file path...">
+      <input type="text" class="browser-url" value="${defaultUrl}" placeholder="${t('browser.urlPlaceholder')}">
       <button class="artifact-btn browser-pin-url" title="${t('browser.pinUrl')}">${I('pin')}</button>
     </div>
     <div class="artifact-size-btns">
-      <button class="artifact-size-btn" data-size="mobile" title="Mobile (412px)">${I('mobile')}</button>
-      <button class="artifact-size-btn" data-size="tablet" title="Tablet (768px)">${I('file')}</button>
-      <button class="artifact-size-btn artifact-size-active" data-size="full" title="Full">${I('browser')}</button>
+      <button class="artifact-size-btn" data-size="mobile" title="${t('browser.deviceMobile')}">${I('mobile')}</button>
+      <button class="artifact-size-btn" data-size="tablet" title="${t('browser.deviceTablet')}">${I('file')}</button>
+      <button class="artifact-size-btn artifact-size-active" data-size="full" title="${t('browser.deviceFull')}">${I('browser')}</button>
     </div>
     <button class="artifact-btn browser-touch-toggle" title="${t('mobile.touchEm')}">${I('touch')}</button>
-    <button class="artifact-btn browser-color-scheme" title="Dark / Light">☀</button>
+    <button class="artifact-btn browser-color-scheme" title="${t('browser.colorScheme')}">☀</button>
     <button class="artifact-btn browser-inspect" title="${t('artifact.inspectTip')}">${I('inspect')}</button>
     <button class="artifact-btn browser-annotate" title="${t('artifact.annotateTip')}">${I('editor')}</button>
     <button class="artifact-btn browser-reload" title="${t('artifact.refreshTip')}">${I('refresh')}</button>
     <button class="artifact-btn browser-watch" title="${t('artifact.watchTip')}">${I('eye')}</button>
     <button class="artifact-btn browser-open-file" title="${t('artifact.loadHtml')}">${I('folder')}</button>
-    <button class="artifact-btn browser-zoom-out" title="Zoom −">−</button>
+    <button class="artifact-btn browser-zoom-out" title="${t('browser.zoomOut')}">−</button>
     <span class="browser-zoom-label" style="font-size:10px;color:var(--text-muted);min-width:32px;text-align:center;user-select:none;">100%</span>
-    <button class="artifact-btn browser-zoom-in" title="Zoom +">+</button>
-    <button class="artifact-btn btn-devtools" title="DevTools">${I('gear')}</button>
+    <button class="artifact-btn browser-zoom-in" title="${t('browser.zoomIn')}">+</button>
+    <button class="artifact-btn btn-devtools" title="${t('browser.devTools')}">${I('gear')}</button>
   `;
   wrapper.appendChild(toolbar);
 
@@ -113,7 +113,7 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
   loaderOverlay.innerHTML = `
     <div class="browser-loader-inner">
       <div class="browser-loader-spinner"></div>
-      <div class="browser-loader-msg">Načítám…</div>
+      <div class="browser-loader-msg">${t('browser.loading')}</div>
       <div class="browser-loader-sub"></div>
     </div>
   `;
@@ -131,7 +131,7 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
       msgEl.textContent = message;
       subEl.textContent = (webview.src && webview.src !== 'about:blank') ? webview.src : '';
     } else {
-      msgEl.textContent = 'Načítám…';
+      msgEl.textContent = t('browser.loading');
       subEl.textContent = (webview.src && webview.src !== 'about:blank') ? webview.src : '';
     }
     loaderOverlay.hidden = false;
@@ -352,7 +352,7 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
   watchBtn.addEventListener('click', () => {
     watching = !watching;
     watchBtn.classList.toggle('artifact-watch-active', watching);
-    watchBtn.innerHTML = `${I('eye')} ${watching ? 'Watching' : 'Watch'}`;
+    watchBtn.innerHTML = `${I('eye')} ${watching ? t('browser.watching') : t('browser.watch')}`;
     if (watching) startWatch(); else stopWatch();
   });
 

@@ -29,6 +29,8 @@ const api = {
     ipcRenderer.on('popout:refresh', handler);
     return () => { ipcRenderer.off('popout:refresh', handler); };
   },
+  // Store read pro i18n init
+  storeGet: (key: string) => ipcRenderer.invoke('store:get', key),
 };
 
 contextBridge.exposeInMainWorld('popoutApi', api);

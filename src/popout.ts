@@ -11,22 +11,15 @@ declare const popoutApi: {
   onRefresh: (cb: () => void) => () => void;
 };
 
-// Fallback — popout nemá i18n.ts, vrací klíč jako fallback
-const popT = (typeof (window as any).t === 'function')
-  ? (window as any).t as (key: string) => string
-  : (key: string) => {
-    const map: Record<string, string> = {
-      'browser.inspect': 'Inspect', 'browser.inspectOn': 'Inspect ON',
-      'browser.annotate': 'Annotate', 'browser.annotateDraw': 'Drawing...',
-      'popout.areaPh': 'Co chceš změnit?', 'popout.cancel': 'Zrušit',
-      'toast.sentToCC': 'Odeslat do CC',
-    };
-    return map[key] || key;
-  };
+// Popout má i18n.js načtený v popout.html (stejné dicts jako hlavní okno).
+// Init locale probíhá přes popoutApi.storeGet — spustí se v initPopout().
+const popT = (window as any).t as (key: string, p?: Record<string, string | number>) => string;
 
 let currentFilePath: string | null = null;
 
 function initPopout(): void {
+  // Zapojení i18n pro popout — initI18n přečte locale přes popoutApi.storeGet a aplikuje překlady
+  (window as any).initI18n?.().then(() => (window as any).applyI18nDom?.(document));
   const iframe = document.getElementById('popout-iframe') as HTMLIFrameElement;
   const webview = document.getElementById('popout-webview') as any;
   const fileLabel = document.querySelector('.popout-file') as HTMLElement;

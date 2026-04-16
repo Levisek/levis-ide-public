@@ -1701,7 +1701,7 @@ async function renderUsagePanel(host: HTMLElement): Promise<void> {
   // prefix '~' a tooltip vysvětlí, že je to odhad podle tvého plánu.
   const sessMark = sessionEst ? '~' : '';
   const weekMark = weeklyEst ? '~' : '';
-  const estTip = ' (odhad dle plánu — live sync neaktivní)';
+  const estTip = t('usage.estTip');
   const miniPillsHtml = `
     <span class="usage-pill" title="Session (5h): ${sessMark}${sessionPct}%${sessionEst ? estTip : ''}">
       <span class="usage-pill-label">Session</span>
@@ -1720,22 +1720,23 @@ async function renderUsagePanel(host: HTMLElement): Promise<void> {
     </span>
   `;
 
-  const ageStr = capturedMs ? `live dump před ${fmtAge(capturedMs)}` : 'live dump N/A — odhady';
+  const ageStr = capturedMs ? t('usage.liveDumpAge', { age: fmtAge(capturedMs) }) : t('usage.liveDumpNa');
   const sessionSub = sessionEst
-    ? `odhad ${planMeta.label} · ${fmtUsd(block5hCost)} / ${fmtUsd(planMeta.block5h)}`
+    ? t('usage.estSub', { plan: planMeta.label, used: fmtUsd(block5hCost), limit: fmtUsd(planMeta.block5h) })
     : fmtReset(rl?.five_hour?.resets_at);
   const weeklySub = weeklyEst
-    ? `odhad ${planMeta.label} · ${fmtUsd(weekCost)} / ${fmtUsd(planMeta.month * 7 / 30)}`
+    ? t('usage.estSub', { plan: planMeta.label, used: fmtUsd(weekCost), limit: fmtUsd(planMeta.month * 7 / 30) })
     : fmtReset(rl?.seven_day?.resets_at);
+  const estTag = (on: boolean) => on ? ` <span class="usage-est-tag" title="${t('usage.liveSyncOff')}">~</span>` : '';
   const realCard = `
     <div class="usage-stat">
-      <div class="usage-stat-label">Session (5h)${sessionEst ? ' <span class="usage-est-tag" title="Lokální odhad — live sync neaktivní">~</span>' : ''}</div>
+      <div class="usage-stat-label">Session (5h)${estTag(sessionEst)}</div>
       <div class="usage-stat-val">${sessMark}${sessionPct}<span class="usage-stat-pct-unit">%</span></div>
       ${hbarHtml(sessionPct, sessColor)}
       <div class="usage-stat-sub">${sessionSub}</div>
     </div>
     <div class="usage-stat">
-      <div class="usage-stat-label">Weekly${weeklyEst ? ' <span class="usage-est-tag" title="Lokální odhad — live sync neaktivní">~</span>' : ''}</div>
+      <div class="usage-stat-label">Weekly${estTag(weeklyEst)}</div>
       <div class="usage-stat-val">${weekMark}${weeklyPct}<span class="usage-stat-pct-unit">%</span></div>
       ${hbarHtml(weeklyPct, weekColor)}
       <div class="usage-stat-sub">${weeklySub}</div>

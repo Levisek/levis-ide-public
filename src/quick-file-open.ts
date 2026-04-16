@@ -166,7 +166,7 @@ async function showQuickFileOpen(projectPath: string, workspace?: any): Promise<
   setTimeout(() => input.focus(), 0);
 
   // Načti soubory (cache)
-  footer.textContent = 'Načítám seznam souborů...';
+  footer.textContent = (window as any).t('qfo.loading');
   if (cachedFiles && cachedFiles.projectPath === projectPath && Date.now() - cachedFiles.ts < CACHE_TTL) {
     files = cachedFiles.files;
   } else {

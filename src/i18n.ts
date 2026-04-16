@@ -197,6 +197,17 @@ const EN: Dict = {
   'browser.pinSaved':      'Default URL saved: {url}',
   'browser.unpinned':      'Default URL unpinned',
   'browser.pinEmpty':      'No URL to save',
+  'browser.urlPlaceholder':'URL / file path…',
+  'browser.deviceMobile':  'Mobile (412px)',
+  'browser.deviceTablet':  'Tablet (768px)',
+  'browser.deviceFull':    'Full',
+  'browser.colorScheme':   'Dark / Light',
+  'browser.zoomOut':       'Zoom −',
+  'browser.zoomIn':        'Zoom +',
+  'browser.devTools':      'DevTools',
+  'browser.loading':       'Loading…',
+  'browser.watch':         'Watch',
+  'browser.watching':      'Watching',
 
   // ── Artifact panel ──────────────────
   'artifact.inspectTip':   'Inspect element (Alt+I) — click an element in the preview, write what to change, send to Claude Code',
@@ -235,10 +246,99 @@ const EN: Dict = {
   'editor.loadFailed':     'Editor failed to load',
   'editor.binary':         "Can't open file (binary?)",
   'editor.error':          'Editor: {msg}',
+  'editor.loadingEditor':  'Loading editor…',
+  'editor.loadingEditorErr':'Editor load error: {msg}',
+  'editor.emptyComment':   '// Open a file from the tree on the left',
+  'editor.noFiles':        'No open files',
+  'editor.errorPrefix':    'Error: {msg}',
+  'editor.savedToast':     'Saved: {name}',
+  'editor.unsavedSave':    'Save',
+  'editor.unsavedDiscard': 'Discard',
+  'editor.unsavedCancel':  'Cancel',
+  'editor.unsavedQuestion':'File {name} has unsaved changes',
 
   // ── Popout ──────────────────────────
   'popout.cancel':         'Cancel',
   'popout.areaPh':         'What to do with this area?',
+  'popout.return':         'Return preview to main window',
+  'popout.mobile':         'Mobile (375 px)',
+  'popout.tablet':         'Tablet (768 px)',
+  'popout.fullWidth':      'Full width',
+  'popout.inspectElement': 'Inspect element',
+  'popout.annotateArea':   'Mark area',
+  'popout.fullscreen':     'Fullscreen',
+  'popout.reload':         'Reload',
+  'popout.zoomOut':        'Zoom −',
+  'popout.zoomIn':         'Zoom +',
+  'popout.devTools':       'DevTools',
+  'popout.send':           'Send to Claude Code (Enter)',
+
+  // ── Popout panel (terminal / editor float) ──
+  'panel.return':          'Return panel to main window',
+  'panel.minimize':        'Minimize',
+  'panel.maximize':        'Maximize',
+  'panel.close':           'Close',
+  'panel.terminalTitle':   'Terminal — {project} ({n})',
+  'panel.editorTitle':     'Editor — {file}',
+  'panel.defaultTitle':    'Panel',
+
+  // ── Titlebar ────────────────────────
+  'titlebar.feedback':     'Feedback',
+  'titlebar.help':         'Help and keyboard shortcuts (F1)',
+  'titlebar.settings':     'Settings',
+  'titlebar.minimize':     'Minimize',
+  'titlebar.maximize':     'Maximize / restore',
+  'titlebar.close':        'Close LevisIDE',
+  'titlebar.hubTab':       'Hub',
+
+  // ── Diff viewer ─────────────────────
+  'diff.title':            'Git Diff',
+  'diff.unstaged':         'Unstaged',
+  'diff.staged':           'Staged',
+  'diff.commitPush':       'Commit & push',
+  'diff.noChanges':        'No changes',
+  'diff.loading':          'Loading diff…',
+  'diff.errorPrefix':      'Error: {msg}',
+  'diff.emptyMessage':     'Type a commit message',
+  'diff.commitDone':       'Commit done',
+  'diff.commitPushDone':   'Commit & push done',
+  'diff.commitOkPushFail': 'Commit OK, push failed: {msg}',
+
+  // ── Grid ────────────────────────────
+  'grid.closePanel':       'Close panel',
+  'grid.addPanel':         'Add panel',
+
+  // ── Workspace (extra) ───────────────
+  'workspace.closeTerminal':'Close terminal',
+  'workspace.dirtyFiles':  'Changed files',
+  'workspace.revertFailed':'Revert failed: {msg}',
+  'workspace.revertOk':    '✓ Project reverted to {label}',
+  'workspace.unknownError':'unknown error',
+  'workspace.justNow':     'just now',
+  'workspace.minAgo':      '{n}m ago',
+  'workspace.hourAgo':     '{n}h ago',
+  'workspace.changes1':    '{n} change',
+  'workspace.changes2to4': '{n} changes',
+  'workspace.changes5plus':'{n} changes',
+
+  // ── Quick file open (extra) ─────────
+  'qfo.loading':           'Loading file list…',
+
+  // ── Project search (extra) ──────────
+  'search.searching':      'Searching…',
+  'search.errorPrefix':    'Error: {msg}',
+  'search.replacedCount':  'Replaced {n} matches',
+  'search.replacing':      'Replacing…',
+  'search.hitsCount':      '{hits} matches in {files} files',
+  'search.limitNote':      '(limit 200)',
+
+  // ── Terminal state ──────────────────
+  'terminal.stateIdle':    'Idle — waiting for input',
+  'terminal.stateWorking': 'Working — CC is thinking',
+  'terminal.stateWaiting': 'Waiting — CC is asking',
+
+  // ── Toast (extra) ───────────────────
+  'toast.errorPrefix':     'Error: {msg}',
 
   // ── Project search ──────────────────
   'search.replaceAllTip':  'Replace all matches',
@@ -566,6 +666,10 @@ const EN: Dict = {
   'usage.last14':          'Last 14 days',
   'usage.models':          'Models',
   'usage.noData':          'no data',
+  'usage.estTip':          ' (estimated from plan — live sync off)',
+  'usage.estSub':          'est. {plan} · {used} / {limit}',
+  'usage.liveDumpAge':     'live dump {age} ago',
+  'usage.liveDumpNa':      'live dump N/A — estimates',
 };
 
 const CS: Dict = {
@@ -755,6 +859,17 @@ const CS: Dict = {
   'browser.pinSaved':      'Výchozí URL uložena: {url}',
   'browser.unpinned':      'Výchozí URL odepnuta',
   'browser.pinEmpty':      'Žádná URL k uložení',
+  'browser.urlPlaceholder':'URL / cesta k souboru…',
+  'browser.deviceMobile':  'Mobil (412px)',
+  'browser.deviceTablet':  'Tablet (768px)',
+  'browser.deviceFull':    'Plná šířka',
+  'browser.colorScheme':   'Tmavé / světlé',
+  'browser.zoomOut':       'Zoom −',
+  'browser.zoomIn':        'Zoom +',
+  'browser.devTools':      'DevTools',
+  'browser.loading':       'Načítám…',
+  'browser.watch':         'Watch',
+  'browser.watching':      'Watching',
 
   // ── Artifact panel ──────────────────
   'artifact.inspectTip':   'Inspect element (Alt+I) — klikni na prvek v náhledu, napiš co změnit, pošli do Claude Code',
@@ -793,10 +908,99 @@ const CS: Dict = {
   'editor.loadFailed':     'Editor se nepodařilo načíst',
   'editor.binary':         'Soubor nelze otevřít (binární?)',
   'editor.error':          'Editor: {msg}',
+  'editor.loadingEditor':  'Načítám editor…',
+  'editor.loadingEditorErr':'Chyba při načítání editoru: {msg}',
+  'editor.emptyComment':   '// Otevři soubor ze stromu vlevo',
+  'editor.noFiles':        'Žádný otevřený soubor',
+  'editor.errorPrefix':    'Chyba: {msg}',
+  'editor.savedToast':     'Uloženo: {name}',
+  'editor.unsavedSave':    'Uložit',
+  'editor.unsavedDiscard': 'Zahodit',
+  'editor.unsavedCancel':  'Zrušit',
+  'editor.unsavedQuestion':'Soubor {name} má neuložené změny',
 
   // ── Popout ──────────────────────────
   'popout.cancel':         'Zrušit',
   'popout.areaPh':         'Co chceš udělat s touto oblastí?',
+  'popout.return':         'Vrátit náhled do hlavního okna',
+  'popout.mobile':         'Mobil (375 px)',
+  'popout.tablet':         'Tablet (768 px)',
+  'popout.fullWidth':      'Plná šířka',
+  'popout.inspectElement': 'Inspect element',
+  'popout.annotateArea':   'Označit oblast',
+  'popout.fullscreen':     'Celá obrazovka',
+  'popout.reload':         'Obnovit',
+  'popout.zoomOut':        'Zoom −',
+  'popout.zoomIn':         'Zoom +',
+  'popout.devTools':       'DevTools',
+  'popout.send':           'Odeslat do Claude Code (Enter)',
+
+  // ── Popout panel (terminal / editor float) ──
+  'panel.return':          'Vrátit panel do hlavního okna',
+  'panel.minimize':        'Minimalizovat',
+  'panel.maximize':        'Maximalizovat',
+  'panel.close':           'Zavřít',
+  'panel.terminalTitle':   'Terminál — {project} ({n})',
+  'panel.editorTitle':     'Editor — {file}',
+  'panel.defaultTitle':    'Panel',
+
+  // ── Titlebar ────────────────────────
+  'titlebar.feedback':     'Zpětná vazba',
+  'titlebar.help':         'Nápověda a klávesové zkratky (F1)',
+  'titlebar.settings':     'Nastavení',
+  'titlebar.minimize':     'Minimalizovat okno',
+  'titlebar.maximize':     'Maximalizovat / obnovit',
+  'titlebar.close':        'Zavřít LevisIDE',
+  'titlebar.hubTab':       'Hub',
+
+  // ── Diff viewer ─────────────────────
+  'diff.title':            'Git Diff',
+  'diff.unstaged':         'Unstaged',
+  'diff.staged':           'Staged',
+  'diff.commitPush':       'Commit & push',
+  'diff.noChanges':        'Žádné změny',
+  'diff.loading':          'Načítám diff…',
+  'diff.errorPrefix':      'Chyba: {msg}',
+  'diff.emptyMessage':     'Napiš commit message',
+  'diff.commitDone':       'Commit hotovo',
+  'diff.commitPushDone':   'Commit & push hotovo',
+  'diff.commitOkPushFail': 'Commit OK, push selhal: {msg}',
+
+  // ── Grid ────────────────────────────
+  'grid.closePanel':       'Zavřít panel',
+  'grid.addPanel':         'Přidat panel',
+
+  // ── Workspace (extra) ───────────────
+  'workspace.closeTerminal':'Zavřít terminál',
+  'workspace.dirtyFiles':  'Změněné soubory',
+  'workspace.revertFailed':'Revert selhal: {msg}',
+  'workspace.revertOk':    '✓ Projekt vrácen do stavu {label}',
+  'workspace.unknownError':'neznámá chyba',
+  'workspace.justNow':     'právě teď',
+  'workspace.minAgo':      'před {n} min',
+  'workspace.hourAgo':     'před {n} h',
+  'workspace.changes1':    '{n} změna',
+  'workspace.changes2to4': '{n} změny',
+  'workspace.changes5plus':'{n} změn',
+
+  // ── Quick file open (extra) ─────────
+  'qfo.loading':           'Načítám seznam souborů…',
+
+  // ── Project search (extra) ──────────
+  'search.searching':      'Hledám…',
+  'search.errorPrefix':    'Chyba: {msg}',
+  'search.replacedCount':  'Nahrazeno {n} výskytů',
+  'search.replacing':      'Nahrazuji…',
+  'search.hitsCount':      '{hits} výskytů v {files} souborech',
+  'search.limitNote':      '(limit 200)',
+
+  // ── Terminal state ──────────────────
+  'terminal.stateIdle':    'Idle — čeká na input',
+  'terminal.stateWorking': 'Working — CC pracuje',
+  'terminal.stateWaiting': 'Waiting — CC se ptá',
+
+  // ── Toast (extra) ───────────────────
+  'toast.errorPrefix':     'Chyba: {msg}',
 
   // ── Project search ──────────────────
   'search.replaceAllTip':  'Nahradit všechny výskyty',
@@ -1124,6 +1328,10 @@ const CS: Dict = {
   'usage.last14':          'Posledních 14 dní',
   'usage.models':          'Modely',
   'usage.noData':          'žádná data',
+  'usage.estTip':          ' (odhad dle plánu — live sync neaktivní)',
+  'usage.estSub':          'odhad {plan} · {used} / {limit}',
+  'usage.liveDumpAge':     'live dump před {age}',
+  'usage.liveDumpNa':      'live dump N/A — odhady',
 };
 
 const DICTS: Record<Locale, Dict> = { en: EN, cs: CS };
@@ -1163,11 +1371,19 @@ function applyI18nDom(root: Document | HTMLElement): void {
   });
 }
 
-// Init z přečtené store hodnoty (volá se z app.ts po levis API ready)
+// Init z přečtené store hodnoty. Podporuje všechna okna:
+//   - hlavní okno: window.levis (plné API)
+//   - pop-out panel (terminal/editor): window.panelApi
+//   - pop-out preview: window.popoutApi (přidán storeGet)
 async function initI18n(): Promise<void> {
   try {
-    const stored = await (window as any).levis?.storeGet('locale');
-    if (stored === 'en' || stored === 'cs') currentLocale = stored;
+    const api = (window as any).levis || (window as any).panelApi || (window as any).popoutApi;
+    if (!api || typeof api.storeGet !== 'function') return;
+    const stored = await api.storeGet('locale');
+    if (stored === 'en' || stored === 'cs') {
+      currentLocale = stored;
+      applyI18nDom(document);
+    }
   } catch {}
 }
 

@@ -92,7 +92,7 @@ async function createEditor(container: HTMLElement): Promise<EditorInstance> {
   // Show loading state
   const loadingEl = document.createElement('div');
   loadingEl.className = 'loading';
-  loadingEl.textContent = 'Načítám editor...';
+  loadingEl.textContent = (window as any).t('editor.loadingEditor');
   monacoContainer.appendChild(loadingEl);
 
   let monaco: any = null;
@@ -114,7 +114,7 @@ async function createEditor(container: HTMLElement): Promise<EditorInstance> {
     initMonaco();
     if (pendingFile) openFile(pendingFile);
   }).catch((err) => {
-    loadingEl.textContent = 'Chyba při načítání editoru: ' + (err?.message || err);
+    loadingEl.textContent = t('editor.loadingEditorErr', { msg: err?.message || String(err) });
     showToast(t('editor.loadFailed'), 'error');
   });
 
@@ -212,7 +212,7 @@ async function createEditor(container: HTMLElement): Promise<EditorInstance> {
   }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
   editor = monaco.editor.create(monacoContainer, {
-    value: '// Otevři soubor ze stromu vlevo\n',
+    value: t('editor.emptyComment') + '\n',
     language: 'typescript',
     theme: currentMonacoTheme(),
     fontFamily: "'JetBrains Mono', monospace",
@@ -254,7 +254,7 @@ async function createEditor(container: HTMLElement): Promise<EditorInstance> {
     if (openFiles.size === 0) {
       const empty = document.createElement('span');
       empty.className = 'editor-tab-empty';
-      empty.textContent = 'Žádný otevřený soubor';
+      empty.textContent = t('editor.noFiles');
       tabsHost.appendChild(empty);
       saveBtn.classList.remove('editor-save-dirty');
       return;
@@ -319,7 +319,7 @@ async function createEditor(container: HTMLElement): Promise<EditorInstance> {
     try {
       const content = await levis.readFile(filePath);
       if (content && typeof content === 'object' && (content as any).error) {
-        showToast(`Chyba: ${(content as any).error}`, 'error');
+        showToast(t('editor.errorPrefix', { msg: (content as any).error }), 'error');
         return;
       }
       if (typeof content !== 'string') {
@@ -350,12 +350,15 @@ async function createEditor(container: HTMLElement): Promise<EditorInstance> {
     const entry = openFiles.get(filePath);
     if (!entry) return true;
     if (entry.isDirty) {
+      const optSave = t('editor.unsavedSave');
+      const optDiscard = t('editor.unsavedDiscard');
+      const optCancel = t('editor.unsavedCancel');
       const choice = await askChoice(
-        `Soubor ${basename(filePath)} má neuložené změny`,
-        ['Uložit', 'Zahodit', 'Zrušit']
+        t('editor.unsavedQuestion', { name: basename(filePath) }),
+        [optSave, optDiscard, optCancel]
       );
-      if (choice === 'Zrušit' || choice === null) return false;
-      if (choice === 'Uložit') {
+      if (choice === optCancel || choice === null) return false;
+      if (choice === optSave) {
         const ok = await saveFile(filePath);
         if (!ok) return false;
       }
@@ -392,12 +395,12 @@ async function createEditor(container: HTMLElement): Promise<EditorInstance> {
     const content = entry.model.getValue();
     const result = await levis.writeFile(path, content);
     if (result.error) {
-      showToast(`Chyba při ukládání: ${result.error}`, 'error');
+      showToast(t('editor.errorPrefix', { msg: result.error }), 'error');
       return false;
     }
     entry.isDirty = false;
     renderTabs();
-    showToast(`Uloženo: ${basename(path)}`, 'success');
+    showToast(t('editor.savedToast', { name: basename(path) }), 'success');
     return true;
   }
 

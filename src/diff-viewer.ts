@@ -7,16 +7,17 @@ interface DiffViewerInstance {
 }
 
 function createDiffViewer(container: HTMLElement): DiffViewerInstance {
+  const tt = (window as any).t as (key: string, p?: Record<string, string | number>) => string;
   const wrapper = document.createElement('div');
   wrapper.className = 'diff-panel';
 
   const toolbar = document.createElement('div');
   toolbar.className = 'diff-toolbar';
   toolbar.innerHTML = `
-    <span class="diff-title">Git Diff</span>
+    <span class="diff-title">${tt('diff.title')}</span>
     <span style="flex:1"></span>
-    <button class="diff-btn-unstaged diff-btn-active">Unstaged</button>
-    <button class="diff-btn-staged">Staged</button>
+    <button class="diff-btn-unstaged diff-btn-active">${tt('diff.unstaged')}</button>
+    <button class="diff-btn-staged">${tt('diff.staged')}</button>
     <button class="diff-btn-refresh">${(window as any).icon('refresh')}</button>
   `;
   wrapper.appendChild(toolbar);
@@ -25,9 +26,9 @@ function createDiffViewer(container: HTMLElement): DiffViewerInstance {
   const commitBar = document.createElement('div');
   commitBar.className = 'diff-commit-bar';
   commitBar.innerHTML = `
-    <input type="text" class="diff-commit-msg" placeholder="Commit message...">
+    <input type="text" class="diff-commit-msg" placeholder="${tt('diff.emptyMessage')}">
     <button class="diff-commit-btn">Commit</button>
-    <button class="diff-commit-push-btn">Commit &amp; push</button>
+    <button class="diff-commit-push-btn">${tt('diff.commitPush')}</button>
   `;
   wrapper.appendChild(commitBar);
 
@@ -43,7 +44,7 @@ function createDiffViewer(container: HTMLElement): DiffViewerInstance {
   function parseDiff(raw: string): HTMLElement {
     const fragment = document.createElement('div');
     if (!raw || raw.trim() === '') {
-      fragment.innerHTML = '<div class="diff-empty">Žádné změny</div>';
+      fragment.innerHTML = `<div class="diff-empty">${tt('diff.noChanges')}</div>`;
       return fragment;
     }
 
@@ -89,7 +90,7 @@ function createDiffViewer(container: HTMLElement): DiffViewerInstance {
 
   async function showDiff(projectPath: string): Promise<void> {
     currentPath = projectPath;
-    diffContent.innerHTML = '<div class="diff-empty">Načítám diff...</div>';
+    diffContent.innerHTML = `<div class="diff-empty">${tt('diff.loading')}</div>`;
     try {
       const raw = showStaged
         ? await levis.gitDiffStaged(projectPath)
@@ -98,7 +99,7 @@ function createDiffViewer(container: HTMLElement): DiffViewerInstance {
       diffContent.appendChild(parseDiff(raw as string));
     } catch (err) {
       const safe = String(err).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
-      diffContent.innerHTML = `<div class="diff-empty">Chyba: ${safe}</div>`;
+      diffContent.innerHTML = `<div class="diff-empty">${tt('diff.errorPrefix', { msg: safe })}</div>`;
     }
   }
 
@@ -134,7 +135,7 @@ function createDiffViewer(container: HTMLElement): DiffViewerInstance {
     if (!currentPath) return;
     const msg = commitMsgInput.value.trim();
     if (!msg) {
-      (window as any).showToast?.('Napiš commit message', 'warning');
+      (window as any).showToast?.(tt('diff.emptyMessage'), 'warning');
       return;
     }
     commitBtn.disabled = true;
@@ -143,13 +144,13 @@ function createDiffViewer(container: HTMLElement): DiffViewerInstance {
     commitBtn.disabled = false;
     commitPushBtn.disabled = false;
     if (result.error) {
-      (window as any).showToast?.(`Chyba: ${result.error}`, 'error');
+      (window as any).showToast?.(tt('diff.errorPrefix', { msg: result.error }), 'error');
     } else if (result.pushError) {
-      (window as any).showToast?.(`Commit OK, push selhal: ${result.pushError}`, 'warning');
+      (window as any).showToast?.(tt('diff.commitOkPushFail', { msg: result.pushError }), 'warning');
       commitMsgInput.value = '';
       showDiff(currentPath);
     } else {
-      (window as any).showToast?.(push ? 'Commit & push hotovo' : 'Commit hotovo', 'success');
+      (window as any).showToast?.(push ? tt('diff.commitPushDone') : tt('diff.commitDone'), 'success');
       commitMsgInput.value = '';
       showDiff(currentPath);
     }

@@ -216,7 +216,7 @@ function createGrid(opts: GridOptions): GridApi {
           header.innerHTML = `<span class="grid-cell-icon">${lbl.icon}</span><span class="grid-cell-label">${escapeText(lbl.text)}</span>`;
           const closeBtn = document.createElement('button');
           closeBtn.className = 'grid-cell-close';
-          closeBtn.title = 'Zavřít panel';
+          closeBtn.title = (window as any).t('grid.closePanel');
           closeBtn.innerHTML = (window as any).icon('close', { size: 14 });
           closeBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -235,7 +235,7 @@ function createGrid(opts: GridOptions): GridApi {
           const plus = document.createElement('button');
           plus.className = 'grid-cell-plus';
           plus.innerHTML = (window as any).icon('plus', { size: 28 });
-          plus.title = 'Přidat panel';
+          plus.title = (window as any).t('grid.addPanel');
           plus.addEventListener('click', (e) => {
             e.stopPropagation();
             showAddMenu((p) => setCell({ row: ri, col: ci }, p));

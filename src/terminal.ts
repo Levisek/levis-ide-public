@@ -47,7 +47,7 @@ async function createTerminal(
     currentState = s;
     statusDot.classList.remove('term-status-idle', 'term-status-working', 'term-status-waiting');
     statusDot.classList.add('term-status-' + s);
-    statusDot.title = s === 'idle' ? 'Idle — čeká na input' : s === 'working' ? 'Working — CC pracuje' : 'Waiting — CC se ptá';
+    statusDot.title = s === 'idle' ? t('terminal.stateIdle') : s === 'working' ? t('terminal.stateWorking') : t('terminal.stateWaiting');
     for (const cb of stateListeners) try { cb(s); } catch {}
   }
 

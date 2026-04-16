@@ -21,18 +21,21 @@ panelApi.onLoad((data: PanelLoadData) => {
   myPanelId = data.panelId;
   const titleEl = document.getElementById('panel-title')!;
   const contentEl = document.getElementById('panel-content')!;
+  const tt = (window as any).t as (key: string, p?: Record<string, string | number>) => string;
 
   if (data.panelType === 'terminal') {
     const termCount = data.payload.terminals?.length ?? 1;
-    titleEl.textContent = `Terminál — ${data.payload.projectName || ''} (${termCount})`;
+    titleEl.textContent = tt('panel.terminalTitle', { project: data.payload.projectName || '', n: termCount });
     initTerminalPanel(contentEl, data.payload);
   } else if (data.panelType === 'editor') {
-    titleEl.textContent = `Editor — ${data.payload.projectName || ''}`;
+    titleEl.textContent = tt('panel.editorTitle', { file: data.payload.projectName || '' });
     initEditorPanel(contentEl, data.payload);
   }
 });
 
 window.addEventListener('DOMContentLoaded', () => {
+  // Zapojení i18n: načti locale a přelož DOM atributy (data-i18n-title)
+  (window as any).initI18n?.().then(() => (window as any).applyI18nDom?.(document));
   if (myPanelId) {
     panelApi.notifyReady?.(myPanelId);
   }

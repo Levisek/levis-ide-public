@@ -277,7 +277,7 @@ async function createWorkspace(projectPath: string, projectName: string, project
   statusBar.className = 'status-bar';
   statusBar.innerHTML = `
     <span class="status-project-size" title="${t('ws.projectSize')}"></span>
-    <span class="status-dirty" title="Změněné soubory"></span>
+    <span class="status-dirty" title="${t('workspace.dirtyFiles')}"></span>
     <span class="status-sync" title="Ahead / Behind"></span>
     <span class="status-file-info" title=""></span>
     <span style="flex:1"></span>
@@ -458,7 +458,7 @@ async function createWorkspace(projectPath: string, projectName: string, project
     if (termInstances.length > 0) {
       const closeBtn = document.createElement('button');
       closeBtn.className = 'term-close-btn';
-      closeBtn.title = 'Zavřít terminál';
+      closeBtn.title = t('workspace.closeTerminal');
       closeBtn.innerHTML = (window as any).icon('close', { size: 12 });
       closeBtn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -955,7 +955,8 @@ async function createWorkspace(projectPath: string, projectName: string, project
       if (status.current) {
         const fileCount = status.files?.length || 0;
         if (fileCount > 0) {
-          dirtyEl.textContent = `${fileCount} ${fileCount === 1 ? 'změna' : fileCount < 5 ? 'změny' : 'změn'}`;
+          const key = fileCount === 1 ? 'workspace.changes1' : fileCount < 5 ? 'workspace.changes2to4' : 'workspace.changes5plus';
+          dirtyEl.textContent = t(key, { n: fileCount });
           dirtyEl.classList.add('status-dirty-active');
         } else {
           dirtyEl.textContent = '';
@@ -1305,7 +1306,7 @@ async function createWorkspace(projectPath: string, projectName: string, project
     const recent = checkpoints.slice(0, 5);
     dd.innerHTML = recent.map((cp, i) => {
       const ago = Math.round((Date.now() - cp.ts) / 60000);
-      const label = ago < 1 ? 'právě teď' : ago < 60 ? `před ${ago} min` : `před ${Math.round(ago / 60)}h`;
+      const label = ago < 1 ? t('workspace.justNow') : ago < 60 ? t('workspace.minAgo', { n: ago }) : t('workspace.hourAgo', { n: Math.round(ago / 60) });
       return `<div class="checkpoint-item" data-idx="${i}">
         <span class="checkpoint-time">${label}</span>
         <span class="checkpoint-hash">${cp.hash.slice(0, 7)}</span>
@@ -1323,16 +1324,16 @@ async function createWorkspace(projectPath: string, projectName: string, project
       if (!cp) return;
       dd.remove();
 
-      showToast('Revertuji…', 'info');
+      showToast(t('toast.saving'), 'info');
       const result = await levis.gitResetHard(projectPath, cp.hash);
       if (result && result.success) {
         const ago = Math.round((Date.now() - cp.ts) / 60000);
-        const label = ago < 1 ? 'právě teď' : `před ${ago} minutami`;
-        showToast(`✓ Projekt vrácen do stavu ${label}`, 'success');
+        const label = ago < 1 ? t('workspace.justNow') : t('workspace.minAgo', { n: ago });
+        showToast(t('workspace.revertOk', { label }), 'success');
         checkpoints.splice(0, idx + 1);
         updateGitStatus();
       } else {
-        showToast('Revert selhal: ' + ((result as any)?.error || 'neznámá chyba'), 'error');
+        showToast(t('workspace.revertFailed', { msg: (result as any)?.error || t('workspace.unknownError') }), 'error');
       }
     });
 
