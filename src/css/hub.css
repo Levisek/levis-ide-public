@@ -701,17 +701,6 @@
   flex-shrink: 0;
 }
 
-/* Finished badge — pod corner actions */
-.tile-badge-finished {
-  position: absolute; top: 44px; right: 14px;
-  width: 22px; height: 22px; border-radius: 50%;
-  background: var(--success); color: #fff;
-  display: inline-flex; align-items: center; justify-content: center;
-  box-shadow: 0 0 0 3px var(--bg-elev-1);
-  z-index: 2;
-}
-.tile-badge-finished svg { color: #fff; }
-
 /* Stavy */
 .tile.tile-paused { filter: saturate(0.45); opacity: 0.88; }
 .tile.tile-paused:hover { filter: saturate(0.55); opacity: 1; }

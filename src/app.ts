@@ -683,6 +683,13 @@ async function openProject(project: any): Promise<void> {
     if ((e.target as HTMLElement).classList.contains('tab-close')) closeTab(tabId);
     else switchTab(tabId);
   });
+  // Middle-click (kolečko) zavře tab
+  tabEl.addEventListener('auxclick', (e: MouseEvent) => {
+    if (e.button === 1) { e.preventDefault(); closeTab(tabId); }
+  });
+  tabEl.addEventListener('mousedown', (e: MouseEvent) => {
+    if (e.button === 1) e.preventDefault(); // potlač default middle-click scroll
+  });
 
   const content = document.getElementById('content')!;
   const contentEl = document.createElement('div');

@@ -225,13 +225,10 @@ function createTileElement(project: HubProjectInfo, onOpen: (p: HubProjectInfo) 
     return typeChip + langChip;
   }
 
-  const finishedBadge = project.status === 'finished' ? `<span class="tile-badge-finished" title="${t('hub.tcm.statusFinished')}">${I('check', { size: 12 })}</span>` : '';
-
   tile.innerHTML = `
     <div class="tile-corner">
       <button class="tile-menu" title="${t('hub.projectOptions')}">⋯</button>
     </div>
-    ${finishedBadge}
     <div class="tile-header">
       <div class="tile-name">${escapeHtml(project.name)}</div>
       <div class="tile-path" title="${escapeHtml(project.path)}">${escapeHtml(project.domain || project.path)}</div>
@@ -661,7 +658,9 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
         function setupGridDrop(gridEl: HTMLElement): void {
           // SortableJS — interaktivní reorder, ostatní dlaždice se živě odsouvají, placeholder je mezera.
           // forceFallback=true obchází HTML5 drag API (které v Electronu vyrábí random screenshot ghost).
+          // group 'hub-projects' → drag mezi sekcemi active/paused/finished, v onEnd nastavíme status.
           Sortable.create(gridEl, {
+            group: 'hub-projects',
             animation: 170,
             easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)',
             forceFallback: true,
@@ -680,13 +679,28 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
             onEnd: async (evt: any) => {
               document.body.classList.remove('hub-dragging');
               const item = evt.item as HTMLElement;
-              // Suppress click po drop — i když user dragnul a pustil zpět na stejné místo, klik neotevřít
               (item as any)._dragJustEnded = true;
               window.setTimeout(() => { (item as any)._dragJustEnded = false; }, 300);
               const draggedPath = item.dataset.projectPath;
               if (!draggedPath) return;
+
+              // Cross-group drop → změna statusu (active / paused / finished)
+              const fromStatus = (evt.from as HTMLElement).dataset.hubStatus;
+              const toStatus = (evt.to as HTMLElement).dataset.hubStatus;
+              if (toStatus && fromStatus !== toStatus) {
+                const newStatus = toStatus as 'active' | 'paused' | 'finished';
+                if (newStatus === 'active') delete projectStatuses[draggedPath];
+                else projectStatuses[draggedPath] = newStatus;
+                await levis.storeSet('projectStatuses', { ...projectStatuses });
+                const proj = projects.find(p => p.path === draggedPath);
+                if (proj) proj.status = newStatus;
+                showToast(t('hub.toast.statusChanged', { status: t('hub.tcm.status' + newStatus[0].toUpperCase() + newStatus.slice(1)) }), 'success');
+                applyFilter();
+                return;
+              }
+
+              // Same-group reorder
               if (evt.oldIndex === evt.newIndex) return;
-              // Najdi nového souseda (tile za dragged) v DOM → jeho path je beforePath
               const next = item.nextElementSibling as HTMLElement | null;
               const beforePath = next && next.classList.contains('tile') && !next.classList.contains('tile-new')
                 ? (next.dataset.projectPath || null)
@@ -740,6 +754,7 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
           grid.appendChild(header);
           const groupGrid = document.createElement('div');
           groupGrid.className = 'hub-group-grid';
+          groupGrid.dataset.hubStatus = slug;
           if (collapsed) groupGrid.style.display = 'none';
           for (const project of projects) groupGrid.appendChild(createTileElement(project, onOpenProject, onTogglePin, onTileAction, projectColors[project.path]));
           if (addNewTile) groupGrid.appendChild(createNewProjectTile(newProjectHandler));

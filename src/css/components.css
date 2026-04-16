@@ -295,7 +295,14 @@
   transition: all var(--t-fast) var(--ease);
 }
 .help-close:hover { color: var(--accent); background: var(--bg-elev-3); }
-.help-body { padding: 22px 28px; overflow-y: auto; color: var(--text-soft); font-size: 13px; line-height: 1.55; }
+.help-body { padding: 22px 28px; overflow-y: auto; color: var(--text-soft); font-size: 13px; line-height: 1.55; scrollbar-gutter: stable; }
+.help-body::-webkit-scrollbar { width: 10px; }
+.help-body::-webkit-scrollbar-track { background: var(--bg-deep); border-radius: var(--radius-pill); }
+.help-body::-webkit-scrollbar-thumb {
+  background: var(--border-strong); border-radius: var(--radius-pill);
+  border: 2px solid var(--bg-elev-2);
+}
+.help-body::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 .help-body section { margin-bottom: 24px; }
 .help-body h3 {
   color: var(--accent); font-size: 11px; font-weight: 600; margin: 0 0 12px;
