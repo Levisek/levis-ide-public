@@ -294,7 +294,6 @@ function showAboutDialog(): void {
       <div class="about-tagline">${t('welcome.tagline')}</div>
       <div class="about-meta">
         <div><strong>${t('about.author')}:</strong> Martin Levinger</div>
-        <div><strong>${t('about.github')}:</strong> <a href="https://github.com/Levisek/levis-ide" data-extlink>Levisek/levis-ide</a></div>
         <div><strong>${t('about.builtOn')}:</strong> Electron, Monaco, xterm.js, node-pty</div>
       </div>
       <div class="about-changelog">
