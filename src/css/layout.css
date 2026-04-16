@@ -15,19 +15,35 @@
   -webkit-app-region: no-drag;
 }
 
-/* Hub tab = LevisIDE logo + název (sjednocený prvek, aby bylo zřejmé, že klik = Hub) */
+/* Hub tab = LevisIDE logo + název + domeček (sjednocený prvek, aby bylo zřejmé, že klik = Hub) */
 .tab-logo {
   -webkit-app-region: no-drag;
   font-family: 'Inter', -apple-system, sans-serif; font-weight: 700; font-size: 13px;
   letter-spacing: -0.01em; white-space: nowrap;
-  display: flex; align-items: center; gap: 8px;
-  padding: 0 var(--space-3) !important;
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 14px !important;
   min-width: auto !important;
+  line-height: 1;
 }
-.tab-logo-icon { width: 20px; height: 20px; border-radius: 6px; flex-shrink: 0; }
-.tab-logo-text { color: var(--accent); }
+.tab-logo-icon {
+  width: 20px; height: 20px; border-radius: 6px; flex-shrink: 0;
+  display: block;
+}
+.tab-logo-text {
+  color: var(--accent);
+  display: inline-flex; align-items: center;
+  line-height: 1;
+}
+.tab-logo .tab-icon {
+  flex-shrink: 0;
+  display: block;
+  color: var(--text-muted);
+  transition: color var(--t-fast) var(--ease);
+}
 .tab-logo:hover .tab-logo-text { filter: brightness(1.15); }
+.tab-logo:hover .tab-icon { color: var(--accent); }
 .tab-logo.active .tab-logo-text { filter: drop-shadow(0 0 6px var(--accent-glow)); }
+.tab-logo.active .tab-icon { color: var(--accent); filter: drop-shadow(0 0 4px var(--accent-glow)); }
 
 #tabs {
   display: flex; align-items: center; flex: 1; gap: var(--space-1);
