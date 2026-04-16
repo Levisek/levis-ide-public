@@ -43,6 +43,7 @@
   background: var(--bg-elev-2); border: 1px solid var(--border);
   border-radius: var(--radius-xl);
   padding: 28px 32px; min-width: 460px; max-width: 560px;
+  max-height: 90vh; overflow-y: auto;
   box-shadow: var(--shadow-xl);
 }
 .template-picker-box h3 { color: var(--text); margin: 0 0 18px; font-size: 18px; font-weight: 600; }
@@ -506,6 +507,7 @@
 .about-box {
   position: relative;
   max-width: 480px; padding: 40px 44px;
+  max-height: 90vh; overflow-y: auto;
   background: linear-gradient(160deg, var(--bg-elev-1), var(--bg-elev-2));
   border: 1px solid var(--border); border-radius: var(--radius-xl);
   box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px var(--accent-ring);
@@ -545,6 +547,16 @@
 .about-cl-entry { margin-bottom: 4px; }
 .about-cl-entry strong { color: var(--text); font-weight: 600; }
 .about-cl-date { color: var(--text-muted); font-size: 11px; margin-left: 4px; }
+.about-actions { margin: 18px 0 14px; display: flex; justify-content: center; }
+.about-btn-tour {
+  background: transparent; border: 1px solid var(--border-strong);
+  color: var(--text-soft); border-radius: var(--radius);
+  padding: 8px 18px; font-size: 12px; font-weight: 500; cursor: pointer;
+  transition: all var(--t-fast) var(--ease);
+}
+.about-btn-tour:hover {
+  background: var(--bg-elev-2); color: var(--text); border-color: var(--accent);
+}
 .about-name-explainer {
   font-size: 11px; line-height: 1.6; color: var(--text-muted);
   padding-top: 14px; border-top: 1px solid var(--border);
@@ -740,6 +752,7 @@
 .settings-box {
   background: var(--bg-elev-1);
   border-radius: var(--radius-xl); padding: var(--space-6); width: 440px; max-width: 90%;
+  max-height: 90vh; overflow-y: auto;
   box-shadow: var(--shadow-xl);
   animation: modal-pop var(--t-base) var(--ease-spring);
 }
@@ -754,6 +767,16 @@
   outline: none; transition: all var(--t-fast) var(--ease);
 }
 .settings-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+.settings-input-row {
+  display: flex; gap: var(--space-2); align-items: stretch; margin-top: var(--space-2);
+}
+.settings-input-row .settings-input { margin-top: 0; flex: 1; }
+.settings-btn-browse {
+  background: var(--bg-elev-2); border: 1px solid var(--border); color: var(--text);
+  border-radius: var(--radius); padding: 0 14px; font-size: 12px; font-weight: 500;
+  cursor: pointer; white-space: nowrap; transition: all var(--t-fast) var(--ease);
+}
+.settings-btn-browse:hover { background: var(--bg-elev-3); border-color: var(--accent); }
 .settings-checkbox {
   display: flex !important; align-items: center; gap: 10px;
   cursor: pointer; font-size: 13px !important; color: var(--text) !important;

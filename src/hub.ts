@@ -326,6 +326,9 @@ function showAboutDialog(): void {
           <div class="about-cl-entry" style="opacity:.6">${t('about.changelogLoading')}</div>
         </div>
       </div>
+      <div class="about-actions">
+        <button class="about-btn-tour" id="about-reopen-tour">${t('welcome.reopenLink')}</button>
+      </div>
       <div class="about-name-explainer">${t('about.nameExpl')}</div>
     </div>
   `;
@@ -356,6 +359,10 @@ function showAboutDialog(): void {
   const close = () => overlay.remove();
   overlay.querySelector('.about-close')!.addEventListener('click', close);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  overlay.querySelector('#about-reopen-tour')?.addEventListener('click', () => {
+    close();
+    try { (window as any).reopenWelcomeTour?.(); } catch {}
+  });
   overlay.querySelectorAll('a[data-extlink]').forEach(a => {
     a.addEventListener('click', (e) => {
       e.preventDefault();
@@ -1446,7 +1453,10 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
       <div class="settings-box">
         <h3>${t('settings.title')}</h3>
         <label>${t('settings.scanPath')}:
-          <input type="text" class="settings-input" id="set-scan-path" value="${scanPath}">
+          <div class="settings-input-row">
+            <input type="text" class="settings-input" id="set-scan-path" value="${scanPath}">
+            <button type="button" class="settings-btn-browse" id="set-scan-browse" title="${t('settings.browseFolder')}">${t('settings.browseFolder')}</button>
+          </div>
         </label>
         <label>${t('settings.gitName')}:
           <input type="text" class="settings-input" id="set-username" value="">
@@ -1459,9 +1469,6 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
         </label>
         <label>${t('settings.terminalFontSize')}:
           <input type="number" class="settings-input" id="set-term-font" value="13" min="10" max="24">
-        </label>
-        <label>${t('settings.wedosPwd')}:
-          <input type="password" class="settings-input" id="set-wedos-pwd" value="" autocomplete="off" placeholder="${t('settings.wedosPlaceholder')}">
         </label>
         <label class="settings-checkbox">
           <input type="checkbox" id="set-cc-notifications" checked>
@@ -1514,12 +1521,20 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
       (settingsPanel.querySelector('#set-email') as HTMLInputElement).value = all.userEmail || '';
       (settingsPanel.querySelector('#set-editor-font') as HTMLInputElement).value = String(all.editorFontSize || 14);
       (settingsPanel.querySelector('#set-term-font') as HTMLInputElement).value = String(all.terminalFontSize || 13);
-      (settingsPanel.querySelector('#set-wedos-pwd') as HTMLInputElement).value = all.deployDefaultPassword || '';
       (settingsPanel.querySelector('#set-cc-notifications') as HTMLInputElement).checked = all.ccNotifications !== false;
       (settingsPanel.querySelector('#set-cc-sound') as HTMLInputElement).checked = all.ccSound !== false;
       (settingsPanel.querySelector('#set-autostart-dev') as HTMLInputElement).checked = all.autostartDev !== false;
       (settingsPanel.querySelector('#set-theme') as HTMLSelectElement).value = all.theme || 'mid';
       (settingsPanel.querySelector('#set-locale') as HTMLSelectElement).value = all.locale || 'en';
+    });
+
+    settingsPanel.querySelector('#set-scan-browse')?.addEventListener('click', async () => {
+      try {
+        const folder = await levis.openFolderDialog();
+        if (folder) {
+          (settingsPanel.querySelector('#set-scan-path') as HTMLInputElement).value = folder;
+        }
+      } catch {}
     });
 
     settingsPanel.querySelector('.settings-save')!.addEventListener('click', async () => {
@@ -1532,7 +1547,6 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
       await levis.storeSet('userEmail', (settingsPanel.querySelector('#set-email') as HTMLInputElement).value);
       await levis.storeSet('editorFontSize', parseInt((settingsPanel.querySelector('#set-editor-font') as HTMLInputElement).value));
       await levis.storeSet('terminalFontSize', parseInt((settingsPanel.querySelector('#set-term-font') as HTMLInputElement).value));
-      await levis.storeSet('deployDefaultPassword', (settingsPanel.querySelector('#set-wedos-pwd') as HTMLInputElement).value);
       await levis.storeSet('ccNotifications', (settingsPanel.querySelector('#set-cc-notifications') as HTMLInputElement).checked);
       await levis.storeSet('ccSound', (settingsPanel.querySelector('#set-cc-sound') as HTMLInputElement).checked);
       await levis.storeSet('autostartDev', (settingsPanel.querySelector('#set-autostart-dev') as HTMLInputElement).checked);

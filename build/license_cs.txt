@@ -69,7 +69,7 @@ autorský zákon.
     řešeny u soudů České republiky, s místní příslušností v Brně.
 
 12. KONTAKT
-    Dotazy: martas.levis@gmail.com
+    Dotazy: martin@levinger.cz
     Plné znění licence: soubor LICENSE v instalační složce.
 
 Kliknutím na "Souhlasím" přijímáte podmínky této smlouvy.

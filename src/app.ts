@@ -87,11 +87,11 @@ async function init(): Promise<void> {
     document.body.appendChild(loading);
 
     const projects = tabs.filter(t => t.projectPath).map(t => ({ name: t.label, path: t.projectPath! }));
-    console.log('[quit-check] projects:', projects);
+    console.log('[quit-check] projects:', projects.length);
     const issues: GitIssue[] = [];
-    // Main-side git:status handler má vlastní 4s timeout (electron/ipc/git.ts:5-16).
-    // Nedvojujeme Promise.race v rendereru — simple-git promise by běžel dál,
-    // držel file handle na .git/ a byl by memory leak.
+    // Main-side git:status handler má vlastní 4s timeout (electron/ipc/git.ts:5-16),
+    // ale IPC samotná může v rare případech viset (lock na .git/, slow disk).
+    // Hard cap 8 s v rendereru garantuje, že loading nikdy nezůstane viset.
     const checks = projects.map(async (p) => {
       try {
         const status = await levis.gitStatus(p.path) as any;
@@ -106,7 +106,12 @@ async function init(): Promise<void> {
         console.warn('[quit-check] failed for', p.path, e);
       }
     });
-    await Promise.allSettled(checks);
+    const allDone = Promise.allSettled(checks);
+    const timeout = new Promise<'timeout'>((r) => setTimeout(() => r('timeout'), 8000));
+    const race = await Promise.race([allDone.then(() => 'done' as const), timeout]);
+    if (race === 'timeout') {
+      console.warn('[quit-check] hard timeout 8s — projects:', projects.map(p => p.path));
+    }
 
     // Terminal aktivity check — pokud nějaký CC pracuje nebo čeká na input
     const activeTerms: Array<{ tab: string; label: string; state: string }> = [];
@@ -445,9 +450,9 @@ async function init(): Promise<void> {
         <div class="feedback-body">
           <label class="feedback-label">${t('feedback.type')}</label>
           <div class="feedback-type-row">
-            <button class="feedback-type-btn active" data-type="bug">🐛 ${t('feedback.bug')}</button>
-            <button class="feedback-type-btn" data-type="feature">💡 ${t('feedback.feature')}</button>
-            <button class="feedback-type-btn" data-type="crash">💥 ${t('feedback.crash')}</button>
+            <button class="feedback-type-btn active" data-type="bug">${t('feedback.bug')}</button>
+            <button class="feedback-type-btn" data-type="feature">${t('feedback.feature')}</button>
+            <button class="feedback-type-btn" data-type="crash">${t('feedback.crash')}</button>
           </div>
           <label class="feedback-label">${t('feedback.titleLabel')}</label>
           <input class="feedback-input" id="feedback-title" type="text" placeholder="${t('feedback.titlePlaceholder')}" />

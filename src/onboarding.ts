@@ -18,14 +18,13 @@ type StepResult = 'done' | 'skipped' | 'postponed';
 interface WelcomeSlide {
   titleKey: string;
   bodyKey: string;
-  icon?: string;
 }
 
 const WELCOME_SLIDES: WelcomeSlide[] = [
-  { titleKey: 'welcome.slide1.title', bodyKey: 'welcome.slide1.body', icon: '🪟' },
-  { titleKey: 'welcome.slide2.title', bodyKey: 'welcome.slide2.body', icon: '🎯' },
-  { titleKey: 'welcome.slide3.title', bodyKey: 'welcome.slide3.body', icon: '🧩' },
-  { titleKey: 'welcome.slide4.title', bodyKey: 'welcome.slide4.body', icon: '📂' },
+  { titleKey: 'welcome.slide1.title', bodyKey: 'welcome.slide1.body' },
+  { titleKey: 'welcome.slide2.title', bodyKey: 'welcome.slide2.body' },
+  { titleKey: 'welcome.slide3.title', bodyKey: 'welcome.slide3.body' },
+  { titleKey: 'welcome.slide4.title', bodyKey: 'welcome.slide4.body' },
 ];
 
 // ── Modal helper ────────────────────────────────────────────────────
@@ -59,6 +58,8 @@ function showModal(opts: {
   modal.style.cssText = [
     `max-width:${opts.wide ? '680px' : '520px'}`,
     'width:90vw',
+    'max-height:90vh',
+    'overflow-y:auto',
     'background:var(--bg-elev-1,#1e2029)',
     'border:1px solid var(--border-strong,#3a3d4b)',
     'border-radius:12px',
@@ -127,9 +128,9 @@ function runWelcomeTour(): Promise<StepResult> {
       ).join('');
 
       const bodyHtml = `
-        <div style="font-size:56px;text-align:center;margin-bottom:20px">${s.icon || ''}</div>
-        <div style="font-size:15px;line-height:1.6">${t(s.bodyKey)}</div>
-        <div style="margin-top:24px;text-align:center">${dots}</div>
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.12em;color:var(--accent,#ff7a1a);font-weight:600;margin-bottom:14px">${t('welcome.stepLabel', { current: idx + 1, total: WELCOME_SLIDES.length })}</div>
+        <div style="font-size:15px;line-height:1.65">${t(s.bodyKey)}</div>
+        <div style="margin-top:28px;text-align:center">${dots}</div>
       `;
 
       const buttons: ModalButton[] = [];
@@ -266,12 +267,12 @@ function runBillingOptIn(): Promise<StepResult> {
 // ── Main orchestrator ───────────────────────────────────────────────
 export async function runOnboarding(): Promise<void> {
   try {
-    // 1. Welcome tour — vlastní klíč 'welcomeTourV2Seen', aby se tour ukázal
-    // i uživatelům po upgradu z verze, kde běžel legacy 'welcomeSeen' fallback.
-    const welcomeSeen = await levis.storeGet('welcomeTourV2Seen');
+    // 1. Welcome tour — klíč 'welcomeTourV3Seen' (V3 = redesign bez emoji,
+    // step label místo ikony). Po upgradu z 1.5.2/1.5.3 se tour ukáže znovu.
+    const welcomeSeen = await levis.storeGet('welcomeTourV3Seen');
     if (!welcomeSeen) {
       await runWelcomeTour();
-      await levis.storeSet('welcomeTourV2Seen', true);
+      await levis.storeSet('welcomeTourV3Seen', true);
     }
 
     // 2. CC detection & install

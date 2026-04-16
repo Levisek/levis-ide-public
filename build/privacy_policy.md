@@ -119,7 +119,7 @@ Pokud výslovně povolíte funkci "Live billing sync":
 ## Contact / Kontakt
 
 **Author / Autor:** Martin Levinger
-**Email:** martas.levis@gmail.com
+**Email:** martin@levinger.cz
 **Web:** https://levinger.cz
 
 Questions, concerns, or data removal requests: send an email. We respond within

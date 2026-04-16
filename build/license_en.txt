@@ -65,7 +65,7 @@ By installing or using LevisIDE, you agree to the terms below.
     venue in Brno.
 
 12. CONTACT
-    Questions: martas.levis@gmail.com
+    Questions: martin@levinger.cz
     Full license text: see LICENSE file in the installation directory.
 
 By clicking "I Agree" you accept the terms of this Agreement.
