@@ -10,9 +10,6 @@
 // Každý krok si uživatel může odložit (*Teď ne*) — flagy se uloží do store
 // tak, aby to neobtěžovalo při dalším startu.
 
-declare const levis: LevisAPI;
-declare function t(key: string, params?: Record<string, string | number>): string;
-
 type StepResult = 'done' | 'skipped' | 'postponed';
 
 interface WelcomeSlide {
@@ -265,14 +262,18 @@ function runBillingOptIn(): Promise<StepResult> {
 }
 
 // ── Main orchestrator ───────────────────────────────────────────────
-export async function runOnboarding(): Promise<void> {
+async function runOnboarding(): Promise<void> {
+  console.log('[onboarding] start');
   try {
     // 1. Welcome tour — klíč 'welcomeTourV3Seen' (V3 = redesign bez emoji,
     // step label místo ikony). Po upgradu z 1.5.2/1.5.3 se tour ukáže znovu.
     const welcomeSeen = await levis.storeGet('welcomeTourV3Seen');
+    console.log('[onboarding] welcomeTourV3Seen=', welcomeSeen);
     if (!welcomeSeen) {
+      console.log('[onboarding] running welcome tour…');
       await runWelcomeTour();
       await levis.storeSet('welcomeTourV3Seen', true);
+      console.log('[onboarding] welcome tour finished');
     }
 
     // 2. CC detection & install
@@ -314,7 +315,7 @@ export async function runOnboarding(): Promise<void> {
 }
 
 // Public: umožnit user-u znovu otevřít welcome tour z Help menu
-export async function reopenWelcomeTour(): Promise<void> {
+async function reopenWelcomeTour(): Promise<void> {
   await runWelcomeTour();
 }
 

@@ -575,15 +575,19 @@ async function init(): Promise<void> {
   (async () => {
     try {
       const runOnb = (window as any).runOnboarding as (() => Promise<void>) | undefined;
+      console.log('[onboarding-init] runOnb type:', typeof runOnb);
       if (typeof runOnb === 'function') {
         // Malý delay aby UI stihlo nastartovat a hub se prokreslil
-        setTimeout(() => runOnb().catch(() => {}), 400);
+        setTimeout(() => {
+          runOnb().catch((e) => console.error('[onboarding] uncaught:', e));
+        }, 400);
       } else {
         // Fallback na legacy welcome pokud onboarding.js není načten
+        console.warn('[onboarding-init] runOnboarding není načteno, fallback na legacy welcome');
         const seen = await levis.storeGet('welcomeSeen');
         if (!seen) showWelcomeScreen();
       }
-    } catch {}
+    } catch (e) { console.error('[onboarding-init] error:', e); }
   })();
 }
 

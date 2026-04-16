@@ -1,6 +1,6 @@
 {
   "name": "levis-ide",
-  "version": "1.5.4",
+  "version": "1.5.5",
   "description": "LevisIDE — Electron IDE for web projects with built-in Claude Code integration, live preview, Inspector with lasso screenshot, and multi-project Hub.",
   "main": "dist/electron/main.js",
   "homepage": "https://levinger.cz/levis-ide",
