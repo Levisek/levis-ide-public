@@ -635,7 +635,7 @@ async function createWorkspace(projectPath: string, projectName: string, project
   } catch (e) { STAGE('grid: prefs err ' + e); }
 
   STAGE('grid: createGrid');
-  const grid = GridMod.createGrid({
+  const grid: any = GridMod.createGrid({
     rootEl: layoutRoot,
     mountPanel: (panel: WsPanelId) => panelEls[panel],
     getLabel: (panel: WsPanelId) => PANEL_LABELS[panel],
@@ -1676,6 +1676,9 @@ async function createWorkspace(projectPath: string, projectName: string, project
       if (diffInstance) diffInstance.dispose();
       if (fileTreeInstance) fileTreeInstance.dispose();
       browserInstance.dispose();
+      // Grid dispose — odeber root pointerdown listener (jinak se hromadí při
+      // opakovaném otevírání projektů)
+      try { grid.dispose?.(); } catch {}
       for (const fn of cleanups) fn();
     },
   };

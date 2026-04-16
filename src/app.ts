@@ -85,13 +85,12 @@ async function init(): Promise<void> {
     const projects = tabs.filter(t => t.projectPath).map(t => ({ name: t.label, path: t.projectPath! }));
     console.log('[quit-check] projects:', projects);
     const issues: GitIssue[] = [];
-    // Parallel s 3 s timeout per projekt — nezaseknout se na jediné
+    // Main-side git:status handler má vlastní 4s timeout (electron/ipc/git.ts:5-16).
+    // Nedvojujeme Promise.race v rendereru — simple-git promise by běžel dál,
+    // držel file handle na .git/ a byl by memory leak.
     const checks = projects.map(async (p) => {
       try {
-        const status = await Promise.race([
-          levis.gitStatus(p.path),
-          new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 3000)),
-        ]) as any;
+        const status = await levis.gitStatus(p.path) as any;
         if (status && !status.error) {
           const dirty = (status.files && status.files.length > 0) || (status.modified && status.modified.length > 0) || (status.created && status.created.length > 0);
           const ahead = status.ahead || 0;
@@ -562,11 +561,19 @@ async function init(): Promise<void> {
 
   showToast('LevisIDE ready', 'success');
 
-  // Welcome screen — pouze první spuštění
+  // Onboarding flow — welcome tour + CC detekce + CC install + CC login + billing opt-in
+  // Spouští se po inicializaci UI, každý krok má svůj store flag pro idempotenci.
   (async () => {
     try {
-      const seen = await levis.storeGet('welcomeSeen');
-      if (!seen) showWelcomeScreen();
+      const runOnb = (window as any).runOnboarding as (() => Promise<void>) | undefined;
+      if (typeof runOnb === 'function') {
+        // Malý delay aby UI stihlo nastartovat a hub se prokreslil
+        setTimeout(() => runOnb().catch(() => {}), 400);
+      } else {
+        // Fallback na legacy welcome pokud onboarding.js není načten
+        const seen = await levis.storeGet('welcomeSeen');
+        if (!seen) showWelcomeScreen();
+      }
     } catch {}
   })();
 }

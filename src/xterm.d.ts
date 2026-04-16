@@ -87,6 +87,9 @@ interface LevisAPI {
   }>;
   billingInstallHook: (opts?: { wrapExisting?: boolean }) => Promise<{ success: boolean; error?: string; status?: any }>;
   billingUninstallHook: () => Promise<{ success: boolean; restored?: boolean; error?: string; status?: any }>;
+  // CC onboarding
+  ccDetect: () => Promise<{ installed: boolean; version: string | null; path: string | null; source: 'native' | 'npm' | 'path' | null }>;
+  ccInstallCommand: () => Promise<{ cmd: string; docsUrl: string }>;
 }
 
 declare const levis: LevisAPI;

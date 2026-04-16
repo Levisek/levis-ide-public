@@ -340,6 +340,45 @@ const EN: Dict = {
   // ── Toast (extra) ───────────────────
   'toast.errorPrefix':     'Error: {msg}',
 
+  // ── Welcome tour (4 slides) ─────────
+  'welcome.slide1.title':  'One window instead of five',
+  'welcome.slide1.body':   'Instead of juggling terminal, editor, browser and Git in separate apps, LevisIDE puts everything on one screen. Claude Code sees your project live and can edit it.',
+  'welcome.slide2.title':  'Inspector — the flagship feature',
+  'welcome.slide2.body':   'Click any element in the preview, write what you want to change, and Claude does it — with a screenshot of the area attached. No copy-paste, no explaining.',
+  'welcome.slide3.title':  'Workspace grid',
+  'welcome.slide3.body':   'Terminal, editor, preview, browser — rearrange with drag & drop. Pop a panel out to a second monitor. Multi-file tabs in the editor, multi-terminal split.',
+  'welcome.slide4.title':  'Hub — projects at hand',
+  'welcome.slide4.body':   'Scan folder → automatic detection of ~40 project types (Vite / Next / Django / Rails / Go / …). Quick dev-server autostart, bulk Git pull/push, filters, sort presets.',
+  'welcome.nav.back':      'Back',
+  'welcome.nav.next':      'Next',
+  'welcome.nav.skip':      'Skip',
+  'welcome.nav.finish':    "Let's go!",
+  'welcome.reopenLink':    'Show welcome tour again',
+
+  // ── Onboarding CC install / login ──
+  'onboarding.ccInstallTitle':  'Install Claude Code',
+  'onboarding.ccInstallBody':   'LevisIDE is built around Claude Code — without it, many features are disabled. Anthropic provides a native installer (no Node.js, no npm needed). Copy this command and run it in PowerShell:',
+  'onboarding.ccInstallRun':    'Copy command',
+  'onboarding.ccInstallDocs':   'Open docs',
+  'onboarding.ccInstallSkip':   'Skip for now',
+  'onboarding.ccInstallCopied': 'Install command copied — paste into PowerShell',
+  'onboarding.ccLoginTitle':    'Sign in to Claude',
+  'onboarding.ccLoginBody':     'Run <code>claude</code> in a terminal — it will open a browser with Anthropic OAuth login. If you already have a paid Claude Pro / Team plan, it just works.',
+  'onboarding.ccLoginRun':      'OK, I got it',
+  'onboarding.ccLoginHint':     'Type "claude" in a terminal to sign in',
+  'onboarding.ccLoginSignup':   'No account? Sign up',
+  'onboarding.ccLoginLater':    'Later',
+
+  // ── Billing hook opt-in ─────────────
+  'billing.promptTitle':     'Live usage metrics',
+  'billing.promptBody':      'LevisIDE can hook into Claude Code to show live rate-limit and cost metrics in the Hub. It writes a tiny script to <code>~/.claude/scripts/</code> and adds a statusLine entry to <code>~/.claude/settings.json</code>. Nothing leaves your machine.',
+  'billing.promptNote':      'Disable anytime: Settings → Live billing sync → Disable',
+  'billing.promptAllow':     'Enable',
+  'billing.promptLater':     'Not now',
+  'billing.promptMore':      'Privacy details',
+  'billing.promptInstalled': 'Live billing sync enabled — send any Claude Code message to populate',
+  'billing.promptFailed':    'Billing hook install failed: {msg}',
+
   // ── Project search ──────────────────
   'search.replaceAllTip':  'Replace all matches',
   'search.replaceAll':     'Replace all',
@@ -1001,6 +1040,45 @@ const CS: Dict = {
 
   // ── Toast (extra) ───────────────────
   'toast.errorPrefix':     'Chyba: {msg}',
+
+  // ── Welcome tour (4 slidy) ──────────
+  'welcome.slide1.title':  'Jedno okno místo pěti',
+  'welcome.slide1.body':   'Místo žonglování mezi terminálem, editorem, prohlížečem a Gitem v různých aplikacích máš vše na jedné obrazovce. Claude Code vidí tvůj projekt živě a umí do něj zasahovat.',
+  'welcome.slide2.title':  'Inspector — hlavní fíčura',
+  'welcome.slide2.body':   'Klikni na libovolný prvek v náhledu, napiš co chceš změnit a Claude to udělá — včetně screenshotu vybrané oblasti. Bez copy-paste, bez vysvětlování.',
+  'welcome.slide3.title':  'Workspace grid',
+  'welcome.slide3.body':   'Terminál, editor, náhled, prohlížeč — přeuspořádej drag&drop. Vytáhni panel na druhý monitor. Multi-file taby v editoru, multi-terminal split.',
+  'welcome.slide4.title':  'Hub — projekty po ruce',
+  'welcome.slide4.body':   'Scan složky → automatické rozpoznání ~40 typů projektů (Vite / Next / Django / Rails / Go / …). Rychlý autostart dev serveru, hromadný Git pull/push, filtry, presety řazení.',
+  'welcome.nav.back':      'Zpět',
+  'welcome.nav.next':      'Další',
+  'welcome.nav.skip':      'Přeskočit',
+  'welcome.nav.finish':    'Pojď na to!',
+  'welcome.reopenLink':    'Zobrazit welcome tour znovu',
+
+  // ── Onboarding CC install / login ──
+  'onboarding.ccInstallTitle':  'Nainstalovat Claude Code',
+  'onboarding.ccInstallBody':   'LevisIDE je postaven kolem Claude Code — bez něj velká část funkcí není dostupná. Anthropic poskytuje native installer (nevyžaduje Node.js ani npm). Zkopíruj tento příkaz a spusť ho v PowerShellu:',
+  'onboarding.ccInstallRun':    'Zkopírovat příkaz',
+  'onboarding.ccInstallDocs':   'Otevřít dokumentaci',
+  'onboarding.ccInstallSkip':   'Přeskočit',
+  'onboarding.ccInstallCopied': 'Instalační příkaz zkopírován — vlož do PowerShellu',
+  'onboarding.ccLoginTitle':    'Přihlášení ke Claude',
+  'onboarding.ccLoginBody':     'Spusť <code>claude</code> v terminálu — otevře prohlížeč s Anthropic OAuth přihlášením. Máš-li placené Claude Pro / Team, funguje rovnou.',
+  'onboarding.ccLoginRun':      'OK, rozumím',
+  'onboarding.ccLoginHint':     'Napiš "claude" v terminálu pro přihlášení',
+  'onboarding.ccLoginSignup':   'Nemáš účet? Zaregistruj se',
+  'onboarding.ccLoginLater':    'Později',
+
+  // ── Billing hook opt-in ─────────────
+  'billing.promptTitle':     'Živé usage metriky',
+  'billing.promptBody':      'LevisIDE se umí napojit na Claude Code a zobrazovat živé rate-limit a cost metriky v Hubu. Zapíše malý skript do <code>~/.claude/scripts/</code> a přidá statusLine do <code>~/.claude/settings.json</code>. Nic neopouští tvůj počítač.',
+  'billing.promptNote':      'Kdykoli vypneš: Nastavení → Live billing sync → Vypnout',
+  'billing.promptAllow':     'Povolit',
+  'billing.promptLater':     'Teď ne',
+  'billing.promptMore':      'Víc o soukromí',
+  'billing.promptInstalled': 'Live billing sync zapnut — pošli CC příkaz pro naplnění',
+  'billing.promptFailed':    'Instalace billing hooku selhala: {msg}',
 
   // ── Project search ──────────────────
   'search.replaceAllTip':  'Nahradit všechny výskyty',

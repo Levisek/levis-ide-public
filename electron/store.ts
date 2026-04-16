@@ -27,6 +27,10 @@ interface StoreSchema {
   ccSound: boolean;
   projectLastOpened: Record<string, number>;
   welcomeSeen: boolean;
+  billingHookPromptSeen: boolean;
+  ccDetectedOnce: boolean;
+  ccInstallOffered: boolean;
+  ccLoginOffered: boolean;
   autostartDev: boolean;
   locale: 'en' | 'cs';
   monitorDiagonal: number;
@@ -72,6 +76,10 @@ export const store = new Store<StoreSchema>({
     ccSound: true,
     projectLastOpened: {},
     welcomeSeen: false,
+    billingHookPromptSeen: false,
+    ccDetectedOnce: false,
+    ccInstallOffered: false,
+    ccLoginOffered: false,
     autostartDev: true,
     locale: 'cs',
     monitorDiagonal: 24,

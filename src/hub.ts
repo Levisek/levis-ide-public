@@ -519,12 +519,18 @@ function createTileElement(project: HubProjectInfo, onOpen: (p: HubProjectInfo) 
         onAction('setStatus:' + s, project);
       });
     });
-    setTimeout(() => {
+    // Queue microtask → listener se registruje v další frame (po synchronním bubble
+    // kliku, který menu otevřel). Rychlejší a spolehlivější než setTimeout 0 —
+    // bez rizika že user klikne před registrací listener-u.
+    queueMicrotask(() => {
       const closeOnClick = (ev: MouseEvent) => {
-        if (!menu.contains(ev.target as Node)) { menu.remove(); document.removeEventListener('click', closeOnClick); }
+        if (!menu.contains(ev.target as Node)) {
+          menu.remove();
+          document.removeEventListener('click', closeOnClick);
+        }
       };
       document.addEventListener('click', closeOnClick);
-    }, 0);
+    });
   }
   tile.querySelector('.tile-menu')!.addEventListener('click', (e) => {
     e.stopPropagation();

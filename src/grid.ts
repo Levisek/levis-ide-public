@@ -48,6 +48,7 @@ interface GridApi {
   ensurePanel(panel: GridPanelId): void;
   removePanel(panel: GridPanelId): void;
   rerender(): void;
+  dispose(): void;
 }
 
 const ALL_GRID_PANELS: GridPanelId[] = [
@@ -740,9 +741,14 @@ function createGrid(opts: GridOptions): GridApi {
   opts.rootEl.addEventListener('pointerdown', onPointerDown);
   rerender();
 
+  function dispose(): void {
+    // Odeber root-level listener aby se nehromadily při opakovaných createGrid volání
+    try { opts.rootEl.removeEventListener('pointerdown', onPointerDown); } catch {}
+  }
+
   return {
     getState, setState, setCell, swap, toggleLock, equalize, openPicker,
-    findCell, ensurePanel, removePanel, rerender,
+    findCell, ensurePanel, removePanel, rerender, dispose,
   };
 }
 

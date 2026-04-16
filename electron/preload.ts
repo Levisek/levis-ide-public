@@ -162,6 +162,10 @@ const api = {
   billingGetHookStatus: () => ipcRenderer.invoke('billing:getHookStatus'),
   billingInstallHook: (opts?: { wrapExisting?: boolean }) => ipcRenderer.invoke('billing:installHook', opts || {}),
   billingUninstallHook: () => ipcRenderer.invoke('billing:uninstallHook'),
+
+  // Claude Code onboarding — detekce a install
+  ccDetect: () => ipcRenderer.invoke('cc:detect'),
+  ccInstallCommand: () => ipcRenderer.invoke('cc:installCommand'),
 };
 
 contextBridge.exposeInMainWorld('levis', api);

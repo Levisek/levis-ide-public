@@ -46,6 +46,7 @@ export function registerWindowHandlers(mainWindow: BrowserWindow): void {
         preload: path.join(__dirname, '..', 'preload-popout.js'),
         webviewTag: true,
         webSecurity: false, // file:// iframe musi byt same-origin pro inspector eval
+        backgroundThrottling: true, // šetří CPU/baterku když popout v pozadí
       },
     });
 
@@ -128,6 +129,7 @@ export function registerWindowHandlers(mainWindow: BrowserWindow): void {
         sandbox: false,
         preload: path.join(__dirname, '..', 'preload-popout-panel.js'),
         webviewTag: false,
+        backgroundThrottling: true, // šetří CPU/baterku když panel v pozadí
       },
     });
     hardenWindow(win);
