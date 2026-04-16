@@ -152,7 +152,35 @@ Kompilace: `npx tsc` — output do `dist/`
 
 ### Funkční
 - Cross-platform testování (macOS, Linux)
-- **Rozšířit detekci typu projektu** — aktuální `detectProjectType` v `src/hub.ts` je minimalistická (package.json deps + language). TODO: přesnější framework matching, monorepo detection (lerna/nx/turbo), Python/Go/Rust projekty, build tool autodetekce (pnpm/yarn/bun), project meta pro kartu v Hubu (verze, repo URL).
+
+## TODO v1.6 — Monetizace / licencování
+
+### Licenční klíče (paid verze)
+- **Key format** — např. `LVS-XXXX-XXXX-XXXX-XXXX`, 16 hex znaků, HMAC-SHA256 checksum + Ed25519 signatura podepsaná private klíčem na serveru (aplikace validuje offline přes public key embed)
+- **Trial mode** — prvních 14 dní plná funkcionalita bez klíče, poté degradace (kolik projektů? splash s promptem na aktivaci?)
+- **Backend** — endpoint na `levinger.cz` (PHP + SQLite nebo MySQL):
+  - `POST /license/activate` (key + device fingerprint → aktivace, limit zařízení per klíč)
+  - `POST /license/validate` (periodická kontrola → revocation)
+  - `POST /license/purchase` (webhook od platební brány Stripe/GoPay)
+- **Aktivační dialog v LevisIDE** — při prvním startu po 14 dnech / manuálně přes Settings
+- **Secure storage** — klíč uložit přes `keytar` (OS credential store: Windows Credential Vault / macOS Keychain / Linux libsecret)
+- **Offline grace** — 30 dní bez validation hitu (pak přinutí online validate)
+- **Revocation** — seznam zneplatněných klíčů tažený 1× denně
+- **Antitamper** — runtime check signatury .exe (electron-builder umí `codeSign` pro Windows), obfuskace validační funkce (terser mangle)
+- **Cenotvorba** — osobní / komerční / team / lifetime — rozhodnout před implementací
+
+### EULA / TOS
+- `build/license.txt` nebo `.rtf` — text zobrazený v NSIS instalátoru (i wipe u open-source cesty)
+- Privacy policy na levinger.cz (hostuje se data o klíčích, logování aktivací)
+- Refund policy (14 dní?)
+
+### Build s podpisem
+- Code signing certifikát (Windows) — $100-300/rok, DigiCert / Sectigo / SSL.com; bez něj instalátor hází SmartScreen warning
+- NSIS config: `oneClick: false`, `allowToChangeInstallationDirectory: true`, `license: "build/license.txt"`, `signingHashAlgorithms: ["sha256"]`, `signAndEditExecutable: true`
+- Notarization (macOS) — Apple Developer $99/rok, `notarize: true` v electron-builder
+
+### Rozšířit detekci typu projektu (přesunuto z v1.4)
+- Monorepo detection (lerna/nx/turbo), build tool autodetekce (pnpm/yarn/bun), project meta pro kartu v Hubu (verze, repo URL)
 
 ## Git
 
