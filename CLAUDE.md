@@ -55,9 +55,9 @@ Electron app se dvema procesy:
 - `xterm.d.ts` — TypeScript deklarace pro LevisAPI a globalni funkce
 
 ### HTML vstupní body
-- `src/index.html` — hlavní okno (nacita všechny skripty)
-- `src/popout.html` — náhled pop-out okno (artifact + inspector)
-- `src/popout-panel.html` — plovoucí panel okno (terminal/editor)
+- `src/index.html` — hlavní okno (nacita všechny skripty včetně `i18n.js`)
+- `src/popout.html` — náhled pop-out okno (artifact + inspector), načítá `i18n.js` pro překlady toolbarů
+- `src/popout-panel.html` — plovoucí panel okno (terminal/editor), načítá `i18n.js` pro překlady window controls
 
 ## Klíčové datové toky
 
@@ -86,8 +86,17 @@ Kompilace: `npx tsc` — output do `dist/`
 - CSP: `script-src` povoluje `'unsafe-eval'` (Monaco AMD loader), `style-src` povoluje `'unsafe-inline'`. Inline `<script>` povolené **nejsou**.
 - `innerHTML` — všechny dynamické interpolace jdou přes `escapeHtml()` helpery.
 - popout window má `webSecurity: false` — nutné pro `file://` iframe + inspector cross-frame eval.
-- **Path validation v `safe-path.ts`** pro všechny destruktivní fs operace (delete/rename/duplicate/capture).
-- `shell:openExternal` IPC akceptuje jen http(s) URL.
+- **`isPathAllowed` v `safe-path.ts`** se volá ve **všech** `fs:*` a `git:*` IPC handlerech (read/write/delete/rename/duplicate/capture + 10× git). Renderer nesmí zasáhnout mimo allowed roots (`scanPath` + `~/dev` + `~/Documents` + `~/Desktop`).
+- `fs:renameProject` / `fs:duplicateProject` navíc odmítají `newName` obsahující `/ \ ..` a validují cílovou cestu.
+- **`store:set('scanPath', …)`** validuje: absolutní cesta, existuje jako adresář, není systémová lokace (`/windows`, `/etc`, `/sys`, …). Jinak renderer by mohl přes store rozšířit allowed roots.
+- **`hardenWindow()` helper** (v `main.ts`) aplikován na **všechna** okna (main + popout + panel):
+  - `will-navigate` — blokuje navigaci mimo `file://`, http(s) se předá do `shell.openExternal`
+  - `setWindowOpenHandler` — blokuje `window.open`, http(s) se předá do `shell.openExternal`
+- `shell:openExternal` IPC akceptuje jen http(s) URL; `shell:openPath` validuje přes `isPathAllowed` a odmítá URL schémata.
+- `capture:region` validuje savePath + vynucuje `.png`; `capture:cleanup` vyžaduje `.levis-tmp` v cestě.
+- `projects:scan` vyžaduje, aby `scanPath` odpovídal uloženému `store.get('scanPath')` (brání enumeration libovolné cesty).
+- `clipboard:readImage` validuje `projectPath` přes `isPathAllowed`.
+- Webview validátor (`will-attach-webview`) v main i popout okně vynucuje `nodeIntegration: false` + `contextIsolation: true` a blokuje `data:` / `javascript:` / `vbscript:` URL schémata.
 - Mobile panel: CDP debugger přes `Emulation.setEmitTouchEventsForMouse`, default **OFF** (opt-in).
 
 ## Hotovo v1.0.1
@@ -144,13 +153,27 @@ Kompilace: `npx tsc` — output do `dist/`
 - **Split-handle + term-splitter** — opraveno
 - **CC waiting detector** — opraveno
 
-## TODO v1.4
+## Hotovo v1.5.1 (bezpečnostní audit + i18n sanita)
 
-### Bezpečnost (z auditu)
+### Bezpečnost
+- **`isPathAllowed` ve všech fs/git IPC handlerech** — `renameProject` + `duplicateProject` navíc odmítají `newName` s `/ \ ..`, `project:generateClaudeMd` validuje cestu, všech 10 `git:*` handlerů validuje `projectPath`
+- **`store:set('scanPath', …)` validace** — absolutní cesta, existuje jako adresář, není systémová lokace (`/windows`, `/etc`, `/sys`, …)
+- **`hardenWindow()`** — helper v `main.ts`, aplikován na main + popout + panel okna; `will-navigate` blokuje navigaci mimo `file://`, `setWindowOpenHandler` blokuje `window.open`, externí http(s) se otevře v systémovém prohlížeči
+- **`projects:scan`** — vyžaduje shodu `scanPath` s `store.get('scanPath')` (brání enumeration)
+- **`clipboard:readImage`** — `isPathAllowed(projectPath)`
+
+### i18n
+- ~108 nových klíčů pokrývajících `browser`, `editor`, `diff`, `grid`, `workspace`, `panel`, `popout`, `titlebar`, `usage`
+- **Popout + popout-panel** nyní načítají `i18n.js` a volají `initI18n()` → `storeGet('locale')` → `applyI18nDom`
+- **`preload-popout.ts`** získal `storeGet` IPC (popout potřebuje přečíst locale)
+- `initI18n` v `src/i18n.ts` rozšířen — pracuje se všemi třemi preload API (`window.levis`, `window.panelApi`, `window.popoutApi`)
+- HTML: `data-i18n-title` a `data-i18n-placeholder` doplněny v `index.html`, `popout.html`, `popout-panel.html`
+
+## TODO v1.6+
+
+### Bezpečnost zbývá
 - **Race condition app.ts** — `Promise.race` gitStatus:91 běží dál po timeoutu, přidat AbortController
 - **Race condition watch interval** — `browser.ts:267`, `artifact.ts:669` async callback může frontovat
-
-### Funkční
 - Cross-platform testování (macOS, Linux)
 
 ## TODO v1.6 — Monetizace / licencování

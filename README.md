@@ -150,6 +150,11 @@ npm run build
 
 Plná historie: [`CHANGELOG.md`](CHANGELOG.md)
 
+### v1.5.1 (bezpečnost + i18n)
+- **Bezpečnost:** `isPathAllowed` ve všech `fs:*` a `git:*` IPC handlerech (rename/duplicate/generateClaudeMd + 10× git), validace `store:set('scanPath', …)` (absolutní cesta, existuje, ne systémové lokace), `hardenWindow()` helper přidává `will-navigate` + `setWindowOpenHandler` do main / popout / panel oken (blok navigace mimo `file://`, blok `window.open` z rendereru, externí http(s) se otevřou v systémovém prohlížeči)
+- **i18n:** ~108 nových překladových klíčů (browser, editor, diff, grid, workspace, panel, popout, titlebar, usage), popout + popout-panel nyní načítají `i18n.js` a inicializují jazyk přes `initI18n()` → `storeGet('locale')`, `data-i18n-title` / `data-i18n-placeholder` atributy v `index.html`, `popout.html`, `popout-panel.html`
+- **Preload:** `preload-popout.ts` získal `storeGet` (nutné pro i18n locale čtení)
+
 ### v1.5.0
 - **Hub:** rozšířená detekce typů projektů na **~40** — Python (Django/Flask/FastAPI/Streamlit/Gradio), Ruby (Rails/Jekyll), PHP (Laravel/Symfony/WordPress), Go, Rust, .NET, Java/Spring, Kotlin, Elixir/Phoenix, SSG (Hugo/MkDocs/Docusaurus/VitePress), Docker Compose, Flutter, Jupyter a další (detekce je **statická** — čte jen soubory, bez localhost pollu)
 - **Hub:** drag & drop dlaždic mezi statusy Active/Paused/Finished, middle-click na tab projektu ho zavře, odstraněna fajfka u Finished
