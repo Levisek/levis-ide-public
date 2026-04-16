@@ -814,7 +814,10 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
             forceFallback: true,
             fallbackOnBody: true,
             fallbackClass: 'tile-drag-ghost',
-            fallbackTolerance: 0,
+            // Drag začne až po 8 px pohybu — běžný click (i delší hold bez pohybu)
+            // se pošle jako click a otevře projekt. Bez toho každý mousedown+microjitter
+            // zahájil drag a proklik do projektu neprošel.
+            fallbackTolerance: 8,
             swapThreshold: 0.6,
             delay: 0,
             ghostClass: 'tile-drag-placeholder',
