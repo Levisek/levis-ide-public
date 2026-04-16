@@ -161,6 +161,7 @@ export function registerUsageHandlers(): void {
     const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
     const monthMs = monthStart.getTime();
     const fiveHourAgo = now - 5 * 60 * 60 * 1000;
+    const sevenDayAgo = now - 7 * 24 * 60 * 60 * 1000;
 
     function emptyBucket() { return { i: 0, o: 0, cw: 0, cr: 0, cost: 0, count: 0 }; }
     const totals = {
@@ -168,6 +169,7 @@ export function registerUsageHandlers(): void {
       today: emptyBucket(),
       month: emptyBucket(),
       block5h: emptyBucket(),
+      week: emptyBucket(),
     };
     const perProject: Record<string, ReturnType<typeof emptyBucket>> = {};
     const perModel: Record<string, ReturnType<typeof emptyBucket>> = {};
@@ -181,6 +183,7 @@ export function registerUsageHandlers(): void {
       if (e.ts >= todayMs) add(totals.today);
       if (e.ts >= monthMs) add(totals.month);
       if (e.ts >= fiveHourAgo) add(totals.block5h);
+      if (e.ts >= sevenDayAgo) add(totals.week);
 
       const projKey = e.project.replace(/^C--/, '').replace(/-/g, '/');
       if (!perProject[projKey]) perProject[projKey] = emptyBucket();

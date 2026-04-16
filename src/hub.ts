@@ -1563,18 +1563,38 @@ async function renderUsagePanel(host: HTMLElement): Promise<void> {
   // Realna procenta od Claude Code (pokud je statusline dump dostupny)
   const rl = realLimits?.rate_limits || null;
   const cw = realLimits?.context_window || null;
-  // Detekce stale dat: pokud resets_at už prošel, snapshot je z doby před resetem,
-  // skutečné procento je 0 — ale soubor se aktualizuje až po dalším CC requestu.
   const nowMs = Date.now();
+  // capturedAt — může být number (ms) nebo ISO string
+  const capturedMs = typeof realLimits?.capturedAt === 'number'
+    ? realLimits.capturedAt
+    : (realLimits?.capturedAt ? Date.parse(realLimits.capturedAt) : 0);
+  const captureAgeMs = capturedMs ? nowMs - capturedMs : Infinity;
+  // Stale: snapshot je z doby před resetem NEBO starší než 1 hodina (dump hook nefunguje)
   const sessionResetMs = rl?.five_hour?.resets_at ? rl.five_hour.resets_at * 1000 : 0;
   const weeklyResetMs = rl?.seven_day?.resets_at ? rl.seven_day.resets_at * 1000 : 0;
-  const sessionStale = sessionResetMs > 0 && sessionResetMs < nowMs;
-  const weeklyStale = weeklyResetMs > 0 && weeklyResetMs < nowMs;
-  const sessionPct = !sessionStale && rl?.five_hour?.used_percentage != null ? Math.round(rl.five_hour.used_percentage) : null;
-  const weeklyPct = !weeklyStale && rl?.seven_day?.used_percentage != null ? Math.round(rl.seven_day.used_percentage) : null;
+  const sessionStale = (sessionResetMs > 0 && sessionResetMs < nowMs && capturedMs < sessionResetMs)
+                    || captureAgeMs > 60 * 60 * 1000;
+  const weeklyStale  = (weeklyResetMs  > 0 && weeklyResetMs  < nowMs && capturedMs < weeklyResetMs)
+                    || captureAgeMs > 60 * 60 * 1000;
+
+  // Anthropic přesná procenta
+  const sessionPctReal = !sessionStale && rl?.five_hour?.used_percentage != null ? Math.round(rl.five_hour.used_percentage) : null;
+  const weeklyPctReal  = !weeklyStale  && rl?.seven_day?.used_percentage != null ? Math.round(rl.seven_day.used_percentage) : null;
+
+  // Fallback: lokální odhad z transcripts (block5h / week bucket vůči plan limitům v USD)
+  const planMeta = PLAN_LIMITS[plan] || PLAN_LIMITS.max5;
+  const block5hCost = tot.block5h?.cost || 0;
+  const weekCost = (tot as any).week?.cost || tot.month.cost; // fallback na month pro starý build
+  const sessionPctEst = planMeta.block5h > 0 ? Math.min(100, Math.round((block5hCost / planMeta.block5h) * 100)) : 0;
+  const weeklyPctEst  = planMeta.month   > 0 ? Math.min(100, Math.round((weekCost   / (planMeta.month * 7 / 30)) * 100)) : 0;
+
+  // Výsledné hodnoty: preferuj Anthropic, jinak odhad; null jen pokud nemáme vůbec nic
+  const sessionPct = sessionPctReal ?? sessionPctEst;
+  const weeklyPct  = weeklyPctReal  ?? weeklyPctEst;
+  const sessionEst = sessionPctReal === null; // true = zobrazujeme odhad, ne Anthropic
+  const weeklyEst  = weeklyPctReal  === null;
+
   const ctxPct = cw?.used_percentage != null ? Math.round(cw.used_percentage) : null;
-  // capturedAt — pro zobrazení "jak stará data"
-  const capturedMs = realLimits?.capturedAt ? Date.parse(realLimits.capturedAt) : 0;
   function fmtAge(ms: number): string {
     if (!ms) return '';
     const diff = Date.now() - ms;
@@ -1603,17 +1623,21 @@ async function renderUsagePanel(host: HTMLElement): Promise<void> {
   const sessColor = pctColor(sessionPct ?? 0);
   const weekColor = pctColor(weeklyPct ?? 0);
   const ctxColor  = pctColor(ctxPct ?? 0);
-  // Mini indikátory — label + bar + procenta (aby bylo čitelné bez rozbalení)
+  // Mini indikátory — label + bar + procenta. Pokud jde o lokální odhad (bez Anthropic dumpu),
+  // prefix '~' a tooltip vysvětlí, že je to odhad podle tvého plánu.
+  const sessMark = sessionEst ? '~' : '';
+  const weekMark = weeklyEst ? '~' : '';
+  const estTip = ' (odhad dle plánu — live sync neaktivní)';
   const miniPillsHtml = `
-    <span class="usage-pill" title="Session (5h): ${sessionPct ?? '—'}%">
+    <span class="usage-pill" title="Session (5h): ${sessMark}${sessionPct}%${sessionEst ? estTip : ''}">
       <span class="usage-pill-label">Session</span>
-      <span class="usage-pill-bar"><span class="usage-pill-fill" style="width:${sessionPct ?? 0}%;background:${sessColor}"></span></span>
-      <strong>${sessionPct ?? '—'}%</strong>
+      <span class="usage-pill-bar"><span class="usage-pill-fill" style="width:${sessionPct}%;background:${sessColor}"></span></span>
+      <strong>${sessMark}${sessionPct}%</strong>
     </span>
-    <span class="usage-pill" title="Weekly: ${weeklyPct ?? '—'}%">
+    <span class="usage-pill" title="Weekly: ${weekMark}${weeklyPct}%${weeklyEst ? estTip : ''}">
       <span class="usage-pill-label">Weekly</span>
-      <span class="usage-pill-bar"><span class="usage-pill-fill" style="width:${weeklyPct ?? 0}%;background:${weekColor}"></span></span>
-      <strong>${weeklyPct ?? '—'}%</strong>
+      <span class="usage-pill-bar"><span class="usage-pill-fill" style="width:${weeklyPct}%;background:${weekColor}"></span></span>
+      <strong>${weekMark}${weeklyPct}%</strong>
     </span>
     <span class="usage-pill" title="Context: ${ctxPct ?? '—'}%">
       <span class="usage-pill-label">Context</span>
@@ -1622,19 +1646,25 @@ async function renderUsagePanel(host: HTMLElement): Promise<void> {
     </span>
   `;
 
-  const ageStr = capturedMs ? `aktualizováno před ${fmtAge(capturedMs)}` : 'data N/A';
-  const realCard = rl ? `
+  const ageStr = capturedMs ? `live dump před ${fmtAge(capturedMs)}` : 'live dump N/A — odhady';
+  const sessionSub = sessionEst
+    ? `odhad ${planMeta.label} · ${fmtUsd(block5hCost)} / ${fmtUsd(planMeta.block5h)}`
+    : fmtReset(rl?.five_hour?.resets_at);
+  const weeklySub = weeklyEst
+    ? `odhad ${planMeta.label} · ${fmtUsd(weekCost)} / ${fmtUsd(planMeta.month * 7 / 30)}`
+    : fmtReset(rl?.seven_day?.resets_at);
+  const realCard = `
     <div class="usage-stat">
-      <div class="usage-stat-label">Session (5h)</div>
-      <div class="usage-stat-val">${sessionPct ?? '—'}<span class="usage-stat-pct-unit">${sessionPct !== null ? '%' : ''}</span></div>
+      <div class="usage-stat-label">Session (5h)${sessionEst ? ' <span class="usage-est-tag" title="Lokální odhad — live sync neaktivní">~</span>' : ''}</div>
+      <div class="usage-stat-val">${sessMark}${sessionPct}<span class="usage-stat-pct-unit">%</span></div>
       ${hbarHtml(sessionPct, sessColor)}
-      <div class="usage-stat-sub">${fmtReset(rl.five_hour?.resets_at)}</div>
+      <div class="usage-stat-sub">${sessionSub}</div>
     </div>
     <div class="usage-stat">
-      <div class="usage-stat-label">Weekly</div>
-      <div class="usage-stat-val">${weeklyPct ?? '—'}<span class="usage-stat-pct-unit">${weeklyPct !== null ? '%' : ''}</span></div>
+      <div class="usage-stat-label">Weekly${weeklyEst ? ' <span class="usage-est-tag" title="Lokální odhad — live sync neaktivní">~</span>' : ''}</div>
+      <div class="usage-stat-val">${weekMark}${weeklyPct}<span class="usage-stat-pct-unit">%</span></div>
       ${hbarHtml(weeklyPct, weekColor)}
-      <div class="usage-stat-sub">${fmtReset(rl.seven_day?.resets_at)}</div>
+      <div class="usage-stat-sub">${weeklySub}</div>
     </div>
     ${ctxPct !== null ? `
     <div class="usage-stat">
@@ -1643,12 +1673,6 @@ async function renderUsagePanel(host: HTMLElement): Promise<void> {
       ${hbarHtml(ctxPct, ctxColor)}
       <div class="usage-stat-sub">${realLimits?.model?.display_name || ''}</div>
     </div>` : ''}
-  ` : `
-    <div class="usage-stat">
-      <div class="usage-stat-label">${(window as any).t('usage.realLimits')}</div>
-      <div class="usage-stat-val" style="font-size:11px;color:var(--text-muted)">${(window as any).t('usage.realLimitsNA')}</div>
-      <div class="usage-stat-sub">${(window as any).t('usage.realLimitsSub')}</div>
-    </div>
   `;
 
   const planOptions = Object.entries(PLAN_LIMITS).map(([k, v]) =>
