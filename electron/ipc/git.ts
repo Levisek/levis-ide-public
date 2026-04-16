@@ -1,8 +1,10 @@
 import { ipcMain } from 'electron';
 import simpleGit from 'simple-git';
+import { isPathAllowed } from './safe-path';
 
 export function registerGitHandlers(): void {
   ipcMain.handle('git:status', async (_event, projectPath: string) => {
+    if (!isPathAllowed(projectPath)) return { error: 'Path not allowed' };
     try {
       const git = simpleGit(projectPath);
       // Timeout 4 s aby never-resolve git nezamrazil renderer
@@ -16,6 +18,7 @@ export function registerGitHandlers(): void {
   });
 
   ipcMain.handle('git:pull', async (_event, projectPath: string) => {
+    if (!isPathAllowed(projectPath)) return { error: 'Path not allowed' };
     const git = simpleGit(projectPath);
     try {
       return await git.pull();
@@ -60,6 +63,7 @@ export function registerGitHandlers(): void {
   });
 
   ipcMain.handle('git:log', async (_event, projectPath: string, count: number = 20) => {
+    if (!isPathAllowed(projectPath)) return { error: 'Path not allowed' };
     try {
       const git = simpleGit(projectPath);
       return await git.log({ maxCount: count });
@@ -69,6 +73,7 @@ export function registerGitHandlers(): void {
   });
 
   ipcMain.handle('git:diff', async (_event, projectPath: string) => {
+    if (!isPathAllowed(projectPath)) return { error: 'Path not allowed' };
     try {
       const git = simpleGit(projectPath);
       return await git.diff();
@@ -78,6 +83,7 @@ export function registerGitHandlers(): void {
   });
 
   ipcMain.handle('git:diffStaged', async (_event, projectPath: string) => {
+    if (!isPathAllowed(projectPath)) return { error: 'Path not allowed' };
     try {
       const git = simpleGit(projectPath);
       return await git.diff(['--staged']);
@@ -87,6 +93,7 @@ export function registerGitHandlers(): void {
   });
 
   ipcMain.handle('git:commit', async (_event, projectPath: string, message: string, push: boolean = false) => {
+    if (!isPathAllowed(projectPath)) return { error: 'Path not allowed' };
     try {
       const git = simpleGit(projectPath);
       await git.add('.');
@@ -101,6 +108,7 @@ export function registerGitHandlers(): void {
   });
 
   ipcMain.handle('git:push', async (_event, projectPath: string) => {
+    if (!isPathAllowed(projectPath)) return { error: 'Path not allowed' };
     try {
       const git = simpleGit(projectPath);
       const r = await git.push();
@@ -113,6 +121,7 @@ export function registerGitHandlers(): void {
   // ── Checkpoint / Revert ──
 
   ipcMain.handle('git:revparse', async (_event, projectPath: string) => {
+    if (!isPathAllowed(projectPath)) return { error: 'Path not allowed' };
     try {
       const git = simpleGit(projectPath);
       return (await git.revparse(['HEAD'])).trim();
@@ -122,6 +131,7 @@ export function registerGitHandlers(): void {
   });
 
   ipcMain.handle('git:resetHard', async (_event, projectPath: string, hash: string) => {
+    if (!isPathAllowed(projectPath)) return { error: 'Path not allowed' };
     try {
       const git = simpleGit(projectPath);
       await git.reset(['--hard', hash]);
@@ -132,6 +142,7 @@ export function registerGitHandlers(): void {
   });
 
   ipcMain.handle('git:diffRange', async (_event, projectPath: string, fromHash: string) => {
+    if (!isPathAllowed(projectPath)) return { error: 'Path not allowed' };
     try {
       const git = simpleGit(projectPath);
       const stat = await git.diffSummary([fromHash, 'HEAD']);
@@ -142,6 +153,7 @@ export function registerGitHandlers(): void {
   });
 
   ipcMain.handle('git:recentFiles', async (_event, projectPath: string) => {
+    if (!isPathAllowed(projectPath)) return [];
     try {
       const git = simpleGit(projectPath);
       const log = await Promise.race([

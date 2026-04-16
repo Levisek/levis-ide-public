@@ -1,9 +1,31 @@
-import { app, BrowserWindow, globalShortcut, Menu } from 'electron';
+import { app, BrowserWindow, globalShortcut, Menu, shell } from 'electron';
 import * as path from 'path';
 import log from 'electron-log';
 import { autoUpdater } from 'electron-updater';
 import { registerIpcHandlers, killAllPty } from './ipc';
 import { store } from './store';
+
+// Hardening: blok navigace mimo původní file:// a blok window.open z rendereru.
+// Externí http(s) linky se otevřou v systémovém prohlížeči, vše ostatní se odmítne.
+export function hardenWindow(win: BrowserWindow): void {
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//i.test(url)) {
+      shell.openExternal(url).catch(() => {});
+    }
+    return { action: 'deny' };
+  });
+  win.webContents.on('will-navigate', (e, url) => {
+    // Povol jen file:// navigace uvnitř dist/src (initial load + reload)
+    if (!/^file:\/\//i.test(url)) {
+      e.preventDefault();
+      if (/^https?:\/\//i.test(url)) {
+        shell.openExternal(url).catch(() => {});
+      } else {
+        log.warn(`Blocked navigation: ${url}`);
+      }
+    }
+  });
+}
 
 log.transports.file.level = 'info';
 autoUpdater.logger = log;
@@ -59,6 +81,7 @@ function createWindow(): void {
     mainWindow.maximize();
   }
 
+  hardenWindow(mainWindow);
   registerIpcHandlers(mainWindow);
 
   // OS-level focus/blur — posíláme do rendereru místo window.addEventListener(focus|blur),

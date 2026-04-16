@@ -2,6 +2,7 @@ import { ipcMain, clipboard, nativeImage, app, shell } from 'electron';
 import * as os from 'os';
 import * as fs from 'fs';
 import * as path from 'path';
+import { isPathAllowed } from './safe-path';
 
 export function registerEnvHandlers(): void {
   ipcMain.handle('env:homeDir', () => os.homedir());
@@ -9,8 +10,9 @@ export function registerEnvHandlers(): void {
   ipcMain.handle('clipboard:read', () => clipboard.readText());
   ipcMain.on('clipboard:write', (_e, text: string) => clipboard.writeText(text));
 
-  // Čtení obrázku z clipboardu — uloží PNG do .levis-tmp/, vrátí cestu
+  // Čtení obrázku z clipboardu — uloží PNG do .levis-tmp/ uvnitř projectPath, vrátí cestu
   ipcMain.handle('clipboard:readImage', (_e, projectPath: string) => {
+    if (!isPathAllowed(projectPath)) return null;
     const img = clipboard.readImage();
     if (img.isEmpty()) return null;
     const tmpDir = path.join(projectPath, '.levis-tmp');

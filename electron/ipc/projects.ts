@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import simpleGit from 'simple-git';
 import log from 'electron-log';
 import { store } from '../store';
+import { isPathAllowed } from './safe-path';
 
 interface ProjectInfo {
   name: string;
@@ -39,6 +40,11 @@ export function registerProjectHandlers(): void {
   // ── Scan projects ───────────────────────
   ipcMain.handle('projects:scan', async (_event, scanPath: string) => {
     const projects: ProjectInfo[] = [];
+    // scanPath musí být uložený v store (přes store:set validaci) — renderer
+    // nesmí skenovat libovolnou cestu. Brání enumeration zneužití compromised rendererem.
+    const saved = (store as any).get('scanPath') as string;
+    if (!scanPath || scanPath !== saved) return [];
+    if (!isPathAllowed(scanPath)) return [];
     const pinnedSet = new Set<string>(((store as any).get('pinnedProjects') as string[]) || []);
     try {
       const entries = fs.readdirSync(scanPath, { withFileTypes: true });
@@ -96,6 +102,7 @@ export function registerProjectHandlers(): void {
 
   // ── Generate CLAUDE.md for project ────
   ipcMain.handle('project:generateClaudeMd', async (_event, projectPath: string) => {
+    if (!isPathAllowed(projectPath)) return { error: 'Path not allowed' };
     try {
       const claudeMdPath = path.join(projectPath, 'CLAUDE.md');
       if (fs.existsSync(claudeMdPath)) {

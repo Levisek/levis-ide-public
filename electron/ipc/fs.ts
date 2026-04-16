@@ -258,9 +258,14 @@ export function registerFsHandlers(mainWindow: BrowserWindow): void {
 
   ipcMain.handle('fs:renameProject', async (_event, oldPath: string, newName: string) => {
     if (!isPathAllowed(oldPath)) return { error: 'Path not allowed' };
+    // Zákaz path traversal přes newName (např. "../../evil")
+    if (!newName || newName.includes('/') || newName.includes('\\') || newName.includes('..')) {
+      return { error: 'Invalid name' };
+    }
     try {
       const parent = path.dirname(oldPath);
       const newPath = path.join(parent, newName);
+      if (!isPathAllowed(newPath)) return { error: 'Target path not allowed' };
       if (fs.existsSync(newPath)) return { error: 'Cílový název už existuje' };
       fs.renameSync(oldPath, newPath);
       return { success: true, path: newPath };
@@ -271,9 +276,13 @@ export function registerFsHandlers(mainWindow: BrowserWindow): void {
 
   ipcMain.handle('fs:duplicateProject', async (_event, sourcePath: string, newName: string) => {
     if (!isPathAllowed(sourcePath)) return { error: 'Path not allowed' };
+    if (!newName || newName.includes('/') || newName.includes('\\') || newName.includes('..')) {
+      return { error: 'Invalid name' };
+    }
     try {
       const parent = path.dirname(sourcePath);
       const destPath = path.join(parent, newName);
+      if (!isPathAllowed(destPath)) return { error: 'Target path not allowed' };
       if (fs.existsSync(destPath)) return { error: 'Cílový název už existuje' };
       // Recursive copy bez node_modules a .git, ignoruje symlinky
       function copyRec(src: string, dst: string): void {

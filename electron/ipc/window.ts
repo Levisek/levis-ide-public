@@ -1,6 +1,6 @@
 import { ipcMain, BrowserWindow, app } from 'electron';
 import * as path from 'path';
-import { setAllowQuit } from '../main';
+import { setAllowQuit, hardenWindow } from '../main';
 
 // Singleton legacy popout (artifact / browser / mobile)
 let popoutWindow: BrowserWindow | null = null;
@@ -59,6 +59,7 @@ export function registerWindowHandlers(mainWindow: BrowserWindow): void {
       }
     });
 
+    hardenWindow(popoutWindow);
     popoutWindow.loadFile(path.join(__dirname, '..', '..', '..', 'src', 'popout.html'));
 
     popoutWindow.webContents.once('did-finish-load', () => {
@@ -129,6 +130,7 @@ export function registerWindowHandlers(mainWindow: BrowserWindow): void {
         webviewTag: false,
       },
     });
+    hardenWindow(win);
     panelPopouts.set(panelId, win);
     // Ulož data ať si je renderer vyzvedne handshake-em (panel:ready → panel:load)
     pendingPanelData.set(panelId, { panelId, panelType: data.panelType, payload: data.payload });
