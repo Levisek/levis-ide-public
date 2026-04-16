@@ -483,7 +483,54 @@
 }
 .git-action:hover { filter: brightness(1.15); }
 .git-action:disabled { opacity: 0.5; cursor: wait; }
+.git-action.open {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.git-action.open:hover { background: var(--bg-elev-2); filter: none; }
+.git-action.discard {
+  background: transparent;
+  color: #ff6b6b;
+  border: 1px solid rgba(255,107,107,0.35);
+}
+.git-action.discard:hover { background: rgba(255,107,107,0.08); filter: none; }
 .git-issue-status { color: #10b981; font-weight: 700; font-size: 14px; min-width: 14px; text-align: center; }
+
+/* Inline commit input uvnitř git-issue-row (řeší dirty → commit tok) */
+.git-issue-row { flex-wrap: wrap; }
+.quit-commit-box {
+  flex-basis: 100%;
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border);
+}
+.quit-commit-input {
+  flex: 1;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-base);
+  color: var(--text);
+  font-size: 12px;
+  font-family: inherit;
+}
+.quit-commit-input:focus { outline: none; border-color: #ff6a00; }
+.quit-commit-go {
+  background: linear-gradient(135deg, #ff6a00, #ffa500);
+  border: none; color: white;
+  padding: 6px 14px; border-radius: 6px;
+  font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.quit-commit-cancel {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 6px 14px; border-radius: 6px;
+  font-size: 12px; cursor: pointer;
+}
 
 /* ── Dock drag ghost (mini window preview) ── */
 .dock-drag-ghost {

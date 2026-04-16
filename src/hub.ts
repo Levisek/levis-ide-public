@@ -590,7 +590,7 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
       <div class="hub-filter-bar">
         <div class="hub-actions">
           <button class="hub-btn hub-btn-icon hub-btn-pull-all" title="${t('hub.tooltipPullAll')}">${I('download')}</button>
-          <button class="hub-btn hub-btn-icon hub-btn-push-all" title="${t('hub.tooltipPushAll')}">${I('upload')}</button>
+          <button class="hub-btn hub-btn-icon hub-btn-stash-all" title="${t('hub.tooltipStashAll')}">${I('archive')}</button>
           <button class="hub-btn hub-btn-icon hub-btn-refresh" title="${t('hub.refresh')}">${I('refresh')}</button>
         </div>
         <input type="text" class="hub-search" placeholder="${t('hub.search')}">
@@ -624,7 +624,7 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
   const subtitle = container.querySelector('.hub-subtitle') as HTMLElement;
   const btnRefresh = container.querySelector('.hub-btn-refresh') as HTMLElement;
   const btnPullAll = container.querySelector('.hub-btn-pull-all') as HTMLElement;
-  const btnPushAll = container.querySelector('.hub-btn-push-all') as HTMLElement;
+  const btnStashAll = container.querySelector('.hub-btn-stash-all') as HTMLElement;
   const btnTrademark = container.querySelector('.hub-trademark') as HTMLElement;
   btnTrademark?.addEventListener('click', showAboutDialog);
 
@@ -654,22 +654,39 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
     loadProjects();
   });
 
-  btnPushAll.addEventListener('click', async () => {
-    showToast(t('toast.pushingAll'), 'info');
+  // Stash vše — hromadný `git stash -u` přes dirty projekty.
+  // Bezpečný (reverzibilní přes `git stash pop`), nahradil dřívější "Push vše"
+  // které dělalo commit+push naslepo bez diff view (= nebezpečné).
+  btnStashAll.addEventListener('click', async () => {
+    const confirmMsg = t('hub.stashAllConfirm');
+    if (!window.confirm(confirmMsg)) return;
+    showToast(t('toast.stashingAll'), 'info');
     const projects = await levis.scanProjects(scanPath);
-    let ok = 0, skip = 0;
+    let stashed = 0, clean = 0;
+    const failed: string[] = [];
     for (const p of projects) {
       try {
-        const status = await levis.gitStatus(p.path);
-        if (status.current && !status.error) {
-          // Has git — try push (will fail silently if no remote)
-          ok++;
-        } else {
-          skip++;
-        }
-      } catch { skip++; }
+        const status: any = await levis.gitStatus(p.path);
+        if (!status || status.error) continue;
+        const dirty = (status.files?.length > 0)
+          || (status.modified?.length > 0)
+          || (status.created?.length > 0)
+          || (status.not_added?.length > 0)
+          || (status.deleted?.length > 0)
+          || (status.renamed?.length > 0)
+          || (status.staged?.length > 0);
+        if (!dirty) { clean++; continue; }
+        const r: any = await (levis as any).gitStash(p.path);
+        if (r?.error) failed.push(p.name); else stashed++;
+      } catch { /* přeskoč — není git, timeout, apod. */ }
     }
-    showToast(t('hub.pushOkN', { ok, skip }), 'success');
+    if (failed.length === 0) {
+      showToast(t('hub.stashDone', { stashed, clean }), 'success');
+    } else {
+      const list = failed.slice(0, 3).join(', ') + (failed.length > 3 ? ` +${failed.length - 3}` : '');
+      showToast(t('hub.stashPartial', { stashed, failed: list }), 'warning');
+    }
+    loadProjects();
   });
 
   async function loadProjects(forceGlow = false): Promise<void> {
@@ -1482,6 +1499,10 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
           <input type="checkbox" id="set-autostart-dev" checked>
           <span>${t('settings.autostartDev')}</span>
         </label>
+        <label class="settings-checkbox">
+          <input type="checkbox" id="set-inspect-auto-submit" checked>
+          <span>${t('settings.inspectAutoSubmit')}</span>
+        </label>
         <label>
           <span>${t('settings.theme')}</span>:
           <select class="settings-input" id="set-theme">
@@ -1524,6 +1545,7 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
       (settingsPanel.querySelector('#set-cc-notifications') as HTMLInputElement).checked = all.ccNotifications !== false;
       (settingsPanel.querySelector('#set-cc-sound') as HTMLInputElement).checked = all.ccSound !== false;
       (settingsPanel.querySelector('#set-autostart-dev') as HTMLInputElement).checked = all.autostartDev !== false;
+      (settingsPanel.querySelector('#set-inspect-auto-submit') as HTMLInputElement).checked = all.inspectAutoSubmit !== false;
       (settingsPanel.querySelector('#set-theme') as HTMLSelectElement).value = all.theme || 'mid';
       (settingsPanel.querySelector('#set-locale') as HTMLSelectElement).value = all.locale || 'en';
     });
@@ -1550,6 +1572,7 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
       await levis.storeSet('ccNotifications', (settingsPanel.querySelector('#set-cc-notifications') as HTMLInputElement).checked);
       await levis.storeSet('ccSound', (settingsPanel.querySelector('#set-cc-sound') as HTMLInputElement).checked);
       await levis.storeSet('autostartDev', (settingsPanel.querySelector('#set-autostart-dev') as HTMLInputElement).checked);
+      await levis.storeSet('inspectAutoSubmit', (settingsPanel.querySelector('#set-inspect-auto-submit') as HTMLInputElement).checked);
       const newTheme = (settingsPanel.querySelector('#set-theme') as HTMLSelectElement).value;
       await levis.storeSet('theme', newTheme);
       applyTheme(newTheme);

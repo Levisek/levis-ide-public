@@ -76,6 +76,8 @@ async function init(): Promise<void> {
     path: string;
     dirty: boolean;
     ahead: number;
+    unknown?: boolean; // git status selhal (timeout, chyba) — neumíme ověřit stav
+    tabId?: string;    // pro "Otevřít projekt" akci
   }
 
   async function runGitCheckThenQuit(): Promise<void> {
@@ -86,28 +88,47 @@ async function init(): Promise<void> {
     loading.innerHTML = `<div class="quit-box"><div class="quit-title">${t('quit.checking')}</div></div>`;
     document.body.appendChild(loading);
 
-    const projects = tabs.filter(t => t.projectPath).map(t => ({ name: t.label, path: t.projectPath! }));
+    const projects = tabs.filter(t => t.projectPath).map(t => ({ id: t.id, name: t.label, path: t.projectPath! }));
     console.log('[quit-check] projects:', projects.length);
     const issues: GitIssue[] = [];
     // Main-side git:status handler má vlastní 4s timeout (electron/ipc/git.ts:5-16),
     // ale IPC samotná může v rare případech viset (lock na .git/, slow disk).
     // Hard cap 8 s v rendereru garantuje, že loading nikdy nezůstane viset.
+    // cancelled flag brání issues.push po timeoutu — simple-git nepodporuje AbortSignal,
+    // main-side op dojede do void, renderer state zůstane čistý.
+    let cancelled = false;
     const checks = projects.map(async (p) => {
       try {
         const status = await levis.gitStatus(p.path) as any;
-        if (status && !status.error) {
-          const dirty = (status.files && status.files.length > 0) || (status.modified && status.modified.length > 0) || (status.created && status.created.length > 0);
-          const ahead = status.ahead || 0;
-          if (dirty || ahead > 0) {
-            issues.push({ name: p.name, path: p.path, dirty: !!dirty, ahead });
-          }
+        if (cancelled) return;
+        // Pokud gitStatus timeoutoval/selhal, nelze stav ověřit → přidat jako "unknown",
+        // ať user vidí varování a nezavře appka potichu s případnými změnami.
+        if (!status || status.error) {
+          console.warn('[quit-check] git status error for', p.path, status?.error);
+          issues.push({ name: p.name, path: p.path, dirty: false, ahead: 0, unknown: true, tabId: p.id });
+          return;
+        }
+        // Plná detekce dirty: files agreguje všechno, ale fallback na detailní pole
+        // pro případ, že simple-git vrátí částečný výsledek.
+        const dirty = (status.files?.length > 0)
+          || (status.modified?.length > 0)
+          || (status.created?.length > 0)
+          || (status.not_added?.length > 0)
+          || (status.deleted?.length > 0)
+          || (status.renamed?.length > 0)
+          || (status.conflicted?.length > 0)
+          || (status.staged?.length > 0);
+        const ahead = status.ahead || 0;
+        if (dirty || ahead > 0) {
+          issues.push({ name: p.name, path: p.path, dirty: !!dirty, ahead, tabId: p.id });
         }
       } catch (e) {
         console.warn('[quit-check] failed for', p.path, e);
+        issues.push({ name: p.name, path: p.path, dirty: false, ahead: 0, unknown: true, tabId: p.id });
       }
     });
     const allDone = Promise.allSettled(checks);
-    const timeout = new Promise<'timeout'>((r) => setTimeout(() => r('timeout'), 8000));
+    const timeout = new Promise<'timeout'>((r) => setTimeout(() => { cancelled = true; r('timeout'); }, 8000));
     const race = await Promise.race([allDone.then(() => 'done' as const), timeout]);
     if (race === 'timeout') {
       console.warn('[quit-check] hard timeout 8s — projects:', projects.map(p => p.path));
@@ -151,21 +172,29 @@ async function init(): Promise<void> {
         </div>
       </div>
     `).join('');
-    const rows = issues.map((i, idx) => `
-      <div class="git-issue-row" data-idx="${idx}">
-        <div class="git-issue-info">
-          <div class="git-issue-name">${escapeHtmlSafe(i.name)}</div>
-          <div class="git-issue-detail">
-            ${i.dirty ? `<span class="git-tag dirty">${(window as any).t('quit.tagDirty')}</span>` : ''}
-            ${i.ahead > 0 ? `<span class="git-tag ahead">${(window as any).t('quit.tagUnpushed', { n: i.ahead })}</span>` : ''}
+    const rows = issues.map((i, idx) => {
+      const tags: string[] = [];
+      if (i.unknown) tags.push(`<span class="git-tag dirty">${(window as any).t('quit.tagUnknown')}</span>`);
+      if (i.dirty) tags.push(`<span class="git-tag dirty">${(window as any).t('quit.tagDirty')}</span>`);
+      if (i.ahead > 0) tags.push(`<span class="git-tag ahead">${(window as any).t('quit.tagUnpushed', { n: i.ahead })}</span>`);
+      const actions: string[] = [];
+      if (i.dirty) actions.push(`<button class="git-action commit">${(window as any).t('quit.actCommit')}</button>`);
+      if (i.ahead > 0 && !i.dirty) actions.push(`<button class="git-action push">${(window as any).t('quit.actPush')}</button>`);
+      actions.push(`<button class="git-action open">${(window as any).t('quit.actOpen')}</button>`);
+      if (i.dirty) actions.push(`<button class="git-action discard">${(window as any).t('quit.actDiscard')}</button>`);
+      return `
+        <div class="git-issue-row" data-idx="${idx}">
+          <div class="git-issue-info">
+            <div class="git-issue-name">${escapeHtmlSafe(i.name)}</div>
+            <div class="git-issue-detail">${tags.join('')}</div>
+          </div>
+          <div class="git-issue-actions">
+            ${actions.join('')}
+            <span class="git-issue-status"></span>
           </div>
         </div>
-        <div class="git-issue-actions">
-          ${i.ahead > 0 && !i.dirty ? '<button class="git-action push">Push</button>' : ''}
-          <span class="git-issue-status"></span>
-        </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
     const subParts: string[] = [];
     if (activeTerms.length > 0) subParts.push(t('quit.partRunningCC'));
     if (issues.length > 0) subParts.push(t('quit.partUncommitted'));
@@ -182,7 +211,7 @@ async function init(): Promise<void> {
     `;
     document.body.appendChild(overlay);
 
-    overlay.querySelectorAll('.git-action.push').forEach((btn, i) => {
+    overlay.querySelectorAll('.git-action.push').forEach((btn) => {
       const idx = parseInt((btn.closest('.git-issue-row') as HTMLElement).dataset.idx || '0', 10);
       btn.addEventListener('click', async () => {
         const issue = issues[idx];
@@ -198,6 +227,117 @@ async function init(): Promise<void> {
           statusEl.textContent = '✓';
           (btn as HTMLElement).style.display = 'none';
         }
+      });
+    });
+
+    // "Otevřít projekt" — zrušit quit a přepnout na daný tab
+    overlay.querySelectorAll('.git-action.open').forEach((btn) => {
+      const idx = parseInt((btn.closest('.git-issue-row') as HTMLElement).dataset.idx || '0', 10);
+      btn.addEventListener('click', () => {
+        const issue = issues[idx];
+        overlay.remove();
+        quitInProgress = false;
+        if (issue.tabId) switchTab(issue.tabId);
+      });
+    });
+
+    // "Commit" — inline input pro zprávu, pak gitCommit
+    overlay.querySelectorAll('.git-action.commit').forEach((btn) => {
+      const row = btn.closest('.git-issue-row') as HTMLElement;
+      const idx = parseInt(row.dataset.idx || '0', 10);
+      btn.addEventListener('click', async () => {
+        const issue = issues[idx];
+        if (row.querySelector('.quit-commit-box')) return; // již otevřeno
+        const box = document.createElement('div');
+        box.className = 'quit-commit-box';
+        box.innerHTML = `
+          <input type="text" class="quit-commit-input" placeholder="${(window as any).t('quit.commitMsgPlaceholder')}">
+          <button class="quit-commit-go">${(window as any).t('quit.commitGo')}</button>
+          <button class="quit-commit-cancel">${(window as any).t('quit.actOpenShort')}</button>
+        `;
+        row.appendChild(box);
+        const input = box.querySelector('.quit-commit-input') as HTMLInputElement;
+        const go = box.querySelector('.quit-commit-go') as HTMLButtonElement;
+        const cancel = box.querySelector('.quit-commit-cancel') as HTMLButtonElement;
+        input.focus();
+        const statusEl = row.querySelector('.git-issue-status') as HTMLElement;
+
+        cancel.addEventListener('click', () => box.remove());
+        const run = async () => {
+          const msg = input.value.trim();
+          if (!msg) { input.focus(); return; }
+          go.disabled = true; cancel.disabled = true; statusEl.textContent = '…';
+          const r: any = await levis.gitCommit(issue.path, msg, false);
+          if (r?.error || (!r?.success && !r?.commit)) {
+            statusEl.textContent = '✗';
+            statusEl.title = r?.error || 'commit failed';
+            go.disabled = false; cancel.disabled = false;
+            return;
+          }
+          statusEl.textContent = '✓';
+          statusEl.title = '';
+          issue.dirty = false;
+          box.remove();
+          // Skryj commit+discard, nech jen open + pokud ahead → přidej push
+          (row.querySelector('.git-action.commit') as HTMLElement | null)?.remove();
+          (row.querySelector('.git-action.discard') as HTMLElement | null)?.remove();
+          const tagEl = row.querySelector('.git-tag.dirty') as HTMLElement | null;
+          tagEl?.remove();
+          // Ahead++: commit přidal 1 commit nepushnutý
+          issue.ahead = (issue.ahead || 0) + 1;
+          const detailEl = row.querySelector('.git-issue-detail') as HTMLElement;
+          detailEl.innerHTML = `<span class="git-tag ahead">${(window as any).t('quit.tagUnpushed', { n: issue.ahead })}</span>`;
+          // Přidej Push tlačítko
+          const pushBtn = document.createElement('button');
+          pushBtn.className = 'git-action push';
+          pushBtn.textContent = (window as any).t('quit.actPush');
+          const actionsEl = row.querySelector('.git-issue-actions') as HTMLElement;
+          actionsEl.insertBefore(pushBtn, actionsEl.firstChild);
+          pushBtn.addEventListener('click', async () => {
+            pushBtn.disabled = true; statusEl.textContent = '…';
+            const r2: any = await levis.gitPush(issue.path);
+            if (r2?.error) {
+              statusEl.textContent = '✗'; statusEl.title = r2.error;
+              pushBtn.disabled = false;
+            } else {
+              statusEl.textContent = '✓'; statusEl.title = '';
+              pushBtn.style.display = 'none';
+            }
+          });
+        };
+        go.addEventListener('click', run);
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') { e.preventDefault(); run(); }
+          if (e.key === 'Escape') { e.preventDefault(); box.remove(); }
+        });
+      });
+    });
+
+    // "Zahodit" — git stash push --include-untracked (bezpečnější než hard discard)
+    overlay.querySelectorAll('.git-action.discard').forEach((btn) => {
+      const row = btn.closest('.git-issue-row') as HTMLElement;
+      const idx = parseInt(row.dataset.idx || '0', 10);
+      btn.addEventListener('click', async () => {
+        const issue = issues[idx];
+        const ok = window.confirm((window as any).t('quit.discardConfirm', { name: issue.name }));
+        if (!ok) return;
+        const statusEl = row.querySelector('.git-issue-status') as HTMLElement;
+        (btn as HTMLButtonElement).disabled = true;
+        statusEl.textContent = '…';
+        const r: any = await (levis as any).gitStash(issue.path);
+        if (r?.error) {
+          statusEl.textContent = '✗';
+          statusEl.title = r.error;
+          (btn as HTMLButtonElement).disabled = false;
+          return;
+        }
+        statusEl.textContent = '✓';
+        statusEl.title = (window as any).t('quit.discardedHint');
+        issue.dirty = false;
+        (row.querySelector('.git-action.commit') as HTMLElement | null)?.remove();
+        (row.querySelector('.git-action.discard') as HTMLElement | null)?.remove();
+        const tagEl = row.querySelector('.git-tag.dirty') as HTMLElement | null;
+        tagEl?.remove();
       });
     });
 

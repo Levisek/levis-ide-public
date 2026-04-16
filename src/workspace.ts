@@ -1252,9 +1252,15 @@ async function createWorkspace(projectPath: string, projectName: string, project
     }, 0);
   });
 
-  function sendToFirstTerminal(text: string): void {
+  function sendToFirstTerminal(text: string, submit: boolean = true): void {
     const target = termInstances[activeTerminalIndex] || termInstances[0];
     if (!target) return;
+    if (!submit) {
+      // Prepare mode — jen napíšeme do promptu bez Enter; user stiskne Enter sám
+      switchLeftPanel('terminal');
+      levis.writePty(target.ptyId, text);
+      return;
+    }
     const state = target.getState ? target.getState() : 'idle';
     if (state !== 'idle') {
       promptQueue.push(text);
@@ -1507,8 +1513,14 @@ async function createWorkspace(projectPath: string, projectName: string, project
   } catch (err) { console.error('[onPanelClosed setup]', err); }
 
   // Listen for send-to-pty events from inspector/artifact
+  // Detail může být buď string (legacy), nebo { text, submit } (nové — inspect/lasso toggle)
   const sendToPtyHandler = ((e: CustomEvent) => {
-    sendToFirstTerminal(e.detail);
+    const d = e.detail;
+    if (typeof d === 'string') {
+      sendToFirstTerminal(d);
+    } else if (d && typeof d === 'object') {
+      sendToFirstTerminal(String(d.text || ''), d.submit !== false);
+    }
   }) as EventListener;
   wrapper.addEventListener('send-to-pty', sendToPtyHandler);
   cleanups.push(() => wrapper.removeEventListener('send-to-pty', sendToPtyHandler));
@@ -1597,6 +1609,13 @@ async function createWorkspace(projectPath: string, projectName: string, project
     levis.dirStats(projectPath).then(stats => {
       projectSizeEl.textContent = `${stats.files} ${t('ws.filesCount')} · ${formatSize(stats.size)}`;
     }).catch(() => {});
+  });
+
+  // Po CC akci refreshni Browser náhled (pokud user před tím odeslal prompt
+  // z inspect/lasso — browserInstance si drží armed flag interně).
+  ccDoneCallbacks.push(() => {
+    try { browserInstance.notifyCCDone?.(); } catch {}
+    try { levis.popoutRefresh?.(); } catch {}
   });
 
   // Checkpoint — ulož HEAD hash PŘED prací CC (při idle→working)

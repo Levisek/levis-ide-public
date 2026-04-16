@@ -13,6 +13,9 @@ interface BrowserInstance {
   isInteracting: () => boolean;
   /** Zobrazí/skryje loading overlay v panelu. message volitelný (např. "Spouštím Vite dev server..."). */
   setLoading: (on: boolean, message?: string) => void;
+  /** Volá workspace po working→idle přechodu CC. Pokud je nahraný pending reload
+   *  (tj. user poslal prompt z inspect/lasso), náhled se refreshne. */
+  notifyCCDone: () => void;
   dispose: () => void;
 }
 
@@ -333,16 +336,28 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
   // ── Watch mode ──
   let watching = false;
   let watchInterval: any = null;
+  let watchPending = false; // brání double-fire pokud loadFile trvá > 2 s
   const watchBtn = toolbar.querySelector('.browser-watch') as HTMLElement;
+
+  // ── Auto-reload po CC done ──
+  // Když user odešle prompt z inspect/lasso, nastavíme flag; až workspace
+  // zachytí working→idle přechod, refreshne náhled (pokud Watch neběží).
+  let armedReloadAfterCC = false;
 
   function startWatch(): void {
     if (watchInterval) return;
-    watchInterval = setInterval(() => {
-      if (currentFilePath) {
-        // File mode — reload file
-        loadFile(currentFilePath);
-      } else if (webview.src && webview.src !== 'about:blank') {
-        try { if (typeof (webview as any).reloadIgnoringCache === 'function') (webview as any).reloadIgnoringCache(); } catch {}
+    watchInterval = setInterval(async () => {
+      if (watchPending) return;
+      watchPending = true;
+      try {
+        if (currentFilePath) {
+          // File mode — reload file
+          await loadFile(currentFilePath);
+        } else if (webview.src && webview.src !== 'about:blank') {
+          try { if (typeof (webview as any).reloadIgnoringCache === 'function') (webview as any).reloadIgnoringCache(); } catch {}
+        }
+      } finally {
+        watchPending = false;
       }
     }, 2000);
   }
@@ -657,15 +672,24 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
       (userText ? ` — ${userText}` : '');
     if (shot) prompt += ` (screenshot: ${shot.rel})`;
 
-    wrapper.dispatchEvent(new CustomEvent('send-to-pty', { detail: prompt, bubbles: true }));
+    const submit = await getInspectAutoSubmit();
+    if (submit) armedReloadAfterCC = true;
+    wrapper.dispatchEvent(new CustomEvent('send-to-pty', { detail: { text: prompt, submit }, bubbles: true }));
     if (shot) scheduleCleanup(shot.abs);
-    showToast(t(shot ? 'toast.sentToCCWithShot' : 'toast.sentToCC'), 'success');
+    showToast(t(submit ? (shot ? 'toast.sentToCCWithShot' : 'toast.sentToCC') : 'toast.preparedInCC'), 'success');
     closePopover();
     selectedElement = null;
     if (inspectActive) {
       inspector.disable();
       setTimeout(() => inspector.enable(webview), 300);
     }
+  }
+
+  async function getInspectAutoSubmit(): Promise<boolean> {
+    try {
+      const v = await levis.storeGet('inspectAutoSubmit');
+      return v !== false; // default ON
+    } catch { return true; }
   }
 
   // ── Annotation (freehand lasso) ──
@@ -745,9 +769,11 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
         const shot = await captureLasso({ x: minX, y: minY, width: w, height: h }, false);
         let prompt = `V prohlížeči (${label}) v oblasti (${Math.round(minX)},${Math.round(minY)} → ${Math.round(maxX)},${Math.round(maxY)}) udělej: ${text}`;
         if (shot) prompt += ` (screenshot: ${shot.rel})`;
-        wrapper.dispatchEvent(new CustomEvent('send-to-pty', { detail: prompt, bubbles: true }));
+        const submit = await getInspectAutoSubmit();
+        if (submit) armedReloadAfterCC = true;
+        wrapper.dispatchEvent(new CustomEvent('send-to-pty', { detail: { text: prompt, submit }, bubbles: true }));
         if (shot) scheduleCleanup(shot.abs);
-        showToast(t(shot ? 'toast.sentToCCWithShot' : 'toast.sentToCC'), 'success');
+        showToast(t(submit ? (shot ? 'toast.sentToCCWithShot' : 'toast.sentToCC') : 'toast.preparedInCC'), 'success');
         closePopover();
         strokes.pop();
         redrawAll();
@@ -836,6 +862,15 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
     setLoading: (on: boolean, message?: string) => {
       loaderFromDevServer = on && !!message;
       setLoading(on, message);
+    },
+    notifyCCDone: () => {
+      if (!armedReloadAfterCC) return;
+      armedReloadAfterCC = false;
+      if (watching) return; // Watch mód si reload dělá sám, netřeba dublovat
+      if (currentFilePath) { loadFile(currentFilePath); return; }
+      if (webview.src && webview.src !== 'about:blank') {
+        try { if (typeof (webview as any).reloadIgnoringCache === 'function') (webview as any).reloadIgnoringCache(); } catch {}
+      }
     },
     dispose: () => {
       stopWatch();

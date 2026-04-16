@@ -118,6 +118,20 @@ export function registerGitHandlers(): void {
     }
   });
 
+  // Stash všech změn včetně untracked — bezpečná alternativa k discardu.
+  // User může kdykoli vrátit přes `git stash pop`.
+  ipcMain.handle('git:stash', async (_event, projectPath: string) => {
+    if (!isPathAllowed(projectPath)) return { error: 'Path not allowed' };
+    try {
+      const git = simpleGit(projectPath);
+      const msg = `levis-quit-check ${new Date().toISOString()}`;
+      await git.raw(['stash', 'push', '--include-untracked', '-m', msg]);
+      return { success: true, message: msg };
+    } catch (err) {
+      return { error: String(err) };
+    }
+  });
+
   // ── Checkpoint / Revert ──
 
   ipcMain.handle('git:revparse', async (_event, projectPath: string) => {

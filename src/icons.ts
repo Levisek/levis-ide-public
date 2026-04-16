@@ -12,7 +12,7 @@ type IconName =
   | 'terminal' | 'editor' | 'git' | 'audit' | 'tokens'
   | 'browser' | 'preview' | 'mobile'
   // Akce
-  | 'save' | 'upload' | 'download' | 'deploy' | 'restart' | 'plus' | 'close'
+  | 'save' | 'upload' | 'download' | 'deploy' | 'restart' | 'plus' | 'close' | 'archive'
   | 'lock' | 'unlock' | 'equalize' | 'equalize-v' | 'refresh' | 'sidebar' | 'swap'
   | 'split' | 'eye' | 'search' | 'clear' | 'info' | 'warning' | 'error'
   | 'check' | 'play' | 'stop' | 'folder' | 'file' | 'gear' | 'menu'
@@ -44,6 +44,7 @@ const PATHS: Record<IconName, string> = {
   download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
   deploy:   '<path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>',
   restart:  '<polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>',
+  archive:  '<rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v12a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V8"/><line x1="10" y1="12" x2="14" y2="12"/>',
   plus:     '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
   close:    '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
   lock:     '<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',

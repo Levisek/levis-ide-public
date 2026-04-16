@@ -169,11 +169,35 @@ Kompilace: `npx tsc` — output do `dist/`
 - `initI18n` v `src/i18n.ts` rozšířen — pracuje se všemi třemi preload API (`window.levis`, `window.panelApi`, `window.popoutApi`)
 - HTML: `data-i18n-title` a `data-i18n-placeholder` doplněny v `index.html`, `popout.html`, `popout-panel.html`
 
+## Hotovo v1.6
+
+### Race conditions
+- **Race condition quit flow** — `runGitCheckThenQuit()` v `src/app.ts` má `cancelled` flag; po 8s hard timeoutu už žádná pozdní `gitStatus` odpověď nezmění `issues[]`. Main-side 4s timeout v `electron/ipc/git.ts:13` zůstává.
+- **Race condition watch interval** — `startWatch()` v `src/browser.ts` má `watchPending` guard; pokud `loadFile` trvá > 2 s, další tick se skipne místo paralelního startu.
+
+### Auto-reload náhledu po CC (regrese fix)
+- `browser.ts` má `armedReloadAfterCC` flag + `notifyCCDone()` metodu v API. Když user odešle prompt z Inspect / Lasso / Annotate, flag se nahraje. `workspace.ccDoneCallbacks` volá `browserInstance.notifyCCDone()` při working→idle přechodu → náhled se refreshne (pokud Watch neběží — ten si reload dělá sám).
+
+### Inspect/Lasso toggle "odeslat / jen připravit"
+- **Settings** (Hub → ozubené kolo) → nový checkbox **„Prompt z Inspectu/Lasa odeslat do CC hned"** (default ON). OFF = prompt se do CC jen napíše bez Enteru, user stiskne sám.
+- `browser.ts sendElementPrompt` / `showAnnotPrompt` čtou `storeGet('inspectAutoSubmit')` a posílají object `{ text, submit }` místo plain string. `workspace.sendToFirstTerminal(text, submit)` přijímá druhý parametr — v prepare módu píše bez `\r`.
+- Store klíč: `inspectAutoSubmit` (boolean, default true).
+
+### Pre-quit modal — bezpečnější detekce + akce
+- **Rozšířená dirty detekce** — původní kontrola (`files/modified/created`) nechytala untracked (`not_added`), `deleted`, `renamed`, `conflicted`, `staged` → appka se mohla zavřít s tichou ztrátou. Teď detekce pokrývá všechny.
+- **`unknown` flag** — pokud `gitStatus` timeoutne / vrátí error, projekt se přidá do modalu s tagem "stav neznámý" místo potichého přeskočení.
+- **Nové akce v modálu per dirty projekt:**
+  - **Commit** — inline input pro message → `git:commit` → po úspěchu se tag dirty přepne na ahead + přidá se Push tlačítko
+  - **Otevřít projekt** — zruší quit, přepne na tab (každý issue, i terminálový)
+  - **Zahodit** — confirm → `git:stash -u` (bezpečná alternativa k hard discardu, reverzibilní přes `git stash pop`)
+- Nový IPC: `git:stash` (electron/ipc/git.ts).
+
+### Stash vše v Hubu
+- Toolbar tlačítko **„Stash vše"** (archive ikona) nahradilo dřívější buggy „Push vše" (to jen inkrementovalo counter bez volání `git push`). Iteruje projekty, stashne jen dirty; toast ukazuje kolik stashnuto + kolik už bylo čistých.
+
 ## TODO v1.6+
 
 ### Bezpečnost zbývá
-- **Race condition app.ts** — `Promise.race` gitStatus:91 běží dál po timeoutu, přidat AbortController
-- **Race condition watch interval** — `browser.ts:267`, `artifact.ts:669` async callback může frontovat
 - Cross-platform testování (macOS, Linux)
 
 ## TODO v1.6 — Monetizace / licencování

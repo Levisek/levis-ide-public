@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.5.0-orange" alt="Version">
+  <img src="https://img.shields.io/badge/version-1.6.0-orange" alt="Version">
   <img src="https://img.shields.io/badge/electron-41-blue" alt="Electron">
   <img src="https://img.shields.io/badge/license-ISC-green" alt="License">
 </p>
@@ -33,7 +33,7 @@ LevisIDE je desktopové vývojové prostředí postavené na Electronu. Spojuje 
 - **Interaktivní drag & drop řazení** (SortableJS — dlaždice se živě odsouvají)
 - **Sort presety** — Naposled upraveno / Název / Velikost / Typ + možnost uložit vlastní pořadí jako pojmenovaný preset
 - **Bulk actions** — Shift/Ctrl klik multi-select → hromadný status / barva / pin / pull / push / smazat
-- Hromadný Pull/Push, scaffolding wizard (Vite, React, Vue, Svelte, Next.js, Astro)
+- Hromadný **Pull vše** + **Stash vše** (git stash -u přes dirty projekty, reverzibilní přes `git stash pop`), scaffolding wizard (Vite, React, Vue, Svelte, Next.js, Astro)
 - Kompaktní billing bar s přehledem Session / Weekly / Context / náklady
 
 ### Workspace
@@ -43,7 +43,7 @@ LevisIDE je desktopové vývojové prostředí postavené na Electronu. Spojuje 
 - **Port collision handling** — paralelní detekce alt portu z PTY logu (Vite auto-increment apod.) + actionable error toast
 - **Mobile preview** s default 150% zoomem pro HiDPI čitelnost
 - **Drag-out** panelů do plovoucích oken (multi-monitor)
-- **Pre-quit git check** — kontrola necommitovaných změn + běžících CC instancí při zavření
+- **Pre-quit git check** — kontrola necommitovaných změn + běžících CC instancí při zavření. Modál nabízí per projekt: **Commit** (inline message), **Otevřít projekt** (zruší quit a přepne tab) nebo **Zahodit** (`git stash -u`, reverzibilní)
 
 ### Terminál
 - xterm.js + node-pty, split terminal, WebGL renderer
@@ -67,6 +67,8 @@ LevisIDE je desktopové vývojové prostředí postavené na Electronu. Spojuje 
 - Klikni na element v náhledu → floating popover → napiš prompt → CC dostane instrukci + screenshot
 - Annotation canvas — nakresli oblast, popiš co změnit
 - Screenshot se přiloží automaticky (30s auto-cleanup)
+- **Auto-reload náhledu** po dokončení CC příkazu — hned vidíš výsledek, není třeba F5
+- **Toggle odeslat / jen připravit** v Nastavení — OFF = prompt se do CC jen napíše bez Enteru (user zkontroluje a odešle sám)
 - **SPA-safe** — blokuje navigaci React/Next/Vue routerů během Inspect módu (window capture + history API override)
 - **Smart selektory** — skip hashed CSS-in-JS classes (Emotion, RN Web), preferuje `aria-label` / `data-testid` / text content / role
 - **Pin URL toggle** — klik pinne aktuální URL jako výchozí pro projekt, druhý klik odepne
@@ -149,6 +151,14 @@ npm run build
 ## Changelog
 
 Plná historie: [`CHANGELOG.md`](CHANGELOG.md)
+
+### v1.6.0 (UX okolo git + inspect flow)
+- **Pre-quit modal** — per-projekt akce **Commit** (inline message), **Otevřít projekt** (zruší quit + switch tab), **Zahodit** (`git stash -u`, reverzibilní). Dirty detekce rozšířena o `not_added` / `deleted` / `renamed` / `conflicted` / `staged` (příčina dřívějších tichých zavření). Nový tag „stav neznámý" pokud `gitStatus` timeoutne.
+- **Auto-reload náhledu po CC** — po dokončení prompt z Inspect/Lasso/Annotate se Browser panel sám refreshne (regrese oproti staršímu chování, znovu k dispozici). Watch mód si reload dělá sám.
+- **Inspect/Lasso toggle** — Settings → *„Prompt z Inspectu/Lasa odeslat do CC hned"* (default ON). OFF = text se do CC jen napíše bez Enteru, user zkontroluje a odešle sám.
+- **Hub Stash vše** — nahrazuje dřívější buggy „Push vše" (nic nepushla, jen inkrementovala counter). Hromadný `git stash -u` přes dirty projekty, toast ukáže počet.
+- **Race conditions** — `runGitCheckThenQuit` má `cancelled` flag (pozdní `gitStatus` po 8s timeoutu nezmění UI state), `startWatch` má `watchPending` guard (žádné double-fire `loadFile` když trvá > 2 s).
+- **Nové IPC** — `git:stash` (stash push --include-untracked). Nový store klíč `inspectAutoSubmit`.
 
 ### v1.5.1 (bezpečnost + i18n)
 - **Bezpečnost:** `isPathAllowed` ve všech `fs:*` a `git:*` IPC handlerech (rename/duplicate/generateClaudeMd + 10× git), validace `store:set('scanPath', …)` (absolutní cesta, existuje, ne systémové lokace), `hardenWindow()` helper přidává `will-navigate` + `setWindowOpenHandler` do main / popout / panel oken (blok navigace mimo `file://`, blok `window.open` z rendereru, externí http(s) se otevřou v systémovém prohlížeči)
