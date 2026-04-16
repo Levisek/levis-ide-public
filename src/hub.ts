@@ -300,6 +300,9 @@ function showAboutDialog(): void {
       <div class="about-changelog">
         <h3>${t('about.changelog')}</h3>
         <div class="about-changelog-list">
+          <div class="about-cl-entry"><strong>v1.5.0</strong> — ${t('about.cl150')}</div>
+          <div class="about-cl-entry"><strong>v1.4.2</strong> — ${t('about.cl142')}</div>
+          <div class="about-cl-entry"><strong>v1.4.0</strong> — ${t('about.cl14')}</div>
           <div class="about-cl-entry"><strong>v1.3.0</strong> — ${t('about.cl13')}</div>
           <div class="about-cl-entry"><strong>v1.2.0</strong> — ${t('about.cl12')}</div>
           <div class="about-cl-entry"><strong>v1.1.0</strong> — ${t('about.cl11')}</div>
@@ -560,11 +563,19 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
       <div class="hub-bulk-bar" hidden></div>
       <div class="hub-grid"></div>
       <div class="hub-usage" id="hub-usage"></div>
-      <button class="hub-trademark" type="button" title="${t('hub.tradeTooltip')}">
-        <img class="hub-tm-logo" src="../assets/icon.svg" alt="LevisIDE" width="14" height="14">
-        <span class="hub-tm-text">LevisIDE™</span>
-        <span class="hub-tm-version" id="hub-version">v…</span>
-      </button>
+      <div class="hub-footer">
+        <button class="hub-trademark" type="button" title="${t('hub.tradeTooltip')}">
+          <img class="hub-tm-logo" src="../assets/icon.svg" alt="LevisIDE" width="14" height="14">
+          <span class="hub-tm-text">LevisIDE™</span>
+          <span class="hub-tm-version" id="hub-version">v…</span>
+        </button>
+        <div class="hub-changelog-compact">
+          <div class="hub-cl-entry"><strong>v1.5.0</strong> — ${t('about.cl150')}</div>
+          <div class="hub-cl-entry"><strong>v1.4.2</strong> — ${t('about.cl142')}</div>
+          <div class="hub-cl-entry"><strong>v1.4.0</strong> — ${t('about.cl14')}</div>
+          <button class="hub-cl-more" type="button">${t('about.changelogMore')}</button>
+        </div>
+      </div>
     </div>
   `;
 
@@ -575,6 +586,7 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
   const btnPushAll = container.querySelector('.hub-btn-push-all') as HTMLElement;
   const btnTrademark = container.querySelector('.hub-trademark') as HTMLElement;
   btnTrademark?.addEventListener('click', showAboutDialog);
+  container.querySelector('.hub-cl-more')?.addEventListener('click', (e) => { e.stopPropagation(); showAboutDialog(); });
 
   // Dynamická verze z package.json
   levis.getAppVersion().then((v: string) => {

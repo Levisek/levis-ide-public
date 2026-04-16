@@ -1,6 +1,6 @@
 {
   "name": "levis-ide",
-  "version": "1.4.2",
+  "version": "1.5.0",
   "description": "LevisIDE - Project Hub & Workspace",
   "main": "dist/electron/main.js",
   "scripts": {

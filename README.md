@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.4.2-orange" alt="Version">
+  <img src="https://img.shields.io/badge/version-1.5.0-orange" alt="Version">
   <img src="https://img.shields.io/badge/electron-41-blue" alt="Electron">
   <img src="https://img.shields.io/badge/license-ISC-green" alt="License">
 </p>
@@ -26,7 +26,7 @@ LevisIDE je desktopové vývojové prostředí postavené na Electronu. Spojuje 
 ## Hlavní funkce
 
 ### Hub (přehled projektů)
-- Scan projektů s detekcí typu (Next, React, Vue, Svelte, Astro, Nuxt, Electron, Tauri, Node, PHP, Static)
+- Scan projektů s detekcí **~40 typů** — Node (Next/Nuxt/Vite/React/Svelte/Astro/Angular/Remix/Gatsby/Nest/Expo/Electron/Tauri/Deno/Bun), Python (Django/Flask/FastAPI/Streamlit/Gradio), Ruby (Rails/Jekyll), PHP (Laravel/Symfony/WordPress), Go, Rust, .NET, Java/Spring, Kotlin, Elixir/Phoenix, Hugo, MkDocs, Docusaurus, Flutter, Jupyter a další
 - **Typ filter dropdown** + fulltext search, připnutí oblíbených, per-projekt barvy a statusy
 - **Velikost projektu** na dlaždici (počet souborů, velikost)
 - **Recent files** z git logu na každé dlaždici
@@ -106,7 +106,8 @@ Globální zkratky jsou sjednocené pod `Ctrl+Shift+` prefix (kromě OS standard
 ```bash
 git clone https://github.com/Levisek/levis-ide-public.git
 cd levis-ide-public
-npm install
+npm install          # nebo dvojklik: install.bat
+npx tsc              # nebo dvojklik: build.bat
 ```
 
 ## Spuštění
@@ -118,6 +119,10 @@ npm run dev
 # Jen spustit (vyžaduje předchozí build)
 npm start
 ```
+
+## Zástupce na ploše (Windows)
+
+Dvojklik na `create-desktop-shortcut.bat` v kořeni → `LevisIDE.lnk` na ploše. Alternativně v aplikaci: Hub → Nastavení → *Vytvořit zástupce na ploše*.
 
 ## Build
 
@@ -142,6 +147,17 @@ npm run build
 ---
 
 ## Changelog
+
+Plná historie: [`CHANGELOG.md`](CHANGELOG.md)
+
+### v1.5.0
+- **Hub:** rozšířená detekce typů projektů na **~40** — Python (Django/Flask/FastAPI/Streamlit/Gradio), Ruby (Rails/Jekyll), PHP (Laravel/Symfony/WordPress), Go, Rust, .NET, Java/Spring, Kotlin, Elixir/Phoenix, SSG (Hugo/MkDocs/Docusaurus/VitePress), Docker Compose, Flutter, Jupyter a další (detekce je **statická** — čte jen soubory, bez localhost pollu)
+- **Hub:** drag & drop dlaždic mezi statusy Active/Paused/Finished, middle-click na tab projektu ho zavře, odstraněna fajfka u Finished
+- **Workspace:** AUTOSTART doplněn o spouštěcí příkazy pro všechny nové typy (flask run, uvicorn, streamlit, php artisan, mkdocs, hugo server atd.)
+- **Workspace:** dev-server timeout 30s → 120s (stíhají i pomalejší Spring Boot / Flask s DB init), refresh browseru jen po skutečném blur okna (už neskáče při kliku mimo webview)
+- **Onboarding:** `create-desktop-shortcut.bat`, `install.bat`, `build.bat` v kořeni pro rychlý start + tlačítko *Vytvořit zástupce na ploše* v Nastavení
+- **Nápověda:** lepší viditelnost scrollbaru v F1 help overlay
+- **Hub footer:** kompaktní changelog pod LevisIDE™ logem (3 poslední verze + odkaz na celý)
 
 ### v1.4.2
 - **Hub:** interaktivní drag & drop přes SortableJS (dlaždice se živě odsouvají), sort presety, bulk actions (Shift/Ctrl multi-select), Typ filter dropdown místo chip řady

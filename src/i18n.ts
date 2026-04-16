@@ -416,6 +416,10 @@ const EN: Dict = {
   // ── About dialog ───────────────────
   'about.version':         'version',
   'about.changelog':       'Changelog',
+  'about.changelogMore':   'Full changelog →',
+  'about.cl150':           'Detection of ~40 project types, drag between statuses, desktop shortcut, longer dev-server timeout',
+  'about.cl142':           'Hub drag & drop (SortableJS), sort presets, bulk actions, SPA-safe inspect, launch picker',
+  'about.cl14':            'Themes (Dark/Mid/Light), project size on tiles, file tree multi-select, queue UI',
   'about.cl13':            'Feedback form, grid auto-compact, drag fix, preview URL, audit fixes',
   'about.cl12':            'Clean terminal, popout multi-terminal, splitter unify, new project templates',
   'about.cl11':            'Panel merge, themes, file tree icons, floating popover, prompt queue',
@@ -957,6 +961,10 @@ const CS: Dict = {
   // ── About dialog ───────────────────
   'about.version':         'verze',
   'about.changelog':       'Changelog',
+  'about.changelogMore':   'Celý changelog →',
+  'about.cl150':           'Detekce ~40 typů projektů, drag mezi statusy, zástupce na ploše, delší dev-server timeout',
+  'about.cl142':           'Hub drag & drop (SortableJS), sort presety, bulk actions, SPA-safe inspect, launch picker',
+  'about.cl14':            'Témata (Dark/Mid/Light), velikost projektu na dlaždicích, file tree multi-select, queue UI',
   'about.cl13':            'Feedback formulář, grid kompakce, drag fix, preview URL, audit opravy',
   'about.cl12':            'Čistý terminál, popout multi-terminal, splitter sjednocení, nové šablony',
   'about.cl11':            'Sloučení panelů, témata, ikony file tree, floating popover, prompt fronta',
