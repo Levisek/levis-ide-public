@@ -544,6 +544,7 @@
 .about-changelog-list { font-size: 12px; color: var(--text-soft); line-height: 1.6; }
 .about-cl-entry { margin-bottom: 4px; }
 .about-cl-entry strong { color: var(--text); font-weight: 600; }
+.about-cl-date { color: var(--text-muted); font-size: 11px; margin-left: 4px; }
 .about-name-explainer {
   font-size: 11px; line-height: 1.6; color: var(--text-muted);
   padding-top: 14px; border-top: 1px solid var(--border);

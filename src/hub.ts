@@ -322,14 +322,8 @@ function showAboutDialog(): void {
       </div>
       <div class="about-changelog">
         <h3>${t('about.changelog')}</h3>
-        <div class="about-changelog-list">
-          <div class="about-cl-entry"><strong>v1.5.0</strong> — ${t('about.cl150')}</div>
-          <div class="about-cl-entry"><strong>v1.4.2</strong> — ${t('about.cl142')}</div>
-          <div class="about-cl-entry"><strong>v1.4.0</strong> — ${t('about.cl14')}</div>
-          <div class="about-cl-entry"><strong>v1.3.0</strong> — ${t('about.cl13')}</div>
-          <div class="about-cl-entry"><strong>v1.2.0</strong> — ${t('about.cl12')}</div>
-          <div class="about-cl-entry"><strong>v1.1.0</strong> — ${t('about.cl11')}</div>
-          <div class="about-cl-entry"><strong>v1.0.0</strong> — ${t('about.cl10')}</div>
+        <div class="about-changelog-list" id="about-changelog-list">
+          <div class="about-cl-entry" style="opacity:.6">${t('about.changelogLoading')}</div>
         </div>
       </div>
       <div class="about-name-explainer">${t('about.nameExpl')}</div>
@@ -340,6 +334,25 @@ function showAboutDialog(): void {
     if (el) el.textContent = `v${v}`;
   }).catch(() => {});
   document.body.appendChild(overlay);
+
+  // Načti changelog dynamicky z dist/changelog.json (generuje se při buildu)
+  // Top 3 entries — staré verze drží git history.
+  (async () => {
+    const listEl = overlay.querySelector('#about-changelog-list') as HTMLElement | null;
+    if (!listEl) return;
+    try {
+      const res = await fetch('../dist/changelog.json', { cache: 'no-store' });
+      if (!res.ok) throw new Error(String(res.status));
+      const data = await res.json() as { entries: Array<{ version: string; date: string; summary: string }> };
+      const top = (data.entries || []).slice(0, 3);
+      if (!top.length) throw new Error('empty');
+      listEl.innerHTML = top.map((e) =>
+        `<div class="about-cl-entry"><strong>v${escapeHtml(e.version)}</strong> <span class="about-cl-date">${escapeHtml(e.date)}</span> — ${escapeHtml(e.summary)}</div>`
+      ).join('');
+    } catch {
+      listEl.innerHTML = `<div class="about-cl-entry" style="opacity:.6">${t('about.changelogUnavailable')}</div>`;
+    }
+  })();
   const close = () => overlay.remove();
   overlay.querySelector('.about-close')!.addEventListener('click', close);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
@@ -1375,6 +1388,7 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
         <div class="template-picker-box">
           <h3>${t('hub.template.title')}</h3>
           <div class="template-picker-list">
+            <button class="template-pick" data-tpl="__empty__">${t('hub.template.empty')} <span>${t('hub.template.emptyDesc')}</span></button>
             <button class="template-pick" data-tpl="">${t('hub.template.gral')} <span>${t('hub.template.gralDesc')}</span></button>
             <button class="template-pick" data-tpl="vitejs/vite/packages/create-vite/template-vanilla">${t('hub.template.viteJs')} <span>${t('hub.template.viteJsDesc')}</span></button>
             <button class="template-pick" data-tpl="vitejs/vite/packages/create-vite/template-vanilla-ts">${t('hub.template.viteTs')} <span>${t('hub.template.viteTsDesc')}</span></button>

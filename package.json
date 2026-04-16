@@ -1,6 +1,6 @@
 {
   "name": "levis-ide",
-  "version": "1.5.2",
+  "version": "1.5.3",
   "description": "LevisIDE — Electron IDE for web projects with built-in Claude Code integration, live preview, Inspector with lasso screenshot, and multi-project Hub.",
   "main": "dist/electron/main.js",
   "homepage": "https://levinger.cz/levis-ide",
@@ -27,14 +27,15 @@
     "xterm"
   ],
   "scripts": {
-    "dev": "tsc && concurrently \"tsc -w\" \"electron .\"",
-    "build": "tsc && electron-builder --win",
-    "build:mac": "tsc && electron-builder --mac",
-    "build:linux": "tsc && electron-builder --linux",
-    "build:all": "tsc && electron-builder --win --mac --linux",
+    "dev": "node scripts/generate-changelog.mjs && tsc && concurrently \"tsc -w\" \"electron .\"",
+    "build": "node scripts/generate-changelog.mjs && tsc && electron-builder --win",
+    "build:mac": "node scripts/generate-changelog.mjs && tsc && electron-builder --mac",
+    "build:linux": "node scripts/generate-changelog.mjs && tsc && electron-builder --linux",
+    "build:all": "node scripts/generate-changelog.mjs && tsc && electron-builder --win --mac --linux",
     "start": "electron .",
+    "changelog": "node scripts/generate-changelog.mjs",
     "release:check": "node scripts/pre-release-check.mjs",
-    "release:build": "tsc && electron-builder --win --config.npmRebuild=false",
+    "release:build": "node scripts/generate-changelog.mjs && tsc && electron-builder --win --config.npmRebuild=false",
     "release:upload": "node scripts/upload-release.mjs",
     "release": "npm run release:check && npm run release:build && npm run release:upload"
   },

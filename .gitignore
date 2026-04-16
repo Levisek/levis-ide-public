@@ -9,11 +9,15 @@ release/
 .env.*
 # Ale commitovat .env.*.example template soubory
 !.env.*.example
-.claude/
+# Claude Code: jen lokální permissions/cache; commands jsou součást repa
+.claude/settings.local.json
+.claude/projects/
+.claude/cache/
 # Globálně ignorovat scripts/, ale povolit release skripty (cheat: /**/* + negace)
 /scripts/**/*
 !/scripts/pre-release-check.mjs
 !/scripts/upload-release.mjs
+!/scripts/generate-changelog.mjs
 !/scripts/README.md
 
 .audit/

@@ -21,8 +21,10 @@ export function registerScaffoldHandlers(): void {
     try {
       const dest = path.join(targetDir, projectName);
 
-      // Plain HTML — lokální skeleton, žádný degit
-      if (templateRepo === '__plain__') {
+      // Empty — jen prázdná složka, žádné soubory (git init + .gitignore se přidají níže)
+      if (templateRepo === '__empty__') {
+        fs.mkdirSync(dest, { recursive: true });
+      } else if (templateRepo === '__plain__') {
         fs.mkdirSync(dest, { recursive: true });
         fs.writeFileSync(path.join(dest, 'index.html'),
 `<!DOCTYPE html>
