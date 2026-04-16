@@ -27,33 +27,90 @@ interface HubProjectInfo {
 }
 
 const PROJECT_TYPES: Record<string, { label: string; icon: string; color: string }> = {
-  expo:     { label: 'Expo',     icon: '', color: '#6366f1' },
-  next:     { label: 'Next.js',  icon: '', color: '#9ca3af' },
-  vite:     { label: 'Vite',     icon: '', color: '#ffc024' },
-  react:    { label: 'React',    icon: '', color: '#61dafb' },
-  svelte:   { label: 'Svelte',   icon: '', color: '#ff3e00' },
-  astro:    { label: 'Astro',    icon: '', color: '#ff5d01' },
-  nuxt:     { label: 'Nuxt',     icon: '', color: '#00dc82' },
-  electron: { label: 'Electron', icon: '', color: '#47848f' },
-  tauri:    { label: 'Tauri',    icon: '', color: '#ffc131' },
-  node:     { label: 'Node',     icon: '', color: '#5fa04e' },
-  php:      { label: 'PHP',      icon: '', color: '#8892bf' },
-  static:   { label: 'Static',   icon: '', color: '#e34c26' },
-  other:    { label: 'Ostatní',  icon: '', color: '#888' },
+  // Node ekosystém
+  expo:       { label: 'Expo',        icon: '', color: '#6366f1' },
+  next:       { label: 'Next.js',     icon: '', color: '#9ca3af' },
+  vite:       { label: 'Vite',        icon: '', color: '#ffc024' },
+  react:      { label: 'React',       icon: '', color: '#61dafb' },
+  svelte:     { label: 'Svelte',      icon: '', color: '#ff3e00' },
+  astro:      { label: 'Astro',       icon: '', color: '#ff5d01' },
+  nuxt:       { label: 'Nuxt',        icon: '', color: '#00dc82' },
+  angular:    { label: 'Angular',     icon: '', color: '#dd0031' },
+  remix:      { label: 'Remix',       icon: '', color: '#121212' },
+  gatsby:     { label: 'Gatsby',      icon: '', color: '#663399' },
+  nest:       { label: 'NestJS',      icon: '', color: '#e0234e' },
+  electron:   { label: 'Electron',    icon: '', color: '#47848f' },
+  tauri:      { label: 'Tauri',       icon: '', color: '#ffc131' },
+  node:       { label: 'Node',        icon: '', color: '#5fa04e' },
+  deno:       { label: 'Deno',        icon: '', color: '#70ffaf' },
+  bun:        { label: 'Bun',         icon: '', color: '#fbf0df' },
+  // Python
+  django:     { label: 'Django',      icon: '', color: '#0c4b33' },
+  flask:      { label: 'Flask',       icon: '', color: '#4b8bbe' },
+  fastapi:    { label: 'FastAPI',     icon: '', color: '#009688' },
+  streamlit:  { label: 'Streamlit',   icon: '', color: '#ff4b4b' },
+  gradio:     { label: 'Gradio',      icon: '', color: '#ff7a00' },
+  python:     { label: 'Python',      icon: '', color: '#ffd43b' },
+  // PHP
+  laravel:    { label: 'Laravel',     icon: '', color: '#ff2d20' },
+  symfony:    { label: 'Symfony',     icon: '', color: '#000000' },
+  wordpress:  { label: 'WordPress',   icon: '', color: '#21759b' },
+  php:        { label: 'PHP',         icon: '', color: '#8892bf' },
+  // Compiled / systémové
+  go:         { label: 'Go',          icon: '', color: '#00add8' },
+  rust:       { label: 'Rust',        icon: '', color: '#dea584' },
+  dotnet:     { label: '.NET',        icon: '', color: '#512bd4' },
+  spring:     { label: 'Spring Boot', icon: '', color: '#6db33f' },
+  java:       { label: 'Java',        icon: '', color: '#f89820' },
+  kotlin:     { label: 'Kotlin',      icon: '', color: '#7f52ff' },
+  rails:      { label: 'Rails',       icon: '', color: '#cc0000' },
+  ruby:       { label: 'Ruby',        icon: '', color: '#cc342d' },
+  elixir:     { label: 'Elixir',      icon: '', color: '#4b275f' },
+  phoenix:    { label: 'Phoenix',     icon: '', color: '#fd4f00' },
+  crystal:    { label: 'Crystal',     icon: '', color: '#000000' },
+  haskell:    { label: 'Haskell',     icon: '', color: '#5e5086' },
+  ocaml:      { label: 'OCaml',       icon: '', color: '#ee6a1a' },
+  zig:        { label: 'Zig',         icon: '', color: '#f7a41d' },
+  nim:        { label: 'Nim',         icon: '', color: '#ffe953' },
+  // SSG
+  hugo:       { label: 'Hugo',        icon: '', color: '#ff4088' },
+  jekyll:     { label: 'Jekyll',      icon: '', color: '#cc0000' },
+  mkdocs:     { label: 'MkDocs',      icon: '', color: '#526cfe' },
+  docusaurus: { label: 'Docusaurus',  icon: '', color: '#3ecc5f' },
+  vitepress:  { label: 'VitePress',   icon: '', color: '#41b883' },
+  // Ostatní
+  docker:     { label: 'Docker',      icon: '', color: '#2496ed' },
+  flutter:    { label: 'Flutter',     icon: '', color: '#02569b' },
+  jupyter:    { label: 'Jupyter',     icon: '', color: '#f37626' },
+  static:     { label: 'Static',      icon: '', color: '#e34c26' },
+  other:      { label: 'Ostatní',     icon: '', color: '#888' },
 };
 
 // Vraci { type, hasNoPreview, language }. Language = ts|js|undefined podle tsconfig/package.json.
+// Strategie: JS/TS frameworky mají přednost (package.json), pak backendy (Python/PHP/Ruby/...),
+// pak compiled jazyky (Go/Rust/.NET/Java/...), pak SSG a fallback static/other.
 async function detectProjectType(projectPath: string): Promise<{ type: string; hasNoPreview: boolean; language?: 'ts' | 'js' }> {
-  // language detect — tsconfig → ts, jinak pokud je package.json → js
-  let language: 'ts' | 'js' | undefined;
-  try {
-    const ts = await levis.readFile(projectPath + '\\tsconfig.json');
-    if (typeof ts === 'string') language = 'ts';
-  } catch {}
+  const readMaybe = async (rel: string): Promise<string | null> => {
+    try {
+      const r = await levis.readFile(projectPath + '\\' + rel);
+      return typeof r === 'string' ? r : null;
+    } catch { return null; }
+  };
+  const dirFiles = async (): Promise<string[]> => {
+    try {
+      const entries = await levis.readDir(projectPath);
+      return entries.filter(e => !e.isDirectory).map(e => e.name.toLowerCase());
+    } catch { return []; }
+  };
 
-  try {
-    const pkgRaw = await levis.readFile(projectPath + '\\package.json');
-    if (typeof pkgRaw === 'string') {
+  // ── 1) Node / JS / TS ekosystém ────────────────────────────────
+  let language: 'ts' | 'js' | undefined;
+  const tsConf = await readMaybe('tsconfig.json');
+  if (tsConf) language = 'ts';
+
+  const pkgRaw = await readMaybe('package.json');
+  if (pkgRaw) {
+    try {
       if (!language) language = 'js';
       const pkg = JSON.parse(pkgRaw);
       const deps = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
@@ -61,29 +118,117 @@ async function detectProjectType(projectPath: string): Promise<{ type: string; h
       if (deps.electron) return { type: 'electron', hasNoPreview: true, language };
       if (deps['@tauri-apps/api'] || deps['@tauri-apps/cli']) return { type: 'tauri', hasNoPreview: true, language };
       if (deps.expo) return { type: 'expo', hasNoPreview: false, language };
+      if (deps['@nestjs/core']) return { type: 'nest', hasNoPreview: false, language };
+      if (deps['@angular/core']) return { type: 'angular', hasNoPreview: false, language };
+      if (deps['@remix-run/dev'] || deps['@remix-run/react']) return { type: 'remix', hasNoPreview: false, language };
+      if (deps.gatsby) return { type: 'gatsby', hasNoPreview: false, language };
       if (deps.next) return { type: 'next', hasNoPreview: false, language };
       if (deps.nuxt || deps['nuxt3']) return { type: 'nuxt', hasNoPreview: false, language };
       if (deps.astro) return { type: 'astro', hasNoPreview: false, language };
+      if (deps.vitepress) return { type: 'vitepress', hasNoPreview: false, language };
+      if (deps['@docusaurus/core']) return { type: 'docusaurus', hasNoPreview: false, language };
       if (deps.vite) return { type: 'vite', hasNoPreview: false, language };
       if (deps['@sveltejs/kit'] || deps.svelte) return { type: 'svelte', hasNoPreview: false, language };
       if (deps.react || deps['react-scripts']) return { type: 'react', hasNoPreview: false, language };
-      return { type: 'node', hasNoPreview: true, language }; // CLI / knihovna — nic k preview
-    }
-  } catch {}
+      return { type: 'node', hasNoPreview: true, language };
+    } catch {}
+  }
+
   // Tauri bez package.json (rust binary)
-  try {
-    const tauriConf = await levis.readFile(projectPath + '\\src-tauri\\tauri.conf.json');
-    if (typeof tauriConf === 'string') return { type: 'tauri', hasNoPreview: true, language };
-  } catch {}
-  // Pokud neni package.json, zkus PHP / static
-  try {
-    const indexPhp = await levis.readFile(projectPath + '\\index.php');
-    if (typeof indexPhp === 'string') return { type: 'php', hasNoPreview: false, language };
-  } catch {}
-  try {
-    const indexHtml = await levis.readFile(projectPath + '\\index.html');
-    if (typeof indexHtml === 'string') return { type: 'static', hasNoPreview: false, language };
-  } catch {}
+  const tauriConf = await readMaybe('src-tauri\\tauri.conf.json');
+  if (tauriConf) return { type: 'tauri', hasNoPreview: true, language };
+
+  // Deno / Bun bez package.json
+  if (await readMaybe('deno.json') || await readMaybe('deno.jsonc')) return { type: 'deno', hasNoPreview: false };
+  const files = await dirFiles();
+  if (files.includes('bun.lockb')) return { type: 'bun', hasNoPreview: false };
+
+  // ── 2) Python ──────────────────────────────────────────────────
+  const managePy = await readMaybe('manage.py');
+  const reqTxt = await readMaybe('requirements.txt');
+  const pyProject = await readMaybe('pyproject.toml');
+  const appPy = await readMaybe('app.py');
+  const mainPy = await readMaybe('main.py');
+  const wsgiPy = await readMaybe('wsgi.py');
+  const pyBlob = [(reqTxt || ''), (pyProject || '')].join('\n').toLowerCase();
+  const pyImports = [(appPy || ''), (mainPy || ''), (wsgiPy || '')].join('\n');
+  const pyHas = (re: RegExp): boolean => re.test(pyBlob) || re.test(pyImports.toLowerCase());
+
+  if (managePy !== null || /\bdjango\b/.test(pyBlob)) return { type: 'django', hasNoPreview: false };
+  if (pyHas(/\bfastapi\b/)) return { type: 'fastapi', hasNoPreview: false };
+  if (pyHas(/\bstreamlit\b/)) return { type: 'streamlit', hasNoPreview: false };
+  if (pyHas(/\bgradio\b/)) return { type: 'gradio', hasNoPreview: false };
+  if (pyHas(/\bflask\b/)) return { type: 'flask', hasNoPreview: false };
+  if (reqTxt !== null || pyProject !== null || appPy !== null || mainPy !== null) {
+    return { type: 'python', hasNoPreview: true };
+  }
+
+  // ── 3) Ruby / PHP (framework detect přes deps) ─────────────────
+  const gemfile = await readMaybe('Gemfile');
+  if (gemfile) {
+    const g = gemfile.toLowerCase();
+    if (/\bgem\s+['"]rails['"]/.test(g)) return { type: 'rails', hasNoPreview: false };
+    if (/\bgem\s+['"]jekyll['"]/.test(g)) return { type: 'jekyll', hasNoPreview: false };
+    return { type: 'ruby', hasNoPreview: true };
+  }
+
+  const composer = await readMaybe('composer.json');
+  if (composer) {
+    try {
+      const c = JSON.parse(composer);
+      const req = { ...(c.require || {}), ...(c['require-dev'] || {}) };
+      if (req['laravel/framework']) return { type: 'laravel', hasNoPreview: false };
+      if (req['symfony/framework-bundle'] || req['symfony/symfony']) return { type: 'symfony', hasNoPreview: false };
+    } catch {}
+  }
+  if (await readMaybe('wp-config.php')) return { type: 'wordpress', hasNoPreview: true };
+
+  // ── 4) Compiled jazyky ─────────────────────────────────────────
+  if (await readMaybe('go.mod')) return { type: 'go', hasNoPreview: true };
+  if (await readMaybe('Cargo.toml')) return { type: 'rust', hasNoPreview: true };
+
+  const pom = await readMaybe('pom.xml');
+  if (pom) {
+    if (/spring-boot-starter/i.test(pom)) return { type: 'spring', hasNoPreview: false };
+    return { type: 'java', hasNoPreview: true };
+  }
+  const gradleKts = await readMaybe('build.gradle.kts');
+  const gradle = await readMaybe('build.gradle');
+  const gradleAny = gradleKts || gradle;
+  if (gradleAny) {
+    if (/spring-boot/i.test(gradleAny)) return { type: 'spring', hasNoPreview: false };
+    if (gradleKts) return { type: 'kotlin', hasNoPreview: true };
+    return { type: 'java', hasNoPreview: true };
+  }
+
+  const hasCsproj = files.some(f => f.endsWith('.csproj') || f.endsWith('.fsproj') || f.endsWith('.sln'));
+  if (hasCsproj) return { type: 'dotnet', hasNoPreview: false };
+
+  if (await readMaybe('mix.exs')) {
+    const mix = await readMaybe('mix.exs');
+    if (mix && /\bphoenix\b/i.test(mix)) return { type: 'phoenix', hasNoPreview: false };
+    return { type: 'elixir', hasNoPreview: true };
+  }
+  if (await readMaybe('shard.yml')) return { type: 'crystal', hasNoPreview: true };
+  if (await readMaybe('stack.yaml') || files.some(f => f.endsWith('.cabal'))) return { type: 'haskell', hasNoPreview: true };
+  if (await readMaybe('dune-project')) return { type: 'ocaml', hasNoPreview: true };
+  if (await readMaybe('build.zig')) return { type: 'zig', hasNoPreview: true };
+  if (files.some(f => f.endsWith('.nimble'))) return { type: 'nim', hasNoPreview: true };
+
+  // ── 5) Mobile / DevOps / Docs ──────────────────────────────────
+  if (await readMaybe('pubspec.yaml')) return { type: 'flutter', hasNoPreview: true };
+  if (await readMaybe('mkdocs.yml')) return { type: 'mkdocs', hasNoPreview: false };
+  const hugoCfg = await readMaybe('config.toml') || await readMaybe('hugo.toml') || await readMaybe('hugo.yaml');
+  if (hugoCfg && /baseURL\s*=|baseurl:/i.test(hugoCfg)) return { type: 'hugo', hasNoPreview: false };
+  if (await readMaybe('docker-compose.yml') || await readMaybe('docker-compose.yaml') || await readMaybe('compose.yml')) {
+    return { type: 'docker', hasNoPreview: true };
+  }
+  if (files.some(f => f.endsWith('.ipynb'))) return { type: 'jupyter', hasNoPreview: false };
+
+  // ── 6) Static / PHP fallback ───────────────────────────────────
+  if (await readMaybe('index.php')) return { type: 'php', hasNoPreview: false, language };
+  if (await readMaybe('index.html')) return { type: 'static', hasNoPreview: false, language };
+
   return { type: 'other', hasNoPreview: false, language };
 }
 
