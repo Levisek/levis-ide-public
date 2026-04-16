@@ -1,25 +1,60 @@
 {
   "name": "levis-ide",
   "version": "1.5.1",
-  "description": "LevisIDE - Project Hub & Workspace",
+  "description": "LevisIDE — Electron IDE for web projects with built-in Claude Code integration, live preview, Inspector with lasso screenshot, and multi-project Hub.",
   "main": "dist/electron/main.js",
+  "homepage": "https://levinger.cz/levis-ide",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Levisek/levis-ide-public.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Levisek/levis-ide-public/issues"
+  },
+  "author": {
+    "name": "Martin Levinger",
+    "email": "martas.levis@gmail.com",
+    "url": "https://levinger.cz"
+  },
+  "license": "SEE LICENSE IN LICENSE",
+  "keywords": [
+    "electron",
+    "ide",
+    "claude-code",
+    "inspector",
+    "live-preview",
+    "monaco",
+    "xterm"
+  ],
   "scripts": {
     "dev": "tsc && concurrently \"tsc -w\" \"electron .\"",
     "build": "tsc && electron-builder --win",
     "build:mac": "tsc && electron-builder --mac",
     "build:linux": "tsc && electron-builder --linux",
     "build:all": "tsc && electron-builder --win --mac --linux",
-    "start": "electron ."
+    "start": "electron .",
+    "release:check": "node scripts/pre-release-check.mjs",
+    "release:build": "tsc && electron-builder --win --config.npmRebuild=false",
+    "release:upload": "node scripts/upload-release.mjs",
+    "release": "npm run release:check && npm run release:build && npm run release:upload"
   },
   "build": {
     "appId": "cz.levis.ide",
     "productName": "LevisIDE",
+    "copyright": "Copyright (c) 2026 Martin Levinger",
     "directories": {
       "output": "release"
     },
+    "publish": {
+      "provider": "generic",
+      "url": "https://levinger.cz/levis-ide/updates/latest/",
+      "channel": "latest",
+      "useMultipleRangeRequest": true
+    },
     "win": {
       "target": "nsis",
-      "icon": "assets/icon.ico"
+      "icon": "assets/icon.ico",
+      "verifyUpdateCodeSignature": false
     },
     "nsis": {
       "oneClick": false,
@@ -28,21 +63,24 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "LevisIDE",
-      "runAfterFinish": true
+      "runAfterFinish": true,
+      "license": "build/license_en.txt",
+      "installerLanguages": ["en_US", "cs_CZ"],
+      "multiLanguageInstaller": true,
+      "displayLanguageSelector": true,
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "installerHeaderIcon": "assets/icon.ico",
+      "artifactName": "${productName}-Setup-${version}.${ext}",
+      "warningsAsErrors": false
     },
     "mac": {
-      "target": [
-        "dmg",
-        "zip"
-      ],
+      "target": ["dmg", "zip"],
       "icon": "assets/icon.png",
       "category": "public.app-category.developer-tools"
     },
     "linux": {
-      "target": [
-        "AppImage",
-        "deb"
-      ],
+      "target": ["AppImage", "deb"],
       "icon": "assets/icon.png",
       "category": "Development"
     },
@@ -54,16 +92,26 @@
       "src/css/**/*",
       "node_modules/**/*",
       "assets/**/*",
-      "electron/scripts/**/*"
+      "electron/scripts/**/*",
+      "!node_modules/.bin/**/*",
+      "!node_modules/**/test/**/*",
+      "!node_modules/**/tests/**/*",
+      "!node_modules/**/*.{md,d.ts,tsbuildinfo,map}",
+      "!node_modules/**/README*",
+      "!node_modules/**/CHANGELOG*",
+      "!node_modules/**/.github/**/*",
+      "!node_modules/**/example/**/*",
+      "!node_modules/**/examples/**/*",
+      "!node_modules/**/docs/**/*"
     ],
     "asarUnpack": [
       "electron/scripts/**/*"
+    ],
+    "extraResources": [
+      { "from": "LICENSE", "to": "LICENSE" },
+      { "from": "build/privacy_policy.md", "to": "privacy_policy.md" }
     ]
   },
-  "keywords": [],
-  "author": "Martin Levinger",
-  "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
     "@types/sortablejs": "^1.15.9",
     "@xterm/addon-fit": "^0.11.0",
@@ -93,5 +141,6 @@
     "electron-builder": "^26.8.1",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.2"
-  }
+  },
+  "type": "commonjs"
 }

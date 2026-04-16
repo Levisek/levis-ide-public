@@ -7,7 +7,13 @@ dist/
 release/
 .env
 .env.*
+# Ale commitovat .env.*.example template soubory
+!.env.*.example
 .claude/
-/scripts/
+# Globálně ignorovat scripts/, ale povolit release skripty (cheat: /**/* + negace)
+/scripts/**/*
+!/scripts/pre-release-check.mjs
+!/scripts/upload-release.mjs
+!/scripts/README.md
 
 .audit/

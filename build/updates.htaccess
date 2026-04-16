@@ -1,0 +1,46 @@
+# ── LevisIDE updates — .htaccess ─────────────────────────────────────
+#
+# Přejmenuj tento soubor na ".htaccess" a nahraj do:
+#   /www/subdom/levis-ide/updates/.htaccess   (nebo jakékoli je root directory
+#                                              WEDOS dokumentace k levis-ide subdoméně)
+#
+# Co to dělá:
+#   - správný Content-Type pro latest.yml (text/yaml) — electron-updater to
+#     potřebuje, jinak fetch failne nebo parse padne
+#   - správný Content-Type pro .blockmap (application/octet-stream)
+#   - no-cache na latest.yml (update check musí vidět aktuální)
+#   - povolí HTTP range requests (blockmap delta download)
+#   - CORS není potřeba (electron-updater fetchuje server-to-server, ne browser)
+
+# ── MIME types ──────────────────────────────
+AddType text/yaml .yml
+AddType text/yaml .yaml
+AddType application/octet-stream .blockmap
+AddType application/x-msdownload .exe
+
+# ── Cache control ───────────────────────────
+# latest.yml — update check musí vidět aktuální verzi
+<FilesMatch "^(latest|beta|alpha)\.yml$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+</FilesMatch>
+
+# .exe a .blockmap — 1 rok cache (imutabilní artefakty, verze je v názvu)
+<FilesMatch "\.(exe|blockmap)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+</FilesMatch>
+
+# ── Range requests (delta update přes blockmap) ──
+<IfModule mod_headers.c>
+    Header set Accept-Ranges "bytes"
+</IfModule>
+
+# ── Security ────────────────────────────────
+# Zakázat directory listing
+Options -Indexes
+
+# Zakázat spouštění skriptů ze složky updates (jen statické soubory)
+<FilesMatch "\.(php|pl|py|cgi|sh)$">
+    Require all denied
+</FilesMatch>

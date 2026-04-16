@@ -1,0 +1,71 @@
+LevisIDE — End User License Agreement
+
+Copyright (c) 2026 Martin Levinger
+Licensed under the Functional Source License, Version 1.1, MIT Future License (FSL-1.1-MIT).
+
+By installing or using LevisIDE, you agree to the terms below.
+
+1. GRANT OF LICENSE
+   You are granted a non-exclusive, royalty-free right to install, use, copy,
+   modify, create derivative works of, and redistribute LevisIDE for any
+   Permitted Purpose.
+
+2. PERMITTED PURPOSE
+   Any purpose other than a Competing Use, including:
+   - Internal use by you or your organization
+   - Non-commercial education or research
+   - Professional services provided to a licensee of LevisIDE
+
+3. COMPETING USE — RESTRICTED
+   You may NOT make LevisIDE available to third parties as a commercial product
+   or service that:
+   (a) substitutes for LevisIDE, or
+   (b) offers the same or substantially similar functionality.
+
+4. FUTURE MIT CONVERSION
+   Two (2) years after a given version of LevisIDE is publicly released, that
+   version is additionally licensed under the MIT License. This grant is
+   irrevocable.
+
+5. REDISTRIBUTION
+   If you redistribute LevisIDE or derivative works, you must include this
+   license text and preserve all copyright notices.
+
+6. THIRD-PARTY COMPONENTS
+   LevisIDE includes and depends on open-source components (Electron, Monaco
+   Editor, xterm.js, node-pty, simple-git, and others) under their respective
+   licenses, listed in the "Third-Party Licenses" section of the application.
+
+7. CLAUDE CODE INTEGRATION
+   LevisIDE is designed to work alongside Anthropic's Claude Code CLI, which is
+   distributed separately under Anthropic's own terms. LevisIDE does not embed,
+   redistribute, or modify Claude Code. Installation of Claude Code is at the
+   user's discretion and is subject to Anthropic's Terms of Service.
+
+8. PRIVACY
+   LevisIDE does NOT collect telemetry, analytics, or tracking data. The
+   application communicates only with:
+   (a) The auto-update endpoint (to check for new versions)
+   (b) Claude Code, when triggered by the user
+   See the Privacy Policy bundled with this installation for details.
+
+9. DISCLAIMER OF WARRANTY
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS
+   FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
+
+10. LIMITATION OF LIABILITY
+    IN NO EVENT SHALL THE LICENSOR BE LIABLE FOR ANY INDIRECT, SPECIAL,
+    INCIDENTAL, OR CONSEQUENTIAL DAMAGES ARISING OUT OF OR RELATED TO THIS
+    SOFTWARE, EVEN IF ADVISED OF THEIR POSSIBILITY.
+
+11. GOVERNING LAW
+    This Agreement is governed by the laws of the Czech Republic. Disputes
+    shall be resolved by the courts of the Czech Republic, with exclusive
+    venue in Brno.
+
+12. CONTACT
+    Questions: martas.levis@gmail.com
+    Full license text: see LICENSE file in the installation directory.
+
+By clicking "I Agree" you accept the terms of this Agreement.

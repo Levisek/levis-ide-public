@@ -1,0 +1,75 @@
+LevisIDE — Licenční ujednání s koncovým uživatelem
+
+Copyright (c) 2026 Martin Levinger
+Poskytováno pod licencí Functional Source License, verze 1.1, MIT Future
+License (FSL-1.1-MIT).
+
+Instalací nebo používáním LevisIDE souhlasíte s níže uvedenými podmínkami.
+
+Tato licenční smlouva je uzavírána dle § 2358 a násl. zákona č. 89/2012 Sb.,
+občanský zákoník, ve znění pozdějších předpisů, a dle zákona č. 121/2000 Sb.,
+autorský zákon.
+
+
+1. UDĚLENÍ LICENCE
+   Poskytujeme Vám nevýhradní, bezplatnou licenci k instalaci, užívání, kopírování,
+   úpravám, tvorbě odvozených děl a redistribuci LevisIDE pro jakýkoli Povolený
+   účel uvedený níže.
+
+2. POVOLENÝ ÚČEL
+   Jakýkoli účel vyjma Konkurenčního užití, zahrnující zejména:
+   - Interní užití v rámci Vaší osoby nebo organizace
+   - Nekomerční vzdělávání a výzkum
+   - Profesionální služby poskytované držiteli platné licence LevisIDE
+
+3. KONKURENČNÍ UŽITÍ — ZAKÁZÁNO
+   Není Vám povoleno zpřístupňovat LevisIDE třetím stranám jako komerční produkt
+   nebo službu, která:
+   (a) nahrazuje LevisIDE, nebo
+   (b) nabízí stejnou či podstatně podobnou funkcionalitu.
+
+4. KONVERZE NA MIT LICENCI PO 2 LETECH
+   Dva (2) roky po veřejném vydání konkrétní verze LevisIDE je tato verze
+   automaticky dále licencována pod licencí MIT. Tento závazek je neodvolatelný.
+
+5. REDISTRIBUCE
+   V případě redistribuce LevisIDE nebo odvozených děl musíte přiložit tento
+   licenční text a zachovat všechna uvedená autorská práva.
+
+6. KOMPONENTY TŘETÍCH STRAN
+   LevisIDE obsahuje a závisí na open-source komponentech (Electron, Monaco
+   Editor, xterm.js, node-pty, simple-git a dalších) pod jejich vlastními
+   licencemi, uvedenými v sekci "Third-Party Licenses" v aplikaci.
+
+7. INTEGRACE CLAUDE CODE
+   LevisIDE je navržen pro spolupráci s nástrojem Claude Code CLI od společnosti
+   Anthropic, který je distribuován samostatně pod vlastními podmínkami Anthropic.
+   LevisIDE Claude Code neobsahuje, nedistribuuje ani nemodifikuje. Instalace
+   Claude Code je na uvážení uživatele a řídí se podmínkami služby Anthropic.
+
+8. OCHRANA SOUKROMÍ
+   LevisIDE NESHROMAŽĎUJE žádnou telemetrii, analytiku ani sledovací data.
+   Aplikace komunikuje pouze s:
+   (a) Endpointem pro kontrolu aktualizací (pro detekci nových verzí)
+   (b) Claude Code — pouze na podnět uživatele
+   Podrobnosti viz dokument Privacy Policy přiložený k této instalaci.
+
+9. VYLOUČENÍ ZÁRUK
+   V souladu s § 2373 občanského zákoníku je Software poskytován "TAK JAK JE",
+   bez jakýchkoli záruk, výslovných nebo odvozených, včetně záruk obchodovatelnosti,
+   vhodnosti pro konkrétní účel nebo neporušení práv třetích stran.
+
+10. OMEZENÍ ODPOVĚDNOSTI
+    Poskytovatel neodpovídá za jakékoli nepřímé, zvláštní, náhodné nebo
+    následné škody vzniklé v souvislosti s užitím Software, a to ani v případě,
+    že byl na možnost vzniku takových škod upozorněn.
+
+11. ROZHODNÉ PRÁVO A PŘÍSLUŠNOST
+    Tato smlouva se řídí právním řádem České republiky. Veškeré spory budou
+    řešeny u soudů České republiky, s místní příslušností v Brně.
+
+12. KONTAKT
+    Dotazy: martas.levis@gmail.com
+    Plné znění licence: soubor LICENSE v instalační složce.
+
+Kliknutím na "Souhlasím" přijímáte podmínky této smlouvy.
