@@ -142,6 +142,11 @@ const api = {
   usageScan: () => ipcRenderer.invoke('usage:scan'),
   usageAccount: () => ipcRenderer.invoke('usage:account'),
   usageRateLimits: () => ipcRenderer.invoke('usage:rateLimits'),
+  onUsageUpdated: (cb: () => void) => {
+    const handler = () => cb();
+    ipcRenderer.on('usage:updated', handler);
+    return () => { ipcRenderer.off('usage:updated', handler); };
+  },
 };
 
 contextBridge.exposeInMainWorld('levis', api);

@@ -74,6 +74,7 @@ interface LevisAPI {
   usageScan: () => Promise<any>;
   usageAccount: () => Promise<any>;
   usageRateLimits: () => Promise<any>;
+  onUsageUpdated: (cb: () => void) => () => void;
 }
 
 declare const levis: LevisAPI;

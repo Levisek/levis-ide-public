@@ -1730,6 +1730,19 @@ async function renderUsagePanel(host: HTMLElement): Promise<void> {
   if (!collapsed && detailHost && !detailHost.innerHTML) {
     detailHost.innerHTML = renderUsageDetail(data);
   }
+
+  // ── Live update: watch ~/.claude/levis-usage.json přes IPC ──
+  // Při každém zápisu (statusline-dump po CC requestu) re-renderuje panel.
+  // Guard: zrušit předchozí subscribe, aby nám nerostly vrstvy listenerů.
+  const prevUnsub: (() => void) | null = (host as any)._usageUnsub || null;
+  if (prevUnsub) { try { prevUnsub(); } catch {} }
+  const unsub = (levis as any).onUsageUpdated?.(() => {
+    // Mírný debounce na straně rendereru — chokidar už debounce 250 ms má,
+    // tohle je pojistka proti rychlým back-to-back zápisům.
+    window.clearTimeout((host as any)._usageRenderTo);
+    (host as any)._usageRenderTo = window.setTimeout(() => { renderUsagePanel(host); }, 150);
+  });
+  (host as any)._usageUnsub = unsub;
 }
 
 function renderUsageDetail(data: any): string {

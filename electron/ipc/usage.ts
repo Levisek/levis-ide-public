@@ -1,9 +1,10 @@
-import { ipcMain } from 'electron';
+import { ipcMain, BrowserWindow } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as readline from 'readline';
 import log from 'electron-log';
+import chokidar, { FSWatcher } from 'chokidar';
 
 // ── Pricing per 1M tokens (USD) — Anthropic public pricing ──
 // input | output | cache_write | cache_read
@@ -71,7 +72,35 @@ async function parseJsonlFile(filePath: string, project: string, seenMsgIds: Set
   });
 }
 
+let usageWatcher: FSWatcher | null = null;
+let usageDebounce: NodeJS.Timeout | null = null;
+
+function broadcastUsageUpdate(): void {
+  if (usageDebounce) clearTimeout(usageDebounce);
+  usageDebounce = setTimeout(() => {
+    for (const win of BrowserWindow.getAllWindows()) {
+      try { win.webContents.send('usage:updated'); } catch {}
+    }
+  }, 250);
+}
+
+function startUsageWatcher(): void {
+  if (usageWatcher) return;
+  const fp = path.join(os.homedir(), '.claude', 'levis-usage.json');
+  // chokidar zvládne i soubor, který zatím neexistuje — začne watch až se vytvoří
+  usageWatcher = chokidar.watch(fp, {
+    persistent: true,
+    ignoreInitial: true,
+    awaitWriteFinish: { stabilityThreshold: 150, pollInterval: 50 },
+  });
+  usageWatcher.on('add', broadcastUsageUpdate);
+  usageWatcher.on('change', broadcastUsageUpdate);
+  usageWatcher.on('error', (err: unknown) => log.warn('usage watcher error:', err));
+}
+
 export function registerUsageHandlers(): void {
+  startUsageWatcher();
+
   // ── Account info ─────────────────────────
   ipcMain.handle('usage:account', async () => {
     try {
