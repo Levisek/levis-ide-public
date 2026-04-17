@@ -55,6 +55,7 @@ interface LevisAPI {
   readDir: (dirPath: string) => Promise<Array<{ name: string; path: string; isDirectory: boolean }>>;
   dirStats: (dirPath: string) => Promise<{ files: number; size: number }>;
   fileStats: (filePath: string) => Promise<{ isDirectory?: boolean; files?: number; size: number } | null>;
+  pathExists: (p: string) => Promise<boolean>;
   listFilesRecursive: (rootPath: string) => Promise<Array<{ path: string; rel: string; name: string }>>;
   projectAssetsHash: (rootDir: string) => Promise<string>;
   projectSearch: (rootPath: string, query: string, opts?: { caseSensitive?: boolean; regex?: boolean }) => Promise<Array<{ path: string; rel: string; line: number; col: number; preview: string }>>;

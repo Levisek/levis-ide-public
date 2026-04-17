@@ -745,14 +745,15 @@
 .settings-panel {
   position: fixed; inset: 0;
   background: rgba(0,0,0,0.65); display: flex; align-items: center; justify-content: center;
-  z-index: 100;
+  z-index: 10002;
   backdrop-filter: blur(8px);
   animation: modal-fade-in var(--t-base) var(--ease-out);
 }
 .settings-box {
   background: var(--bg-elev-1);
-  border-radius: var(--radius-xl); padding: var(--space-5); width: 440px; max-width: 90%;
-  max-height: 78vh; overflow-y: auto;
+  border-radius: var(--radius-xl); padding: var(--space-4) var(--space-5); width: 440px; max-width: 90%;
+  max-height: 82vh; overflow-y: auto;
+  scrollbar-gutter: stable;
   box-shadow: var(--shadow-xl);
   animation: modal-pop var(--t-base) var(--ease-spring);
 }

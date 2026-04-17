@@ -365,6 +365,17 @@ export function registerFsHandlers(mainWindow: BrowserWindow): void {
     return { files: totalFiles, size: totalSize };
   });
 
+  ipcMain.handle('fs:pathExists', async (_event, p: string) => {
+    if (!p || typeof p !== 'string') return false;
+    if (!isPathAllowed(p)) return false;
+    try {
+      const stat = fs.statSync(p);
+      return stat.isDirectory();
+    } catch {
+      return false;
+    }
+  });
+
   ipcMain.handle('fs:fileStats', async (_event, filePath: string) => {
     if (!isPathAllowed(filePath)) return null;
     try {

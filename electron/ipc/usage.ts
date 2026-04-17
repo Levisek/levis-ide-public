@@ -73,6 +73,7 @@ async function parseJsonlFile(filePath: string, project: string, seenMsgIds: Set
 }
 
 let usageWatcher: FSWatcher | null = null;
+let transcriptsWatcher: FSWatcher | null = null;
 let usageDebounce: NodeJS.Timeout | null = null;
 
 function broadcastUsageUpdate(): void {
@@ -81,7 +82,7 @@ function broadcastUsageUpdate(): void {
     for (const win of BrowserWindow.getAllWindows()) {
       try { win.webContents.send('usage:updated'); } catch {}
     }
-  }, 250);
+  }, 1000); // 1s debounce — transcripts se zapisují rychle za sebou během CC requestu
 }
 
 function startUsageWatcher(): void {
@@ -96,6 +97,20 @@ function startUsageWatcher(): void {
   usageWatcher.on('add', broadcastUsageUpdate);
   usageWatcher.on('change', broadcastUsageUpdate);
   usageWatcher.on('error', (err: unknown) => log.warn('usage watcher error:', err));
+
+  // Druhý watcher: ~/.claude/projects/**/*.jsonl (CC transcripts). Zajišťuje, že usage panel
+  // tiká i BEZ nainstalovaného statusline dump hooku — transcripts se píšou vždy po CC requestu.
+  // Rate limits a context window zůstanou null bez hooku, ale totalCost / tokens se hýbou.
+  const transcriptsRoot = path.join(os.homedir(), '.claude', 'projects');
+  transcriptsWatcher = chokidar.watch(transcriptsRoot + '/**/*.jsonl', {
+    persistent: true,
+    ignoreInitial: true,
+    awaitWriteFinish: { stabilityThreshold: 300, pollInterval: 100 },
+    depth: 2,
+  });
+  transcriptsWatcher.on('add', broadcastUsageUpdate);
+  transcriptsWatcher.on('change', broadcastUsageUpdate);
+  transcriptsWatcher.on('error', (err: unknown) => log.warn('transcripts watcher error:', err));
 }
 
 export function registerUsageHandlers(): void {

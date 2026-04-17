@@ -159,7 +159,7 @@
   box-shadow: 0 0 0 3px var(--accent-glow);
 }
 .popover-input::placeholder { color: var(--text-muted); }
-.popover-history, .popover-send {
+.popover-history, .popover-send, .popover-mode {
   background: transparent; border: 1px solid var(--border-soft);
   color: var(--text-muted);
   border-radius: 8px;
@@ -181,6 +181,20 @@
   box-shadow: 0 0 16px rgba(255, 106, 0, 0.5);
   transform: translateY(-1px);
 }
+/* Mode toggle v popoveru — "send" (default, accent) vs "prepare" (warning/žlutá). */
+.popover-mode[data-mode="send"] {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border-soft));
+  background: rgba(255, 106, 0, 0.08);
+}
+.popover-mode[data-mode="prepare"] {
+  color: var(--warning);
+  border-color: rgba(245, 158, 11, 0.5);
+  background: rgba(245, 158, 11, 0.1);
+  font-weight: 600;
+  font-size: 14px;
+}
+.popover-mode:hover { filter: brightness(1.2); transform: translateY(-1px); }
 .popover-history-dropdown {
   position: absolute; left: 14px; right: 14px; top: 100%; margin-top: 6px;
   background: var(--popover-bg-2); border: 1px solid var(--popover-border);

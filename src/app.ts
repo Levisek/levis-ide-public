@@ -90,18 +90,30 @@ async function init(): Promise<void> {
     document.body.appendChild(loading);
 
     const projects: Array<{ id: string; name: string; path: string }> = tabs.filter(t => t.projectPath).map(t => ({ id: t.id, name: t.label, path: t.projectPath! }));
-    // Doplň naposledy otevřené Hub projekty (kdyby user měl dirty projekt v Hubu ale neotevřel ho jako tab)
+    // Doplň naposledy otevřené Hub projekty (kdyby user měl dirty projekt v Hubu ale neotevřel ho jako tab).
+    // Validujeme existenci cesty — staré / přesunuté / mimo allowed roots projekty NEchceme tahat jako "unknown".
+    // Neexistující zároveň samoléčivě smazeme z projectLastOpened.
     try {
       const lastOpened: Record<string, number> = (await levis.storeGet('projectLastOpened')) || {};
       const sorted = Object.entries(lastOpened).sort((a, b) => b[1] - a[1]).slice(0, 10);
       const openedPaths = new Set(projects.map(p => p.path));
-      for (const [path] of sorted) {
-        if (openedPaths.has(path)) continue;
+      const staleKeys: string[] = [];
+      const existChecks = sorted.map(async ([path]) => {
+        if (openedPaths.has(path)) return;
+        const exists = await levis.pathExists(path).catch(() => false);
+        if (!exists) { staleKeys.push(path); return; }
         const name = (path.replace(/\\/g, '/').split('/').filter(Boolean).pop() || path);
         projects.push({ id: '', name, path });
+      });
+      await Promise.allSettled(existChecks);
+      if (staleKeys.length > 0) {
+        const cleaned: Record<string, number> = { ...lastOpened };
+        for (const k of staleKeys) delete cleaned[k];
+        try { await levis.storeSet('projectLastOpened', cleaned); } catch {}
+        console.log('[quit-check] pruned stale lastOpened entries:', staleKeys);
       }
     } catch {}
-    console.log('[quit-check] projects:', projects.length, '(tabs + last-opened)');
+    console.log('[quit-check] projects:', projects.length, '(tabs + existing last-opened)');
     const issues: GitIssue[] = [];
     // Main-side git:status handler má vlastní 4s timeout (electron/ipc/git.ts:5-16),
     // ale IPC samotná může v rare případech viset (lock na .git/, slow disk).

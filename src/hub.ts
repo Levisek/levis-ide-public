@@ -1580,11 +1580,23 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
       await levis.storeSet('locale', newLocale);
       setLocale(newLocale);
       showToast(t('settings.saved'), 'success');
-      settingsPanel.remove();
+      closeSettings();
       loadProjects(true);
     });
 
-    settingsPanel.querySelector('.settings-close')!.addEventListener('click', () => settingsPanel.remove());
+    // Close helpers: × tlačítko, klik na backdrop (mimo box), ESC
+    function closeSettings(): void {
+      settingsPanel.remove();
+      document.removeEventListener('keydown', onEscClose);
+    }
+    function onEscClose(e: KeyboardEvent): void {
+      if (e.key === 'Escape') { e.preventDefault(); closeSettings(); }
+    }
+    settingsPanel.querySelector('.settings-close')!.addEventListener('click', closeSettings);
+    settingsPanel.addEventListener('mousedown', (e) => {
+      if (e.target === settingsPanel) closeSettings();
+    });
+    document.addEventListener('keydown', onEscClose);
 
     // Billing hook install / uninstall
     async function refreshBillingRow(): Promise<void> {
@@ -1694,11 +1706,16 @@ async function renderUsagePanel(host: HTMLElement): Promise<void> {
 
   // Skip re-render pokud se relevantní metriky nezměnily (statusline dump píše soubor i když
   // se čísla nehnula — jen capturedAt se posouvá → zbytečný flicker v Hubu).
+  // POZN: data.totals má strukturu { all, today, month, block5h, week }, sahat přímo na .cost
+  // nebo .tokens by dalo undefined → hash by byl vždy stejný a render skipl vše po prvním cyklu.
   const rl0 = realLimits?.rate_limits;
   const cw0 = realLimits?.context_window;
+  const tokSum = (b: any) => (b?.i || 0) + (b?.o || 0) + (b?.cw || 0) + (b?.cr || 0);
   const currentHash = JSON.stringify({
-    totalCost: data?.totals?.cost,
-    totalTokens: data?.totals?.tokens,
+    allCost: data?.totals?.all?.cost,
+    allTok: tokSum(data?.totals?.all),
+    todayCost: data?.totals?.today?.cost,
+    block5hCost: data?.totals?.block5h?.cost,
     fiveHUsed: rl0?.five_hour?.used,
     sevenDUsed: rl0?.seven_day?.used,
     ctxLeft: cw0?.tokens_left,

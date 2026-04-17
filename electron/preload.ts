@@ -115,6 +115,7 @@ const api = {
   readDir: (dirPath: string) => ipcRenderer.invoke('fs:readDir', dirPath),
   dirStats: (dirPath: string) => ipcRenderer.invoke('fs:dirStats', dirPath),
   fileStats: (filePath: string) => ipcRenderer.invoke('fs:fileStats', filePath),
+  pathExists: (p: string) => ipcRenderer.invoke('fs:pathExists', p),
   listFilesRecursive: (rootPath: string) => ipcRenderer.invoke('fs:listFilesRecursive', rootPath),
   projectAssetsHash: (rootDir: string) => ipcRenderer.invoke('fs:projectAssetsHash', rootDir),
   projectSearch: (rootPath: string, query: string, opts: any) => ipcRenderer.invoke('fs:projectSearch', rootPath, query, opts),

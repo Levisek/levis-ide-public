@@ -559,7 +559,8 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
       </div>
       <div class="popover-body">
         <input type="text" class="popover-input" placeholder="${t('browser.placeholder', { selector: contextLabel })}">
-        <button class="popover-send" title="${t('toast.sentToCC')}">${I('play')}</button>
+        <button class="popover-mode" data-mode="send" title=""></button>
+        <button class="popover-send" title="">${I('play')}</button>
       </div>
       <div class="popover-arrow"></div>
     `;
@@ -611,21 +612,39 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
       if (e.key === 'Escape') { e.preventDefault(); cancel(); }
     });
     setTimeout(() => input.focus(), 50);
-    // Async: načti submit mode a aktualizuj tooltip sendBtn + badge v popoveru
-    getInspectAutoSubmit().then(autoSubmit => {
-      const label = popover.querySelector('.popover-label') as HTMLElement;
-      if (autoSubmit) {
+
+    // Toggle "odeslat / připravit" přímo v popoveru — klik přepne mód + uloží pref do store,
+    // aby si to pamatovalo pro další inspect. Label + send tlačítko dostanou vizuál dle módu.
+    const modeBtn = popover.querySelector('.popover-mode') as HTMLButtonElement;
+    const label = popover.querySelector('.popover-label') as HTMLElement;
+    const safeLabel = contextLabel.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] || c));
+    function applyMode(auto: boolean): void {
+      if (auto) {
+        modeBtn.dataset.mode = 'send';
+        modeBtn.innerHTML = I('play');
+        modeBtn.title = t('browser.modeToggleToPrepare');
         sendBtn.title = t('browser.hintSend');
-        if (label) label.dataset.submitMode = 'send';
+        if (label) { label.dataset.submitMode = 'send'; label.innerHTML = safeLabel; }
       } else {
+        modeBtn.dataset.mode = 'prepare';
+        modeBtn.innerHTML = '✎';
+        modeBtn.title = t('browser.modeToggleToSend');
         sendBtn.title = t('browser.hintPrepare');
         if (label) {
           label.dataset.submitMode = 'prepare';
-          const safe = contextLabel.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] || c));
-          label.innerHTML = `${safe} <span class="popover-badge-prepare">✎ ${t('browser.badgePrepare')}</span>`;
+          label.innerHTML = `${safeLabel} <span class="popover-badge-prepare">✎ ${t('browser.badgePrepare')}</span>`;
         }
       }
-    }).catch(() => {});
+    }
+    // Initial load ze store
+    getInspectAutoSubmit().then(applyMode).catch(() => applyMode(true));
+    modeBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const current = modeBtn.dataset.mode === 'send';
+      const next = !current;
+      applyMode(next);
+      try { await levis.storeSet('inspectAutoSubmit', next); } catch {}
+    });
   }
 
   inspector.onSelect((info) => {
