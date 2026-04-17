@@ -615,10 +615,10 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
     const label = popover.querySelector('.popover-label') as HTMLElement;
     const safeLabel = contextLabel.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] || c));
 
-    // Local state pro tento popover. currentAuto = true → Send s Enterem. false → bez Enteru.
-    // Lokální flag eliminuje async race s IPC storeGet/storeSet.
+    // Local per-popover state. currentAuto = true → Send s Enterem. false → bez Enteru.
+    // Žádná persistence — každý nový popover startuje v default módu (auto-send).
+    // Tužka je jednorázový override pro tento popover. Po zavření se zapomene.
     let currentAuto = true;
-    let userInteracted = false;
     function applyMode(auto: boolean): void {
       currentAuto = auto;
       if (auto) {
@@ -638,16 +638,9 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
         }
       }
     }
-    // Initial — výchozí hodnota přichází ze Settings checkboxu (store.inspectAutoSubmit).
-    // Pokud user klikl tužku dřív, nepřepisuj.
-    getInspectAutoSubmit().then(v => { if (!userInteracted) applyMode(v); }).catch(() => { if (!userInteracted) applyMode(true); });
-    // Klik NEUKLÁDÁ do store — tužka je jen per-popover override, ne persistentní volba.
-    // Persistentní default řídí Settings checkbox. Takhle nikdy nenastane stav, kdy si
-    // user omylem přepne tužku, zavře popover a další inspect je v prepare módu bez
-    // zjevné příčiny.
+    applyMode(true); // vždy default auto-send
     modeBtn.addEventListener('click', (e) => {
       e.preventDefault();
-      userInteracted = true;
       applyMode(!currentAuto);
     });
 
@@ -733,13 +726,6 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
       inspector.disable();
       setTimeout(() => inspector.enable(webview), 300);
     }
-  }
-
-  async function getInspectAutoSubmit(): Promise<boolean> {
-    try {
-      const v = await levis.storeGet('inspectAutoSubmit');
-      return v !== false; // default ON
-    } catch { return true; }
   }
 
   // ── Annotation (freehand lasso) ──

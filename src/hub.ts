@@ -1511,10 +1511,6 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
           <input type="checkbox" id="set-autostart-dev" checked>
           <span>${t('settings.autostartDev')}</span>
         </label>
-        <label class="settings-checkbox">
-          <input type="checkbox" id="set-inspect-auto-submit" checked>
-          <span>${t('settings.inspectAutoSubmit')}</span>
-        </label>
         <div class="settings-row-grid">
           <label class="settings-label-grid">
             <span>${t('settings.theme')}:</span>
@@ -1558,7 +1554,6 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
       (settingsPanel.querySelector('#set-cc-notifications') as HTMLInputElement).checked = all.ccNotifications !== false;
       (settingsPanel.querySelector('#set-cc-sound') as HTMLInputElement).checked = all.ccSound !== false;
       (settingsPanel.querySelector('#set-autostart-dev') as HTMLInputElement).checked = all.autostartDev !== false;
-      (settingsPanel.querySelector('#set-inspect-auto-submit') as HTMLInputElement).checked = all.inspectAutoSubmit !== false;
       (settingsPanel.querySelector('#set-theme') as HTMLSelectElement).value = all.theme || 'mid';
       (settingsPanel.querySelector('#set-locale') as HTMLSelectElement).value = all.locale || 'en';
     });
@@ -1601,7 +1596,6 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
       await levis.storeSet('ccNotifications', (settingsPanel.querySelector('#set-cc-notifications') as HTMLInputElement).checked);
       await levis.storeSet('ccSound', (settingsPanel.querySelector('#set-cc-sound') as HTMLInputElement).checked);
       await levis.storeSet('autostartDev', (settingsPanel.querySelector('#set-autostart-dev') as HTMLInputElement).checked);
-      await levis.storeSet('inspectAutoSubmit', (settingsPanel.querySelector('#set-inspect-auto-submit') as HTMLInputElement).checked);
       const newTheme = (settingsPanel.querySelector('#set-theme') as HTMLSelectElement).value;
       await levis.storeSet('theme', newTheme);
       applyTheme(newTheme);

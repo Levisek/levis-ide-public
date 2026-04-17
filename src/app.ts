@@ -26,17 +26,6 @@ async function init(): Promise<void> {
   // nahoře v okně (checking/available/downloading/downloaded/error).
   try { (window as any).initUpdater?.(); } catch {}
 
-  // Migrace v1.6.8: od této verze tužka v popoveru NEUKLÁDÁ do store (jen per-popover
-  // override), ale store mohl zůstat z dřívějších verzí nastavený na false. Reset na true,
-  // pokud user nenastavil Settings checkbox explicitně v poslední době.
-  // Druhý flag (než v164), aby reset proběhl i na strojích, co už migrace v164 měly.
-  try {
-    const migrated = await levis.storeGet('inspectAutoSubmitMigratedV168');
-    if (!migrated) {
-      await levis.storeSet('inspectAutoSubmit', true);
-      await levis.storeSet('inspectAutoSubmitMigratedV168', true);
-    }
-  } catch {}
 
   // Apply saved theme — default 'mid' (lepší kontrast než dark)
   try {
