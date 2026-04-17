@@ -8,10 +8,20 @@ export function registerGitHandlers(): void {
     try {
       const git = simpleGit(projectPath);
       // Timeout 4 s aby never-resolve git nezamrazil renderer
-      return await Promise.race([
+      const status: any = await Promise.race([
         git.status(),
         new Promise((_, reject) => setTimeout(() => reject(new Error('git status timeout')), 4000)),
       ]);
+      // Spočítej lokální commity, které nejsou na žádném remote (pokrývá i branche bez trackingu,
+      // kde simple-git vrátí ahead=0 i když reálně nic není pushnuté). `HEAD --not --remotes`:
+      // všechny commity v HEAD mínus ty dostupné přes všechny remote-tracking refy.
+      try {
+        const raw = await git.raw(['rev-list', '--count', 'HEAD', '--not', '--remotes']);
+        status.unpushed = parseInt(raw.trim(), 10) || 0;
+      } catch {
+        status.unpushed = 0;
+      }
+      return status;
     } catch (err) {
       return { error: String(err) };
     }

@@ -76,9 +76,10 @@ async function init(): Promise<void> {
     name: string;
     path: string;
     dirty: boolean;
-    ahead: number;
-    unknown?: boolean; // git status selhal (timeout, chyba) — neumíme ověřit stav
-    tabId?: string;    // pro "Otevřít projekt" akci
+    ahead: number;         // commity před upstream (když tracking existuje)
+    unpushedLocal?: number; // lokální commity bez tracking (branch bez upstreamu / žádný remote)
+    unknown?: boolean;
+    tabId?: string;
   }
 
   async function runGitCheckThenQuit(): Promise<void> {
@@ -143,8 +144,12 @@ async function init(): Promise<void> {
           || (status.conflicted?.length > 0)
           || (status.staged?.length > 0);
         const ahead = status.ahead || 0;
-        if (dirty || ahead > 0) {
-          issues.push({ name: p.name, path: p.path, dirty: !!dirty, ahead, tabId: p.id });
+        const unpushedLocal = status.unpushed || 0; // z git.ts: HEAD --not --remotes
+        // Relevantní ahead pro UI — buď standardní ahead (tracking existuje), nebo unpushedLocal
+        // když branch trackování nemá (pak ahead=0 ale commity reálně chybí na remotu).
+        const effectiveAhead = Math.max(ahead, unpushedLocal);
+        if (dirty || effectiveAhead > 0) {
+          issues.push({ name: p.name, path: p.path, dirty: !!dirty, ahead: effectiveAhead, unpushedLocal: unpushedLocal > ahead ? unpushedLocal : 0, tabId: p.id });
         }
       } catch (e) {
         console.warn('[quit-check] failed for', p.path, e);
@@ -200,10 +205,16 @@ async function init(): Promise<void> {
       const tags: string[] = [];
       if (i.unknown) tags.push(`<span class="git-tag dirty">${(window as any).t('quit.tagUnknown')}</span>`);
       if (i.dirty) tags.push(`<span class="git-tag dirty">${(window as any).t('quit.tagDirty')}</span>`);
-      if (i.ahead > 0) tags.push(`<span class="git-tag ahead">${(window as any).t('quit.tagUnpushed', { n: i.ahead })}</span>`);
+      if (i.ahead > 0) {
+        const tagKey = i.unpushedLocal && i.unpushedLocal > 0 ? 'quit.tagUnpushedNoUpstream' : 'quit.tagUnpushed';
+        tags.push(`<span class="git-tag ahead">${(window as any).t(tagKey, { n: i.ahead })}</span>`);
+      }
       const actions: string[] = [];
       if (i.dirty) actions.push(`<button class="git-action commit">${(window as any).t('quit.actCommit')}</button>`);
-      if (i.ahead > 0 && !i.dirty) actions.push(`<button class="git-action push">${(window as any).t('quit.actPush')}</button>`);
+      // Push tlačítko jen když je tracking (tj. push nevyžaduje -u). Pro commity bez upstreamu
+      // by `git push` spadnul — tam ať si to user pushne ručně v terminálu.
+      const hasTracking = i.ahead > 0 && !(i.unpushedLocal && i.unpushedLocal > 0);
+      if (hasTracking && !i.dirty) actions.push(`<button class="git-action push">${(window as any).t('quit.actPush')}</button>`);
       actions.push(`<button class="git-action open">${(window as any).t('quit.actOpen')}</button>`);
       if (i.dirty) actions.push(`<button class="git-action discard">${(window as any).t('quit.actDiscard')}</button>`);
       return `

@@ -559,7 +559,7 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
       </div>
       <div class="popover-body">
         <input type="text" class="popover-input" placeholder="${t('browser.placeholder', { selector: contextLabel })}">
-        <button class="popover-mode" data-mode="send" title=""></button>
+        <button class="popover-mode" type="button" aria-pressed="false" title="">✎</button>
         <button class="popover-send" title="">${I('play')}</button>
       </div>
       <div class="popover-arrow"></div>
@@ -613,21 +613,23 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
     });
     setTimeout(() => input.focus(), 50);
 
-    // Toggle "odeslat / připravit" přímo v popoveru — klik přepne mód + uloží pref do store,
-    // aby si to pamatovalo pro další inspect. Label + send tlačítko dostanou vizuál dle módu.
+    // Jedno tlačítko s tužkou. Neaktivní = "odeslat hned" (default). Aktivní (highlight)
+    // = "jen připravit, Enter stisknu sám". Stav se propisuje do store, aby ho příští
+    // popover obnovil. Send tlačítko funguje stejně v obou módech, jen podle stavu buď
+    // pošle s \r nebo bez.
     const modeBtn = popover.querySelector('.popover-mode') as HTMLButtonElement;
     const label = popover.querySelector('.popover-label') as HTMLElement;
     const safeLabel = contextLabel.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] || c));
     function applyMode(auto: boolean): void {
       if (auto) {
-        modeBtn.dataset.mode = 'send';
-        modeBtn.innerHTML = I('play');
+        modeBtn.classList.remove('active');
+        modeBtn.setAttribute('aria-pressed', 'false');
         modeBtn.title = t('browser.modeToggleToPrepare');
         sendBtn.title = t('browser.hintSend');
         if (label) { label.dataset.submitMode = 'send'; label.innerHTML = safeLabel; }
       } else {
-        modeBtn.dataset.mode = 'prepare';
-        modeBtn.innerHTML = '✎';
+        modeBtn.classList.add('active');
+        modeBtn.setAttribute('aria-pressed', 'true');
         modeBtn.title = t('browser.modeToggleToSend');
         sendBtn.title = t('browser.hintPrepare');
         if (label) {
@@ -636,14 +638,12 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
         }
       }
     }
-    // Initial load ze store
     getInspectAutoSubmit().then(applyMode).catch(() => applyMode(true));
     modeBtn.addEventListener('click', async (e) => {
       e.preventDefault();
-      const current = modeBtn.dataset.mode === 'send';
-      const next = !current;
-      applyMode(next);
-      try { await levis.storeSet('inspectAutoSubmit', next); } catch {}
+      const nextAuto = modeBtn.classList.contains('active'); // aktivní = prepare → klik vrátí do send
+      applyMode(nextAuto);
+      try { await levis.storeSet('inspectAutoSubmit', nextAuto); } catch {}
     });
   }
 
@@ -707,7 +707,9 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
     if (shot) prompt += ` (screenshot: ${shot.rel})`;
 
     const submit = await getInspectAutoSubmit();
-    if (submit) armedReloadAfterCC = true;
+    // Arm reload v OBOU módech — i v prepare user stejně pošle (jen ručně Enterem), pak
+    // očekává refresh náhledu. Bez armu náhled nereaguje na CC dokončení.
+    armedReloadAfterCC = true;
     wrapper.dispatchEvent(new CustomEvent('send-to-pty', { detail: { text: prompt, submit }, bubbles: true }));
     if (shot) scheduleCleanup(shot.abs);
     showToast(t(submit ? (shot ? 'toast.sentToCCWithShot' : 'toast.sentToCC') : 'toast.preparedInCC'), 'success');
@@ -804,7 +806,7 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
         let prompt = `V prohlížeči (${label}) v oblasti (${Math.round(minX)},${Math.round(minY)} → ${Math.round(maxX)},${Math.round(maxY)}) udělej: ${text}`;
         if (shot) prompt += ` (screenshot: ${shot.rel})`;
         const submit = await getInspectAutoSubmit();
-        if (submit) armedReloadAfterCC = true;
+        armedReloadAfterCC = true;
         wrapper.dispatchEvent(new CustomEvent('send-to-pty', { detail: { text: prompt, submit }, bubbles: true }));
         if (shot) scheduleCleanup(shot.abs);
         showToast(t(submit ? (shot ? 'toast.sentToCCWithShot' : 'toast.sentToCC') : 'toast.preparedInCC'), 'success');

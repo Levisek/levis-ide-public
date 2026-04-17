@@ -181,20 +181,30 @@
   box-shadow: 0 0 16px rgba(255, 106, 0, 0.5);
   transform: translateY(-1px);
 }
-/* Mode toggle v popoveru — "send" (default, accent) vs "prepare" (warning/žlutá). */
-.popover-mode[data-mode="send"] {
-  color: var(--accent);
-  border-color: color-mix(in srgb, var(--accent) 40%, var(--border-soft));
-  background: rgba(255, 106, 0, 0.08);
-}
-.popover-mode[data-mode="prepare"] {
-  color: var(--warning);
-  border-color: rgba(245, 158, 11, 0.5);
-  background: rgba(245, 158, 11, 0.1);
-  font-weight: 600;
+/* Mode toggle — tužka. Neaktivní = "odeslat hned" (šedá/tlumená). Aktivní = "jen připravit"
+   (žlutá, s výraznější obrubou a glow). Uživatel kliká přímo na tužku: svítí = aktivní. */
+.popover-mode {
   font-size: 14px;
+  line-height: 1;
 }
-.popover-mode:hover { filter: brightness(1.2); transform: translateY(-1px); }
+.popover-mode:not(.active) {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+.popover-mode:not(.active):hover {
+  opacity: 1;
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+.popover-mode.active {
+  color: var(--warning);
+  border-color: rgba(245, 158, 11, 0.6);
+  background: rgba(245, 158, 11, 0.15);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.12);
+  font-weight: 600;
+  opacity: 1;
+}
+.popover-mode.active:hover { filter: brightness(1.15); }
 .popover-history-dropdown {
   position: absolute; left: 14px; right: 14px; top: 100%; margin-top: 6px;
   background: var(--popover-bg-2); border: 1px solid var(--popover-border);
