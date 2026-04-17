@@ -1572,6 +1572,9 @@ async function createWorkspace(projectPath: string, projectName: string, project
 
   // CC done event + live state — pro tab badge/indikátor v app.ts
   const ccDoneCallbacks: Array<() => void> = [];
+  // Immediate verze — pro callbacky co nechceme gatovat `elapsed > 1500 ms` debouncerem
+  // (typicky browser reload po Inspect/Lasso — CC zvládne drobnou změnu za < 1s).
+  const ccDoneImmediateCallbacks: Array<() => void> = [];
   const ccStateCallbacks: Array<(state: string) => void> = [];
   // Hook do termInstances — když některý terminál přejde z working → idle
   function attachTermStateWatcher(): void {
@@ -1586,6 +1589,9 @@ async function createWorkspace(projectPath: string, projectName: string, project
           workingSince = Date.now();
         }
         if (prevState === 'working' && (s === 'idle' || s === 'waiting')) {
+          // Immediate — bez elapsed gate. Browser reload je gated vnitřně přes
+          // armedReloadAfterCC flag, takže voláním při krátkém pingu nic nepokazíme.
+          for (const cb of ccDoneImmediateCallbacks) try { cb(); } catch {}
           const elapsed = Date.now() - workingSince;
           if (elapsed > 1500) {
             for (const cb of ccDoneCallbacks) try { cb(); } catch {}
@@ -1612,8 +1618,9 @@ async function createWorkspace(projectPath: string, projectName: string, project
   });
 
   // Po CC akci refreshni Browser náhled (pokud user před tím odeslal prompt
-  // z inspect/lasso — browserInstance si drží armed flag interně).
-  ccDoneCallbacks.push(() => {
+  // z inspect/lasso — browserInstance si drží armed flag interně). Immediate —
+  // drobné Inspect prompty trvají často < 1.5 s a elapsed gate by je vyhladil.
+  ccDoneImmediateCallbacks.push(() => {
     try { browserInstance.notifyCCDone?.(); } catch {}
     try { levis.popoutRefresh?.(); } catch {}
   });

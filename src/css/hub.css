@@ -801,6 +801,13 @@
 }
 .counter-btn:hover { background: var(--bg-elev-1); color: var(--accent); }
 .counter-btn:active { background: var(--accent-dim); }
+/* Persistent :focus po kliku by jinak nechal tlačítko "svítit" i po přejetí myši na sousední
+   tlačítko — uživatel by viděl highlight na obou. Outline pryč, focus bez hover = neutrální. */
+.counter-btn:focus { outline: none; }
+.counter-btn:focus:not(:hover) {
+  background: transparent;
+  color: var(--text);
+}
 .counter-dec { border-right: 1px solid var(--border); }
 .counter-inc { border-left: 1px solid var(--border); }
 .counter-input {
