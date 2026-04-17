@@ -638,13 +638,17 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
         }
       }
     }
-    // Initial — pokud user stihl kliknout dřív, nepřepisuj.
+    // Initial — výchozí hodnota přichází ze Settings checkboxu (store.inspectAutoSubmit).
+    // Pokud user klikl tužku dřív, nepřepisuj.
     getInspectAutoSubmit().then(v => { if (!userInteracted) applyMode(v); }).catch(() => { if (!userInteracted) applyMode(true); });
-    modeBtn.addEventListener('click', async (e) => {
+    // Klik NEUKLÁDÁ do store — tužka je jen per-popover override, ne persistentní volba.
+    // Persistentní default řídí Settings checkbox. Takhle nikdy nenastane stav, kdy si
+    // user omylem přepne tužku, zavře popover a další inspect je v prepare módu bez
+    // zjevné příčiny.
+    modeBtn.addEventListener('click', (e) => {
       e.preventDefault();
       userInteracted = true;
       applyMode(!currentAuto);
-      try { await levis.storeSet('inspectAutoSubmit', currentAuto); } catch {}
     });
 
     function submit() { onSubmit(input.value.trim(), currentAuto); }
