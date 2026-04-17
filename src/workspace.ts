@@ -1252,7 +1252,7 @@ async function createWorkspace(projectPath: string, projectName: string, project
     }, 0);
   });
 
-  function sendToFirstTerminal(text: string, submit: boolean = true): void {
+  function sendToFirstTerminal(text: string, submit: boolean = true, bypassQueue: boolean = false): void {
     const target = termInstances[activeTerminalIndex] || termInstances[0];
     if (!target) return;
     if (!submit) {
@@ -1262,7 +1262,11 @@ async function createWorkspace(projectPath: string, projectName: string, project
       return;
     }
     const state = target.getState ? target.getState() : 'idle';
-    if (state !== 'idle') {
+    // Queue logic: když CC pracuje/čeká, ukládáme prompty a vylijeme po idle. Ale pro
+    // Inspect/Lasso/Annotate flow user klikl Send a očekává okamžitý reaction (visual
+    // reload po změně). bypassQueue=true přeskočí queue — CC ho přečte z PTY bufferu,
+    // až se uvolní. Queue zachováme pro manuální prompt workflow z jiných zdrojů.
+    if (!bypassQueue && state !== 'idle') {
       promptQueue.push(text);
       attachQueueWatcher();
       updateQueueUI();
@@ -1513,13 +1517,13 @@ async function createWorkspace(projectPath: string, projectName: string, project
   } catch (err) { console.error('[onPanelClosed setup]', err); }
 
   // Listen for send-to-pty events from inspector/artifact
-  // Detail může být buď string (legacy), nebo { text, submit } (nové — inspect/lasso toggle)
+  // Detail může být buď string (legacy), nebo { text, submit, bypassQueue } (nové)
   const sendToPtyHandler = ((e: CustomEvent) => {
     const d = e.detail;
     if (typeof d === 'string') {
       sendToFirstTerminal(d);
     } else if (d && typeof d === 'object') {
-      sendToFirstTerminal(String(d.text || ''), d.submit !== false);
+      sendToFirstTerminal(String(d.text || ''), d.submit !== false, !!d.bypassQueue);
     }
   }) as EventListener;
   wrapper.addEventListener('send-to-pty', sendToPtyHandler);

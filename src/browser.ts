@@ -712,7 +712,7 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
     // a bez race conditions.
     const submit = auto;
     armedReloadAfterCC = true;
-    wrapper.dispatchEvent(new CustomEvent('send-to-pty', { detail: { text: prompt, submit }, bubbles: true }));
+    wrapper.dispatchEvent(new CustomEvent('send-to-pty', { detail: { text: prompt, submit, bypassQueue: true }, bubbles: true }));
     if (shot) scheduleCleanup(shot.abs);
     showToast(t(submit ? (shot ? 'toast.sentToCCWithShot' : 'toast.sentToCC') : 'toast.preparedInCC'), 'success');
     closePopover();
@@ -809,7 +809,7 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
         if (shot) prompt += ` (screenshot: ${shot.rel})`;
         const submit = auto;
         armedReloadAfterCC = true;
-        wrapper.dispatchEvent(new CustomEvent('send-to-pty', { detail: { text: prompt, submit }, bubbles: true }));
+        wrapper.dispatchEvent(new CustomEvent('send-to-pty', { detail: { text: prompt, submit, bypassQueue: true }, bubbles: true }));
         if (shot) scheduleCleanup(shot.abs);
         showToast(t(submit ? (shot ? 'toast.sentToCCWithShot' : 'toast.sentToCC') : 'toast.preparedInCC'), 'success');
         closePopover();
