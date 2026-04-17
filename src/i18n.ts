@@ -185,6 +185,9 @@ const EN: Dict = {
   // ── Browser inspect/annotate ────────
   'browser.inspect':       'Inspect',
   'browser.inspectOn':     'Inspect ON',
+  'browser.hintSend':      'Send to Claude Code (Enter key will be pressed automatically)',
+  'browser.hintPrepare':   'Prepare in Claude Code (press Enter in terminal yourself)',
+  'browser.badgePrepare':  'prepare',
   'browser.annotate':      'Mark',
   'browser.annotateDraw':  'Drawing…',
   'browser.placeholder':   'What to do with {selector}?',
@@ -896,6 +899,9 @@ const CS: Dict = {
   // ── Browser inspect/annotate ────────
   'browser.inspect':       'Inspect',
   'browser.inspectOn':     'Inspect ON',
+  'browser.hintSend':      'Odeslat do Claude Code (Enter se stiskne automaticky)',
+  'browser.hintPrepare':   'Připravit v Claude Code (Enter stiskneš v terminálu sám)',
+  'browser.badgePrepare':  'připravit',
   'browser.annotate':      'Označit',
   'browser.annotateDraw':  'Kreslím…',
   'browser.placeholder':   'Co udělat s {selector}?',

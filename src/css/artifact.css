@@ -125,6 +125,20 @@
   font-size: 12px;
 }
 .popover-close:hover { color: var(--error); background: var(--bg-elev-1); }
+/* Mini badge uvnitř popover-label — ukazuje jestli prompt jde rovnou do CC nebo se jen připraví. */
+.popover-badge-prepare {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  background: rgba(245,158,11,0.15);
+  color: var(--warning);
+  border: 1px solid rgba(245,158,11,0.3);
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  font-family: 'Inter', -apple-system, sans-serif;
+}
 .popover-body {
   display: flex; align-items: center; gap: 6px;
 }

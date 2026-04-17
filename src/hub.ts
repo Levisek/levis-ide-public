@@ -1681,13 +1681,31 @@ function fmtUsd(n: number): string {
 
 async function renderUsagePanel(host: HTMLElement): Promise<void> {
   if (!host) return;
-  host.innerHTML = `<div class="usage-bar usage-bar-loading">Načítám usage...</div>`;
+  const isFirstRender = !host.innerHTML || host.innerHTML.includes('usage-bar-loading');
+  if (isFirstRender) {
+    host.innerHTML = `<div class="usage-bar usage-bar-loading">Načítám usage...</div>`;
+  }
   let plan: string = (await levis.storeGet('claudePlan')) || 'max5';
   // Billing/usage panel je na startu Hubu vždycky složený, user ho v rámci session může rozbalit
   let collapsed: boolean = true;
   const account = await levis.usageAccount();
   const data = await levis.usageScan();
   const realLimits = await levis.usageRateLimits();
+
+  // Skip re-render pokud se relevantní metriky nezměnily (statusline dump píše soubor i když
+  // se čísla nehnula — jen capturedAt se posouvá → zbytečný flicker v Hubu).
+  const rl0 = realLimits?.rate_limits;
+  const cw0 = realLimits?.context_window;
+  const currentHash = JSON.stringify({
+    totalCost: data?.totals?.cost,
+    totalTokens: data?.totals?.tokens,
+    fiveHUsed: rl0?.five_hour?.used,
+    sevenDUsed: rl0?.seven_day?.used,
+    ctxLeft: cw0?.tokens_left,
+    plan,
+  });
+  if (!isFirstRender && (host as any)._usageDataHash === currentHash) return;
+  (host as any)._usageDataHash = currentHash;
 
   const tot = data.totals;
 
@@ -1896,10 +1914,11 @@ async function renderUsagePanel(host: HTMLElement): Promise<void> {
   const prevUnsub: (() => void) | null = (host as any)._usageUnsub || null;
   if (prevUnsub) { try { prevUnsub(); } catch {} }
   const unsub = (levis as any).onUsageUpdated?.(() => {
-    // Mírný debounce na straně rendereru — chokidar už debounce 250 ms má,
-    // tohle je pojistka proti rychlým back-to-back zápisům.
+    // Debounce 1500 ms — statusline dump může psát soubor často, i když se
+    // reálná čísla nehnula. Uvnitř renderUsagePanel navíc hash check skipne render,
+    // pokud se metriky nezměnily.
     window.clearTimeout((host as any)._usageRenderTo);
-    (host as any)._usageRenderTo = window.setTimeout(() => { renderUsagePanel(host); }, 150);
+    (host as any)._usageRenderTo = window.setTimeout(() => { renderUsagePanel(host); }, 1500);
   });
   (host as any)._usageUnsub = unsub;
 }

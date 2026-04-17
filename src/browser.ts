@@ -611,6 +611,21 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
       if (e.key === 'Escape') { e.preventDefault(); cancel(); }
     });
     setTimeout(() => input.focus(), 50);
+    // Async: načti submit mode a aktualizuj tooltip sendBtn + badge v popoveru
+    getInspectAutoSubmit().then(autoSubmit => {
+      const label = popover.querySelector('.popover-label') as HTMLElement;
+      if (autoSubmit) {
+        sendBtn.title = t('browser.hintSend');
+        if (label) label.dataset.submitMode = 'send';
+      } else {
+        sendBtn.title = t('browser.hintPrepare');
+        if (label) {
+          label.dataset.submitMode = 'prepare';
+          const safe = contextLabel.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] || c));
+          label.innerHTML = `${safe} <span class="popover-badge-prepare">✎ ${t('browser.badgePrepare')}</span>`;
+        }
+      }
+    }).catch(() => {});
   }
 
   inspector.onSelect((info) => {

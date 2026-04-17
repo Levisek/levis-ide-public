@@ -43,6 +43,7 @@ async function init(): Promise<void> {
   });
 
   function showQuitConfirm(): void {
+    console.log('[quit] showQuitConfirm invoked; tabs:', tabs.length);
     const overlay = document.createElement('div');
     overlay.className = 'quit-overlay';
     overlay.innerHTML = `
@@ -88,8 +89,19 @@ async function init(): Promise<void> {
     loading.innerHTML = `<div class="quit-box"><div class="quit-title">${t('quit.checking')}</div></div>`;
     document.body.appendChild(loading);
 
-    const projects = tabs.filter(t => t.projectPath).map(t => ({ id: t.id, name: t.label, path: t.projectPath! }));
-    console.log('[quit-check] projects:', projects.length);
+    const projects: Array<{ id: string; name: string; path: string }> = tabs.filter(t => t.projectPath).map(t => ({ id: t.id, name: t.label, path: t.projectPath! }));
+    // Doplň naposledy otevřené Hub projekty (kdyby user měl dirty projekt v Hubu ale neotevřel ho jako tab)
+    try {
+      const lastOpened: Record<string, number> = (await levis.storeGet('projectLastOpened')) || {};
+      const sorted = Object.entries(lastOpened).sort((a, b) => b[1] - a[1]).slice(0, 10);
+      const openedPaths = new Set(projects.map(p => p.path));
+      for (const [path] of sorted) {
+        if (openedPaths.has(path)) continue;
+        const name = (path.replace(/\\/g, '/').split('/').filter(Boolean).pop() || path);
+        projects.push({ id: '', name, path });
+      }
+    } catch {}
+    console.log('[quit-check] projects:', projects.length, '(tabs + last-opened)');
     const issues: GitIssue[] = [];
     // Main-side git:status handler má vlastní 4s timeout (electron/ipc/git.ts:5-16),
     // ale IPC samotná může v rare případech viset (lock na .git/, slow disk).
@@ -230,7 +242,7 @@ async function init(): Promise<void> {
       });
     });
 
-    // "Otevřít projekt" — zrušit quit a přepnout na daný tab
+    // "Otevřít projekt" — zrušit quit; pokud je to existující tab, přepni; jinak otevři nový
     overlay.querySelectorAll('.git-action.open').forEach((btn) => {
       const idx = parseInt((btn.closest('.git-issue-row') as HTMLElement).dataset.idx || '0', 10);
       btn.addEventListener('click', () => {
@@ -238,6 +250,7 @@ async function init(): Promise<void> {
         overlay.remove();
         quitInProgress = false;
         if (issue.tabId) switchTab(issue.tabId);
+        else openProject({ name: issue.name, path: issue.path }).catch(() => {});
       });
     });
 
