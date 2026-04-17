@@ -334,7 +334,11 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
   });
 
   // ── Watch mode ──
-  let watching = false;
+  // Default ZAPNUTÝ — bez něj je inspect/lasso flow nepřetěžový: user pošle prompt,
+  // CC upraví soubor, ale náhled se nerefreshne sám (reload závisí na CC state
+  // detektoru + armedReload flag). S Watch ON polluje soubor každé 2 s a uvidí změnu
+  // hned. Originál LevisIDE to měl takto (c:/dev/levis-ide/artifact.ts:669).
+  let watching = true;
   let watchInterval: any = null;
   let watchPending = false; // brání double-fire pokud loadFile trvá > 2 s
   const watchBtn = toolbar.querySelector('.browser-watch') as HTMLElement;
@@ -370,6 +374,10 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
     watchBtn.innerHTML = `${I('eye')} ${watching ? t('browser.watching') : t('browser.watch')}`;
     if (watching) startWatch(); else stopWatch();
   });
+  // Init vizuálu + start polling — default ON
+  watchBtn.classList.add('artifact-watch-active');
+  watchBtn.innerHTML = `${I('eye')} ${t('browser.watching')}`;
+  startWatch();
 
   // ── Reload ──
   toolbar.querySelector('.browser-reload')!.addEventListener('click', () => {
