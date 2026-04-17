@@ -181,30 +181,36 @@
   box-shadow: 0 0 16px rgba(255, 106, 0, 0.5);
   transform: translateY(-1px);
 }
-/* Mode toggle — tužka. Neaktivní = "odeslat hned" (šedá/tlumená). Aktivní = "jen připravit"
-   (žlutá, s výraznější obrubou a glow). Uživatel kliká přímo na tužku: svítí = aktivní. */
+/* Mode toggle — tužka. Neaktivní (tlumená) = "odeslat hned" (auto-submit).
+   Aktivní (accent highlight) = "jen připravit, Enter stisknu sám".
+   Vázáno na accent tokeny — per-theme se automaticky přizpůsobí (dark/mid/light). */
 .popover-mode {
-  font-size: 14px;
-  line-height: 1;
+  font-size: 14px; line-height: 1;
+  transition: all 150ms ease;
 }
 .popover-mode:not(.active) {
   color: var(--text-muted);
-  opacity: 0.6;
+  opacity: 0.55;
 }
 .popover-mode:not(.active):hover {
   opacity: 1;
   color: var(--text);
-  border-color: var(--border-strong);
+  border-color: var(--accent-soft);
+  background: var(--accent-dim);
 }
 .popover-mode.active {
-  color: var(--warning);
-  border-color: rgba(245, 158, 11, 0.6);
-  background: rgba(245, 158, 11, 0.15);
-  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.12);
-  font-weight: 600;
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-dim);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+  font-weight: 700;
   opacity: 1;
 }
-.popover-mode.active:hover { filter: brightness(1.15); }
+.popover-mode.active:hover { filter: brightness(1.1); }
+/* Light theme: --accent-dim je velmi světlé (~1a alfa) → pro aktivní stav posílíme kontrast */
+[data-theme="light"] .popover-mode.active {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
 .popover-history-dropdown {
   position: absolute; left: 14px; right: 14px; top: 100%; margin-top: 6px;
   background: var(--popover-bg-2); border: 1px solid var(--popover-border);

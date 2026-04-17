@@ -768,14 +768,73 @@
   outline: none; transition: all var(--t-fast) var(--ease);
 }
 .settings-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
-/* Skrývá default browser spinner u number inputů — působí jako nestylovaný "posuvník" přes okraj. */
-.settings-input[type="number"]::-webkit-inner-spin-button,
-.settings-input[type="number"]::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  appearance: none;
-  margin: 0;
+
+/* ── 2-col grid pro font size + theme/language řádky ── */
+.settings-row-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: var(--space-4); margin-bottom: var(--space-3);
 }
-.settings-input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+.settings-label-grid {
+  display: flex; flex-direction: column; gap: var(--space-2);
+  font-size: 12px; color: var(--text-muted); font-weight: 500;
+  margin-bottom: 0;
+}
+
+/* ── Stylizovaný counter (−/input/+) pro font size inputy ── */
+.settings-counter {
+  display: flex; align-items: center;
+  height: 36px;
+  background: var(--bg-deep);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: border-color var(--t-fast) var(--ease);
+}
+.settings-counter:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+.counter-btn {
+  flex: 0 0 34px; height: 100%;
+  background: transparent; border: none;
+  color: var(--text); font-size: 16px; font-weight: 600;
+  cursor: pointer; user-select: none;
+  display: flex; align-items: center; justify-content: center;
+  transition: background var(--t-fast) var(--ease);
+}
+.counter-btn:hover { background: var(--bg-elev-1); color: var(--accent); }
+.counter-btn:active { background: var(--accent-dim); }
+.counter-dec { border-right: 1px solid var(--border); }
+.counter-inc { border-left: 1px solid var(--border); }
+.counter-input {
+  flex: 1; min-width: 0;
+  background: transparent; border: none; outline: none;
+  color: var(--text); text-align: center;
+  font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500;
+  padding: 0;
+}
+.counter-input::-webkit-inner-spin-button,
+.counter-input::-webkit-outer-spin-button { -webkit-appearance: none; appearance: none; margin: 0; }
+.counter-input { -moz-appearance: textfield; appearance: textfield; }
+
+/* ── Stylizovaný select (theme, locale) — vlastní chevron, bez OS roletky ── */
+.settings-select {
+  appearance: none; -webkit-appearance: none; -moz-appearance: none;
+  width: 100%;
+  padding: 9px 32px 9px var(--space-4);
+  background: var(--bg-deep);
+  background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23b8bac8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 12px 8px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  color: var(--text); font-family: 'Inter', -apple-system, sans-serif; font-size: 13px;
+  cursor: pointer; outline: none;
+  transition: all var(--t-fast) var(--ease);
+}
+.settings-select:hover { border-color: var(--accent-soft); }
+.settings-select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+/* Light theme — tmavší chevron pro čitelnost na světlém pozadí */
+[data-theme="light"] .settings-select {
+  background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%233e3c35' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
 .settings-input-row {
   display: flex; gap: var(--space-2); align-items: stretch; margin-top: var(--space-2);
 }

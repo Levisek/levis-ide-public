@@ -7,19 +7,26 @@ export function registerGitHandlers(): void {
     if (!isPathAllowed(projectPath)) return { error: 'Path not allowed' };
     try {
       const git = simpleGit(projectPath);
-      // Timeout 4 s aby never-resolve git nezamrazil renderer
       const status: any = await Promise.race([
         git.status(),
         new Promise((_, reject) => setTimeout(() => reject(new Error('git status timeout')), 4000)),
       ]);
-      // Spočítej lokální commity, které nejsou na žádném remote (pokrývá i branche bez trackingu,
-      // kde simple-git vrátí ahead=0 i když reálně nic není pushnuté). `HEAD --not --remotes`:
-      // všechny commity v HEAD mínus ty dostupné přes všechny remote-tracking refy.
+      // Lokální commity, které nejsou na žádném remote. Dva případy:
+      //   a) Projekt bez remote → všechny commity HEAD jsou "lokální" → rev-list --count HEAD
+      //   b) Projekt s remote (i bez trackingu branche) → HEAD --not --remotes vyfiltruje vše pushnuté
+      // Pokud rev-list selže/timeoutne → unpushed = -1 (signál "neznámý stav" pro UI)
       try {
-        const raw = await git.raw(['rev-list', '--count', 'HEAD', '--not', '--remotes']);
-        status.unpushed = parseInt(raw.trim(), 10) || 0;
+        const remotes = await git.getRemotes();
+        if (remotes.length === 0) {
+          const raw = await git.raw(['rev-list', '--count', 'HEAD']);
+          status.unpushed = parseInt(raw.trim(), 10) || 0;
+          status.noRemote = true;
+        } else {
+          const raw = await git.raw(['rev-list', '--count', 'HEAD', '--not', '--remotes']);
+          status.unpushed = parseInt(raw.trim(), 10) || 0;
+        }
       } catch {
-        status.unpushed = 0;
+        status.unpushed = -1;
       }
       return status;
     } catch (err) {

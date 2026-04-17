@@ -22,6 +22,22 @@ async function init(): Promise<void> {
   await initI18n();
   applyI18nDom(document);
 
+  // Auto-update banner — poslouchá update:status eventy z main procesu a ukazuje banner
+  // nahoře v okně (checking/available/downloading/downloaded/error).
+  try { (window as any).initUpdater?.(); } catch {}
+
+  // Migrace v1.6.4: někteří testeři v předchozích verzích náhodně přepnuli inspectAutoSubmit
+  // na false (tužka v popoveru) → každý další inspect posílal bez Enteru, což bylo matoucí.
+  // Reset na default `true` jednorázově, aby měli čistý start. Pokud si chtějí prepare mód,
+  // kliknou v popoveru nebo v Settings.
+  try {
+    const migrated = await levis.storeGet('inspectAutoSubmitMigratedV164');
+    if (!migrated) {
+      await levis.storeSet('inspectAutoSubmit', true);
+      await levis.storeSet('inspectAutoSubmitMigratedV164', true);
+    }
+  } catch {}
+
   // Apply saved theme — default 'mid' (lepší kontrast než dark)
   try {
     let savedTheme = await levis.storeGet('theme');
@@ -144,12 +160,19 @@ async function init(): Promise<void> {
           || (status.conflicted?.length > 0)
           || (status.staged?.length > 0);
         const ahead = status.ahead || 0;
-        const unpushedLocal = status.unpushed || 0; // z git.ts: HEAD --not --remotes
-        // Relevantní ahead pro UI — buď standardní ahead (tracking existuje), nebo unpushedLocal
-        // když branch trackování nemá (pak ahead=0 ale commity reálně chybí na remotu).
+        // -1 = rev-list selhal/timeoutnul → neznámý stav, raději varovat
+        const unknownPush = status.unpushed === -1;
+        const unpushedLocal = (status.unpushed && status.unpushed > 0) ? status.unpushed : 0;
         const effectiveAhead = Math.max(ahead, unpushedLocal);
-        if (dirty || effectiveAhead > 0) {
-          issues.push({ name: p.name, path: p.path, dirty: !!dirty, ahead: effectiveAhead, unpushedLocal: unpushedLocal > ahead ? unpushedLocal : 0, tabId: p.id });
+        if (dirty || effectiveAhead > 0 || unknownPush) {
+          issues.push({
+            name: p.name, path: p.path,
+            dirty: !!dirty,
+            ahead: effectiveAhead,
+            unpushedLocal: unpushedLocal > ahead ? unpushedLocal : 0,
+            unknown: unknownPush || undefined,
+            tabId: p.id,
+          });
         }
       } catch (e) {
         console.warn('[quit-check] failed for', p.path, e);

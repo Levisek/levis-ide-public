@@ -91,6 +91,11 @@ interface LevisAPI {
   // CC onboarding
   ccDetect: () => Promise<{ installed: boolean; version: string | null; path: string | null; source: 'native' | 'npm' | 'path' | null }>;
   ccInstallCommand: () => Promise<{ cmd: string; docsUrl: string }>;
+  // Auto-update
+  updateCheck: () => Promise<{ success?: boolean; error?: string }>;
+  updateDownload: () => Promise<{ success?: boolean; error?: string }>;
+  updateInstall: () => Promise<{ success?: boolean }>;
+  onUpdateStatus: (cb: (data: { status: 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error'; version?: string; percent?: number; transferred?: number; total?: number; bytesPerSecond?: number; message?: string; releaseNotes?: string | null; releaseDate?: string }) => void) => () => void;
 }
 
 declare const levis: LevisAPI;

@@ -1481,12 +1481,24 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
         <label>${t('settings.gitEmail')}:
           <input type="text" class="settings-input" id="set-email" value="">
         </label>
-        <label>${t('settings.editorFontSize')}:
-          <input type="number" class="settings-input" id="set-editor-font" value="14" min="10" max="24">
-        </label>
-        <label>${t('settings.terminalFontSize')}:
-          <input type="number" class="settings-input" id="set-term-font" value="13" min="10" max="24">
-        </label>
+        <div class="settings-row-grid">
+          <label class="settings-label-grid">
+            <span>${t('settings.editorFontSize')}:</span>
+            <div class="settings-counter" data-target="set-editor-font">
+              <button type="button" class="counter-btn counter-dec" aria-label="−">−</button>
+              <input type="number" class="counter-input" id="set-editor-font" value="14" min="10" max="24">
+              <button type="button" class="counter-btn counter-inc" aria-label="+">+</button>
+            </div>
+          </label>
+          <label class="settings-label-grid">
+            <span>${t('settings.terminalFontSize')}:</span>
+            <div class="settings-counter" data-target="set-term-font">
+              <button type="button" class="counter-btn counter-dec" aria-label="−">−</button>
+              <input type="number" class="counter-input" id="set-term-font" value="13" min="10" max="24">
+              <button type="button" class="counter-btn counter-inc" aria-label="+">+</button>
+            </div>
+          </label>
+        </div>
         <label class="settings-checkbox">
           <input type="checkbox" id="set-cc-notifications" checked>
           <span>${t('settings.ccNotifications')}</span>
@@ -1503,22 +1515,23 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
           <input type="checkbox" id="set-inspect-auto-submit" checked>
           <span>${t('settings.inspectAutoSubmit')}</span>
         </label>
-        <label>
-          <span>${t('settings.theme')}</span>:
-          <select class="settings-input" id="set-theme">
-            <option value="dark">${t('settings.theme.dark')}</option>
-
-            <option value="mid">${t('settings.theme.mid')}</option>
-            <option value="light">${t('settings.theme.light')}</option>
-          </select>
-        </label>
-        <label>
-          <span>${t('settings.language')}</span>:
-          <select class="settings-input" id="set-locale">
-            <option value="en">English</option>
-            <option value="cs">Čeština</option>
-          </select>
-        </label>
+        <div class="settings-row-grid">
+          <label class="settings-label-grid">
+            <span>${t('settings.theme')}:</span>
+            <select class="settings-select" id="set-theme">
+              <option value="dark">${t('settings.theme.dark')}</option>
+              <option value="mid">${t('settings.theme.mid')}</option>
+              <option value="light">${t('settings.theme.light')}</option>
+            </select>
+          </label>
+          <label class="settings-label-grid">
+            <span>${t('settings.language')}:</span>
+            <select class="settings-select" id="set-locale">
+              <option value="en">English</option>
+              <option value="cs">Čeština</option>
+            </select>
+          </label>
+        </div>
         <div class="settings-row">
           <span>${t('settings.desktopShortcut')}</span>
           <button class="settings-btn-shortcut" type="button">${t('settings.createShortcut')}</button>
@@ -1557,6 +1570,22 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
           (settingsPanel.querySelector('#set-scan-path') as HTMLInputElement).value = folder;
         }
       } catch {}
+    });
+
+    // Counter −/+ handlery pro font size inputy (settings-counter komponenty)
+    settingsPanel.querySelectorAll('.settings-counter').forEach((counter) => {
+      const input = counter.querySelector('.counter-input') as HTMLInputElement;
+      const dec = counter.querySelector('.counter-dec') as HTMLButtonElement;
+      const inc = counter.querySelector('.counter-inc') as HTMLButtonElement;
+      const min = parseInt(input.min || '0', 10);
+      const max = parseInt(input.max || '999', 10);
+      function clamp(v: number): number { return Math.max(min, Math.min(max, v)); }
+      dec.addEventListener('click', () => {
+        input.value = String(clamp((parseInt(input.value, 10) || min) - 1));
+      });
+      inc.addEventListener('click', () => {
+        input.value = String(clamp((parseInt(input.value, 10) || min) + 1));
+      });
     });
 
     settingsPanel.querySelector('.settings-save')!.addEventListener('click', async () => {

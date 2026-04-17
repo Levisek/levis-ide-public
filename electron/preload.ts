@@ -168,6 +168,16 @@ const api = {
   // Claude Code onboarding — detekce a install
   ccDetect: () => ipcRenderer.invoke('cc:detect'),
   ccInstallCommand: () => ipcRenderer.invoke('cc:installCommand'),
+
+  // Auto-update
+  updateCheck: () => ipcRenderer.invoke('update:check'),
+  updateDownload: () => ipcRenderer.invoke('update:download'),
+  updateInstall: () => ipcRenderer.invoke('update:install'),
+  onUpdateStatus: (cb: (data: { status: string; [k: string]: any }) => void) => {
+    const handler = (_e: any, data: any) => cb(data);
+    ipcRenderer.on('update:status', handler);
+    return () => { ipcRenderer.off('update:status', handler); };
+  },
 };
 
 contextBridge.exposeInMainWorld('levis', api);

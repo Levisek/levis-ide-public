@@ -541,7 +541,7 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
     };
   }
 
-  function showFloatingPopover(rect: { x: number; y: number; width: number; height: number }, contextLabel: string, onSubmit: (text: string) => void, onCancel?: () => void): void {
+  function showFloatingPopover(rect: { x: number; y: number; width: number; height: number }, contextLabel: string, onSubmit: (text: string, auto: boolean) => void, onCancel?: () => void): void {
     closePopover();
     elementRing.style.display = 'block';
     elementRing.style.left = `${rect.x - 4}px`;
@@ -603,24 +603,16 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
     const input = popover.querySelector('.popover-input') as HTMLInputElement;
     const sendBtn = popover.querySelector('.popover-send') as HTMLElement;
     const closeBtn = popover.querySelector('.popover-close') as HTMLElement;
-    function submit() { onSubmit(input.value.trim()); }
-    function cancel() { if (onCancel) onCancel(); closePopover(); }
-    sendBtn.addEventListener('click', submit);
-    closeBtn.addEventListener('click', cancel);
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); submit(); }
-      if (e.key === 'Escape') { e.preventDefault(); cancel(); }
-    });
-    setTimeout(() => input.focus(), 50);
-
-    // Jedno tlačítko s tužkou. Neaktivní = "odeslat hned" (default). Aktivní (highlight)
-    // = "jen připravit, Enter stisknu sám". Stav se propisuje do store, aby ho příští
-    // popover obnovil. Send tlačítko funguje stejně v obou módech, jen podle stavu buď
-    // pošle s \r nebo bez.
     const modeBtn = popover.querySelector('.popover-mode') as HTMLButtonElement;
     const label = popover.querySelector('.popover-label') as HTMLElement;
     const safeLabel = contextLabel.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] || c));
+
+    // Local state pro tento popover. currentAuto = true → Send s Enterem. false → bez Enteru.
+    // Lokální flag eliminuje async race s IPC storeGet/storeSet.
+    let currentAuto = true;
+    let userInteracted = false;
     function applyMode(auto: boolean): void {
+      currentAuto = auto;
       if (auto) {
         modeBtn.classList.remove('active');
         modeBtn.setAttribute('aria-pressed', 'false');
@@ -638,13 +630,24 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
         }
       }
     }
-    getInspectAutoSubmit().then(applyMode).catch(() => applyMode(true));
+    // Initial — pokud user stihl kliknout dřív, nepřepisuj.
+    getInspectAutoSubmit().then(v => { if (!userInteracted) applyMode(v); }).catch(() => { if (!userInteracted) applyMode(true); });
     modeBtn.addEventListener('click', async (e) => {
       e.preventDefault();
-      const nextAuto = modeBtn.classList.contains('active'); // aktivní = prepare → klik vrátí do send
-      applyMode(nextAuto);
-      try { await levis.storeSet('inspectAutoSubmit', nextAuto); } catch {}
+      userInteracted = true;
+      applyMode(!currentAuto);
+      try { await levis.storeSet('inspectAutoSubmit', currentAuto); } catch {}
     });
+
+    function submit() { onSubmit(input.value.trim(), currentAuto); }
+    function cancel() { if (onCancel) onCancel(); closePopover(); }
+    sendBtn.addEventListener('click', submit);
+    closeBtn.addEventListener('click', cancel);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); submit(); }
+      if (e.key === 'Escape') { e.preventDefault(); cancel(); }
+    });
+    setTimeout(() => input.focus(), 50);
   }
 
   inspector.onSelect((info) => {
@@ -653,9 +656,8 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
     showFloatingPopover(
       getElementRectInContainer(info.rect),
       info.selector,
-      (text) => sendElementPrompt(text),
+      (text, auto) => sendElementPrompt(text, auto),
       () => {
-        // Cancel (× / Esc) — vyresetovat inspector, aby šlo vybrat další element
         selectedElement = null;
         if (inspectActive) {
           inspector.disable();
@@ -693,7 +695,7 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
     setTimeout(() => { levis.deleteFile(absPath).catch(() => {}); }, 30_000);
   }
 
-  async function sendElementPrompt(userText: string) {
+  async function sendElementPrompt(userText: string, auto: boolean) {
     if (!selectedElement) return;
     const label = currentFilePath
       ? currentFilePath.replace(/\\/g, '/').split('/').pop() || ''
@@ -706,9 +708,9 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
       (userText ? ` — ${userText}` : '');
     if (shot) prompt += ` (screenshot: ${shot.rel})`;
 
-    const submit = await getInspectAutoSubmit();
-    // Arm reload v OBOU módech — i v prepare user stejně pošle (jen ručně Enterem), pak
-    // očekává refresh náhledu. Bez armu náhled nereaguje na CC dokončení.
+    // `auto` pochází přímo z popoveru (lokální state toggle) — bez storeGet round-tripu
+    // a bez race conditions.
+    const submit = auto;
     armedReloadAfterCC = true;
     wrapper.dispatchEvent(new CustomEvent('send-to-pty', { detail: { text: prompt, submit }, bubbles: true }));
     if (shot) scheduleCleanup(shot.abs);
@@ -800,12 +802,12 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
     showFloatingPopover(
       { x: minX, y: minY, width: w, height: h },
       `${Math.round(w)}×${Math.round(h)}px`,
-      async (text) => {
+      async (text, auto) => {
         if (!text) return;
         const shot = await captureLasso({ x: minX, y: minY, width: w, height: h }, false);
         let prompt = `V prohlížeči (${label}) v oblasti (${Math.round(minX)},${Math.round(minY)} → ${Math.round(maxX)},${Math.round(maxY)}) udělej: ${text}`;
         if (shot) prompt += ` (screenshot: ${shot.rel})`;
-        const submit = await getInspectAutoSubmit();
+        const submit = auto;
         armedReloadAfterCC = true;
         wrapper.dispatchEvent(new CustomEvent('send-to-pty', { detail: { text: prompt, submit }, bubbles: true }));
         if (shot) scheduleCleanup(shot.abs);

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, globalShortcut, Menu, shell } from 'electron';
+import { app, BrowserWindow, globalShortcut, Menu, shell, ipcMain } from 'electron';
 import * as path from 'path';
 import log from 'electron-log';
 import { autoUpdater } from 'electron-updater';
@@ -152,10 +152,45 @@ function createWindow(): void {
     mainWindow = null;
   });
 
-  // Check for updates (silent)
-  autoUpdater.checkForUpdatesAndNotify().catch((err) => {
-    log.warn('Auto-update check failed:', err);
+  // Auto-update s in-app UI feedbackem: místo checkForUpdatesAndNotify (OS notifikace, co
+  // user nevidí) si bereme eventy sami a posíláme renderer-side banner přes IPC.
+  // Automatický download nebudeme — počkáme až user potvrdí „Stáhnout", ať nezpomaluje síť.
+  autoUpdater.autoDownload = false;
+  autoUpdater.autoInstallOnAppQuit = false;
+
+  const sendUpdate = (status: string, payload: any = {}): void => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    try { mainWindow.webContents.send('update:status', { status, ...payload }); } catch {}
+  };
+
+  autoUpdater.on('checking-for-update', () => sendUpdate('checking'));
+  autoUpdater.on('update-available', (info) => sendUpdate('available', { version: info.version, releaseNotes: info.releaseNotes, releaseDate: info.releaseDate }));
+  autoUpdater.on('update-not-available', (info) => sendUpdate('not-available', { version: info?.version }));
+  autoUpdater.on('download-progress', (p) => sendUpdate('downloading', { percent: Math.round(p.percent), transferred: p.transferred, total: p.total, bytesPerSecond: p.bytesPerSecond }));
+  autoUpdater.on('update-downloaded', (info) => sendUpdate('downloaded', { version: info.version }));
+  autoUpdater.on('error', (err) => sendUpdate('error', { message: String(err?.message || err) }));
+
+  // Renderer -> main akce
+  ipcMain.handle('update:check', async () => {
+    try { await autoUpdater.checkForUpdates(); return { success: true }; }
+    catch (err) { log.warn('update:check failed:', err); return { error: String(err) }; }
   });
+  ipcMain.handle('update:download', async () => {
+    try { await autoUpdater.downloadUpdate(); return { success: true }; }
+    catch (err) { log.warn('update:download failed:', err); return { error: String(err) }; }
+  });
+  ipcMain.handle('update:install', () => {
+    // quitAndInstall zavře všechna okna a nainstaluje. Nastavit allowQuit, jinak pre-quit
+    // modal přeruší instalaci.
+    allowQuit = true;
+    setImmediate(() => autoUpdater.quitAndInstall(false, true));
+    return { success: true };
+  });
+
+  // Spustit první check 5 s po startu (ať se renderer stihne připojit na 'update:status')
+  setTimeout(() => {
+    autoUpdater.checkForUpdates().catch((err) => log.warn('Auto-update check failed:', err));
+  }, 5000);
 }
 
 app.whenReady().then(() => {
