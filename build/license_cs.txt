@@ -1,4 +1,4 @@
-LevisIDE — Licenční ujednání s koncovým uživatelem
+﻿LevisIDE — Licenční ujednání s koncovým uživatelem
 
 Copyright (c) 2026 Martin Levinger
 Poskytováno pod licencí Functional Source License, verze 1.1, MIT Future
