@@ -401,6 +401,8 @@ async function createEditor(container: HTMLElement): Promise<EditorInstance> {
     entry.isDirty = false;
     renderTabs();
     showToast(t('editor.savedToast', { name: basename(path) }), 'success');
+    // Workspace to chytí a refreshne náhled, pokud je uložený soubor ten zobrazený.
+    wrapper.dispatchEvent(new CustomEvent('editor:file-saved', { detail: { path }, bubbles: true }));
     return true;
   }
 

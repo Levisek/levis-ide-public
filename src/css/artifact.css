@@ -34,7 +34,6 @@
   white-space: nowrap;
 }
 .artifact-btn:hover { background: var(--bg-elev-2); color: var(--text); }
-.artifact-watch-active { color: var(--success) !important; }
 /* Pin button keeps extra glow signalizing persistent pin (vs session toggle jako touch/inspect) */
 .browser-pin-url.artifact-btn-active svg { filter: drop-shadow(0 0 4px var(--accent-glow)); }
 

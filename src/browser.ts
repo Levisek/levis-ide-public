@@ -50,7 +50,6 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
     <button class="artifact-btn browser-inspect" title="${t('artifact.inspectTip')}">${I('inspect')}</button>
     <button class="artifact-btn browser-annotate" title="${t('artifact.annotateTip')}">${I('editor')}</button>
     <button class="artifact-btn browser-reload" title="${t('artifact.refreshTip')}">${I('refresh')}</button>
-    <button class="artifact-btn browser-watch" title="${t('artifact.watchTip')}">${I('eye')}</button>
     <button class="artifact-btn browser-open-file" title="${t('artifact.loadHtml')}">${I('folder')}</button>
     <button class="artifact-btn browser-zoom-out" title="${t('browser.zoomOut')}">−</button>
     <span class="browser-zoom-label" style="font-size:10px;color:var(--text-muted);min-width:32px;text-align:center;user-select:none;">100%</span>
@@ -337,47 +336,11 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
   // Default ZAPNUTÝ — bez něj je inspect/lasso flow nepřetěžový: user pošle prompt,
   // CC upraví soubor, ale náhled se nerefreshne sám (reload závisí na CC state
   // detektoru + armedReload flag). S Watch ON polluje soubor každé 2 s a uvidí změnu
-  // hned. Originál LevisIDE to měl takto (c:/dev/levis-ide/artifact.ts:669).
-  let watching = true;
-  let watchInterval: any = null;
-  let watchPending = false; // brání double-fire pokud loadFile trvá > 2 s
-  const watchBtn = toolbar.querySelector('.browser-watch') as HTMLElement;
-
-  // ── Auto-reload po CC done ──
-  // Když user odešle prompt z inspect/lasso, nastavíme flag; až workspace
-  // zachytí working→idle přechod, refreshne náhled (pokud Watch neběží).
+  // Reload náhledu jen když user explicitně poslal prompt z Inspect/Lasso/Annotate
+  // (armedReloadAfterCC). Watch mód (2s polling) byl odstraněn — stejný efekt
+  // pokrývají: refresh po CC done (gated přes flag), refresh po editor Save
+  // (dispatch 'editor:file-saved'), a OS blur/focus.
   let armedReloadAfterCC = false;
-
-  function startWatch(): void {
-    if (watchInterval) return;
-    watchInterval = setInterval(async () => {
-      if (watchPending) return;
-      watchPending = true;
-      try {
-        if (currentFilePath) {
-          // File mode — reload file
-          await loadFile(currentFilePath);
-        } else if (webview.src && webview.src !== 'about:blank') {
-          try { if (typeof (webview as any).reloadIgnoringCache === 'function') (webview as any).reloadIgnoringCache(); } catch {}
-        }
-      } finally {
-        watchPending = false;
-      }
-    }, 2000);
-  }
-  function stopWatch(): void {
-    if (watchInterval) { clearInterval(watchInterval); watchInterval = null; }
-  }
-  watchBtn.addEventListener('click', () => {
-    watching = !watching;
-    watchBtn.classList.toggle('artifact-watch-active', watching);
-    watchBtn.innerHTML = `${I('eye')} ${watching ? t('browser.watching') : t('browser.watch')}`;
-    if (watching) startWatch(); else stopWatch();
-  });
-  // Init vizuálu + start polling — default ON
-  watchBtn.classList.add('artifact-watch-active');
-  watchBtn.innerHTML = `${I('eye')} ${t('browser.watching')}`;
-  startWatch();
 
   // ── Reload ──
   toolbar.querySelector('.browser-reload')!.addEventListener('click', () => {
@@ -707,6 +670,7 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
       : urlInput.value;
     let shot: { rel: string; abs: string } | null = null;
     if (selectedElement.rect) shot = await captureLasso(selectedElement.rect, true);
+    if (!selectedElement) return;
 
     let prompt = `V prohlížeči (${label}) uprav element ${selectedElement.selector}` +
       (selectedElement.text ? ` (obsah: "${selectedElement.text.substring(0, 50)}")` : '') +
@@ -717,7 +681,7 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
     // a bez race conditions.
     const submit = auto;
     armedReloadAfterCC = true;
-    wrapper.dispatchEvent(new CustomEvent('send-to-pty', { detail: { text: prompt, submit, bypassQueue: true }, bubbles: true }));
+    wrapper.dispatchEvent(new CustomEvent('send-to-pty', { detail: { text: prompt, submit }, bubbles: true }));
     if (shot) scheduleCleanup(shot.abs);
     showToast(t(submit ? (shot ? 'toast.sentToCCWithShot' : 'toast.sentToCC') : 'toast.preparedInCC'), 'success');
     closePopover();
@@ -807,7 +771,7 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
         if (shot) prompt += ` (screenshot: ${shot.rel})`;
         const submit = auto;
         armedReloadAfterCC = true;
-        wrapper.dispatchEvent(new CustomEvent('send-to-pty', { detail: { text: prompt, submit, bypassQueue: true }, bubbles: true }));
+        wrapper.dispatchEvent(new CustomEvent('send-to-pty', { detail: { text: prompt, submit }, bubbles: true }));
         if (shot) scheduleCleanup(shot.abs);
         showToast(t(submit ? (shot ? 'toast.sentToCCWithShot' : 'toast.sentToCC') : 'toast.preparedInCC'), 'success');
         closePopover();
@@ -900,16 +864,18 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
       setLoading(on, message);
     },
     notifyCCDone: () => {
+      // Refresh jen pokud user explicitně poslal prompt z Inspect/Lasso/Annotate
+      // — jinak `cc-state` heuristika může flipnout working→idle náhodně (scroll,
+      // klik do xtermu) a to by triggerovalo nechtěný reload.
       if (!armedReloadAfterCC) return;
       armedReloadAfterCC = false;
-      if (watching) return; // Watch mód si reload dělá sám, netřeba dublovat
+      if (inspectActive || annotating || !!activePopover) return;
       if (currentFilePath) { loadFile(currentFilePath); return; }
       if (webview.src && webview.src !== 'about:blank') {
         try { if (typeof (webview as any).reloadIgnoringCache === 'function') (webview as any).reloadIgnoringCache(); } catch {}
       }
     },
     dispose: () => {
-      stopWatch();
       inspector.dispose();
       document.removeEventListener('mousemove', onTouchMove);
       document.removeEventListener('mousedown', onTouchDown);

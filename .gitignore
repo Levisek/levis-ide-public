@@ -21,3 +21,4 @@ release/
 !/scripts/README.md
 
 .audit/
+docs/superpowers/

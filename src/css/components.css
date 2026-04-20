@@ -961,6 +961,14 @@
   transition: all var(--t-fast) var(--ease); flex-shrink: 0;
 }
 .queue-popup-remove:hover { color: var(--error); background: rgba(239, 68, 68, 0.15); }
+.queue-popup-badge {
+  display: inline-flex; align-items: center;
+  margin-right: 2px; color: var(--accent);
+  font-size: 14px; flex-shrink: 0;
+}
+.queue-popup-item-prepare .queue-popup-text {
+  font-style: italic; opacity: 0.9;
+}
 .checkpoint-dropdown {
   position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
   margin-bottom: 8px; z-index: 100; min-width: 200px;

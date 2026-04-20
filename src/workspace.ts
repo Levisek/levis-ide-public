@@ -1158,7 +1158,8 @@ async function createWorkspace(projectPath: string, projectName: string, project
 
   // ── Status bar actions ────────────────
   // ── Fronta promptů pro CC ──
-  const promptQueue: string[] = [];
+  interface QueuedPrompt { text: string; submit: boolean; }
+  const promptQueue: QueuedPrompt[] = [];
   let queueWatcherAttached = false;
   const btnQueue = statusBar.querySelector('.status-btn-queue') as HTMLButtonElement;
   const queueCountEl = statusBar.querySelector('.queue-count') as HTMLElement;
@@ -1177,7 +1178,12 @@ async function createWorkspace(projectPath: string, projectName: string, project
     if (state !== 'idle') return;
     const next = promptQueue.shift()!;
     updateQueueUI();
-    levis.writePty(first.ptyId, next + '\r');
+    // Stejný split jako v sendToFirstTerminal — text a \r zvlášť, ať CC CLI paste
+    // detection nesežere Enter.
+    levis.writePty(first.ptyId, next.text);
+    if (next.submit) {
+      setTimeout(() => levis.writePty(first.ptyId, '\r'), 50);
+    }
     if (promptQueue.length > 0) {
       showToast(t('toast.queueRemaining', { n: promptQueue.length }), 'info');
     }
@@ -1212,8 +1218,9 @@ async function createWorkspace(projectPath: string, projectName: string, project
       </div>
       <div class="queue-popup-list">
         ${promptQueue.map((item, i) => `
-          <div class="queue-popup-item">
-            <span class="queue-popup-text">${escH(item.length > 80 ? item.substring(0, 80) + '…' : item)}</span>
+          <div class="queue-popup-item${item.submit ? '' : ' queue-popup-item-prepare'}">
+            ${item.submit ? '' : `<span class="queue-popup-badge" title="${t('ws.queueBadgePrepare')}">✎</span>`}
+            <span class="queue-popup-text">${escH(item.text.length > 80 ? item.text.substring(0, 80) + '…' : item.text)}</span>
             <button class="queue-popup-remove" data-idx="${i}" title="${t('ws.queueRemove')}">✕</button>
           </div>
         `).join('')}
@@ -1255,27 +1262,34 @@ async function createWorkspace(projectPath: string, projectName: string, project
   function sendToFirstTerminal(text: string, submit: boolean = true, bypassQueue: boolean = false): void {
     const target = termInstances[activeTerminalIndex] || termInstances[0];
     if (!target) return;
-    if (!submit) {
-      // Prepare mode — jen napíšeme do promptu bez Enter; user stiskne Enter sám
-      switchLeftPanel('terminal');
-      levis.writePty(target.ptyId, text);
-      return;
-    }
+
     const state = target.getState ? target.getState() : 'idle';
-    // Queue logic: když CC pracuje/čeká, ukládáme prompty a vylijeme po idle. Ale pro
-    // Inspect/Lasso/Annotate flow user klikl Send a očekává okamžitý reaction (visual
-    // reload po změně). bypassQueue=true přeskočí queue — CC ho přečte z PTY bufferu,
-    // až se uvolní. Queue zachováme pro manuální prompt workflow z jiných zdrojů.
+
+    // CC busy → queue. `submit` flag se uchová per-item; watcher při vypuštění
+    // zvolí writePty s/bez Enteru dle item.submit. Prepare prompt tak přežije
+    // busy stav a user ho dostane jako připravený draft po doběhnutí CC.
     if (!bypassQueue && state !== 'idle') {
-      promptQueue.push(text);
+      promptQueue.push({ text, submit });
       attachQueueWatcher();
       updateQueueUI();
-      showToast(t('toast.ccBusyQueued', { n: promptQueue.length }), 'info');
+      showToast(
+        t(submit ? 'toast.ccBusyQueued' : 'toast.ccBusyQueuedPrepare', { n: promptQueue.length }),
+        'info'
+      );
       switchLeftPanel('terminal');
       return;
     }
+
     switchLeftPanel('terminal');
-    levis.writePty(target.ptyId, text + '\r');
+    // Text a Enter posíláme jako dva separate writes s krátkým delay. CC CLI má
+    // paste detection — pokud přijde velký burst textu včetně \r v jednom write,
+    // interpretuje to jako paste s embedded newline a prompt nesubmitne. Oddělený
+    // \r po pauze se chová jako typed Enter → submit. Pro prepare mód (submit=false)
+    // posíláme jen text bez Enteru.
+    levis.writePty(target.ptyId, text);
+    if (submit) {
+      setTimeout(() => levis.writePty(target.ptyId, '\r'), 50);
+    }
   }
 
   const btnRestart = statusBar.querySelector('.status-btn-restart') as HTMLButtonElement;
@@ -1529,6 +1543,15 @@ async function createWorkspace(projectPath: string, projectName: string, project
   wrapper.addEventListener('send-to-pty', sendToPtyHandler);
   cleanups.push(() => wrapper.removeEventListener('send-to-pty', sendToPtyHandler));
 
+  // Po uložení souboru z editoru refreshni náhled (pokud editor uložil zobrazený soubor).
+  const fileSavedHandler = (() => {
+    if (!browserInstance.isInteracting?.()) {
+      browserInstance.refresh();
+    }
+  }) as EventListener;
+  wrapper.addEventListener('editor:file-saved', fileSavedHandler);
+  cleanups.push(() => wrapper.removeEventListener('editor:file-saved', fileSavedHandler));
+
   // File tree → status bar info (velikost souboru/složky)
   const fileSelectedHandler = ((e: CustomEvent) => {
     const { path: fp, isDirectory } = e.detail;
@@ -1593,8 +1616,9 @@ async function createWorkspace(projectPath: string, projectName: string, project
           workingSince = Date.now();
         }
         if (prevState === 'working' && (s === 'idle' || s === 'waiting')) {
-          // Immediate — bez elapsed gate. Browser reload je gated vnitřně přes
-          // armedReloadAfterCC flag, takže voláním při krátkém pingu nic nepokazíme.
+          // Immediate — bez elapsed gate. Browser reload si ve `notifyCCDone` sám
+          // přeskakuje běžící interakci (inspect/annotate/popover), takže krátký ping
+          // nerozbije rozpracovaný flow.
           for (const cb of ccDoneImmediateCallbacks) try { cb(); } catch {}
           const elapsed = Date.now() - workingSince;
           if (elapsed > 1500) {
