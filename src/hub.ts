@@ -1696,12 +1696,8 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
     });
 
     settingsPanel.querySelector('.settings-btn-update')?.addEventListener('click', async () => {
-      const btn = settingsPanel.querySelector('.settings-btn-update') as HTMLButtonElement;
-      const orig = btn.textContent || '';
-      btn.disabled = true;
-      btn.textContent = t('settings.checking');
+      settingsPanel.remove();
       try { await (window as any).checkForUpdatesManually?.(); } catch {}
-      window.setTimeout(() => { btn.disabled = false; btn.textContent = orig; }, 2500);
     });
   }
 
