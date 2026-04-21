@@ -93,3 +93,57 @@ function createLevisHost(projectPath: string): IBrowserHost {
 }
 
 (window as unknown as { createLevisHost: typeof createLevisHost }).createLevisHost = createLevisHost;
+
+// ── PopoutHost — pro pop-out preview okno (window.popoutApi) ─────────────────────────
+
+interface PopoutApiShape {
+  sendPrompt: (prompt: string) => void;
+  storeGet: <T = unknown>(key: string) => Promise<T | undefined>;
+  storeSet: <T = unknown>(key: string, value: T) => Promise<void>;
+  clipboardRead: () => string;
+  clipboardWrite: (text: string) => void;
+  captureRegion: (rect: { x: number; y: number; width: number; height: number }, savePath: string) => Promise<{ success?: boolean; error?: string; path?: string }>;
+  captureCleanup: (tmpDir: string) => Promise<{ success?: boolean; error?: string }>;
+  onCCDone: (cb: () => void) => () => void;
+}
+
+function createPopoutHost(projectPath: string): IBrowserHost {
+  const api = (window as unknown as { popoutApi: PopoutApiShape }).popoutApi;
+  return {
+    async sendPromptToCC(text, _submit) {
+      // Popout nemá přímý přístup k termu → forward přes main → workspace.
+      // `submit` flag zatím neposíláme (workspace handler posílá prompt + '\r'),
+      // inspect/annotate v popoutu jede vždy s auto-submit.
+      void _submit;
+      api.sendPrompt(text);
+    },
+    storeGet<T = unknown>(key: string): Promise<T | undefined> {
+      return api.storeGet<T>(key);
+    },
+    storeSet<T = unknown>(key: string, value: T): Promise<void> {
+      return api.storeSet<T>(key, value);
+    },
+    clipboardRead(): Promise<string> {
+      return Promise.resolve(api.clipboardRead());
+    },
+    clipboardWrite(text: string): Promise<void> {
+      api.clipboardWrite(text);
+      return Promise.resolve();
+    },
+    async captureRegion(rect, savePath) {
+      const result = await api.captureRegion(rect, savePath);
+      if (!result?.success) throw new Error(result?.error ?? 'captureRegion failed');
+    },
+    async cleanupCapture(tmpDir) {
+      await api.captureCleanup(tmpDir);
+    },
+    onCCDone(cb) {
+      return api.onCCDone(cb);
+    },
+    getProjectRoot() {
+      return projectPath;
+    },
+  };
+}
+
+(window as unknown as { createPopoutHost: typeof createPopoutHost }).createPopoutHost = createPopoutHost;

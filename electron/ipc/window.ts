@@ -25,7 +25,7 @@ export function registerWindowHandlers(mainWindow: BrowserWindow): void {
   });
 
   // ── Pop-out window ────────────────────
-  ipcMain.handle('window:popout', (_event, data: { type: string; url?: string; filePath?: string }) => {
+  ipcMain.handle('window:popout', (_event, data: { type: string; url?: string; filePath?: string; projectPath?: string }) => {
     if (popoutWindow && !popoutWindow.isDestroyed()) {
       popoutWindow.focus();
       popoutWindow.webContents.send('popout:load', data);
@@ -109,6 +109,13 @@ export function registerWindowHandlers(mainWindow: BrowserWindow): void {
   ipcMain.on('popout:refresh', () => {
     if (popoutWindow && !popoutWindow.isDestroyed()) {
       popoutWindow.webContents.send('popout:refresh');
+    }
+  });
+
+  // Forward CC working→idle (pro BrowserCore armed-reload v popoutu)
+  ipcMain.on('popout:ccDone', () => {
+    if (popoutWindow && !popoutWindow.isDestroyed()) {
+      popoutWindow.webContents.send('popout:ccDone');
     }
   });
 

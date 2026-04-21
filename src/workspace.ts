@@ -680,7 +680,7 @@ async function createWorkspace(projectPath: string, projectName: string, project
       try {
         if (panel === 'browser') {
           const bUrl = browserInstance?.getUrl?.() || '';
-          const popData: any = { type: 'browser' };
+          const popData: { type: string; filePath?: string; url?: string; projectPath: string } = { type: 'browser', projectPath };
           if (bUrl.startsWith('file:///')) popData.filePath = bUrl.replace('file:///', '');
           else if (bUrl && bUrl !== 'about:blank') popData.url = bUrl;
           await levis.popout(popData);
@@ -1465,6 +1465,7 @@ async function createWorkspace(projectPath: string, projectName: string, project
       type: 'browser',
       filePath: filePath || undefined,
       url,
+      projectPath,
     });
     grid.removePanel('browser');
     poppedOut = true;
@@ -1652,7 +1653,9 @@ async function createWorkspace(projectPath: string, projectName: string, project
   // drobné Inspect prompty trvají často < 1.5 s a elapsed gate by je vyhladil.
   ccDoneImmediateCallbacks.push(() => {
     try { browserInstance.notifyCCDone?.(); } catch {}
-    try { levis.popoutRefresh?.(); } catch {}
+    // Pop-out drží vlastní BrowserCore s armed-reload flag — notifyCCDone
+    // pošle signál a core si sám rozhodne, jestli refreshne (armed po inspect/lasso).
+    try { levis.popoutNotifyCCDone?.(); } catch {}
   });
 
   // Checkpoint — ulož HEAD hash PŘED prací CC (při idle→working)

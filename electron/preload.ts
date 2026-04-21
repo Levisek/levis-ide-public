@@ -36,6 +36,7 @@ const api = {
     return () => { ipcRenderer.off('panel:closed', handler); };
   },
   popoutRefresh: () => ipcRenderer.send('popout:refresh'),
+  popoutNotifyCCDone: () => ipcRenderer.send('popout:ccDone'),
   onPopoutLoad: (cb: (data: any) => void) => {
     const handler = (_e: any, data: any) => cb(data);
     ipcRenderer.on('popout:load', handler);

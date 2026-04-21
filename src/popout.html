@@ -39,18 +39,15 @@
     </div>
   </div>
   <div id="popout-content">
-    <canvas id="popout-annot-canvas" class="artifact-annot-canvas"></canvas>
     <iframe id="popout-iframe"></iframe>
     <webview id="popout-webview" style="display:none; flex:1; width:100%; height:100%;" allowpopups></webview>
   </div>
-  <div id="popout-info-bar" class="artifact-info-bar" style="display:none">
-    <span class="info-selector"></span>
-    <input type="text" class="info-prompt" data-i18n-placeholder="popout.areaPh" placeholder="Co chceš změnit?">
-    <button class="info-send" data-i18n-title="popout.send" title="Odeslat do Claude Code (Enter)">›</button>
-    <button class="info-clear" data-i18n-title="popout.cancel" title="Zrušit">×</button>
-  </div>
   <script src="../dist/src/i18n.js"></script>
+  <script src="../dist/src/icons.js"></script>
+  <script src="../dist/src/toast.js"></script>
   <script src="../dist/src/inspector.js"></script>
+  <script src="../dist/src/browser-host.js"></script>
+  <script src="../dist/src/browser-core.js"></script>
   <script src="../dist/src/popout.js"></script>
 </body>
 </html>

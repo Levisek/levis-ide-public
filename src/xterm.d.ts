@@ -17,10 +17,11 @@ interface LevisAPI {
   onWindowOsFocus: (cb: () => void) => () => void;
   onWindowOsBlur: (cb: () => void) => () => void;
   onConfirmQuit: (cb: () => void) => () => void;
-  popout: (data: { type: string; url?: string; filePath?: string }) => Promise<any>;
+  popout: (data: { type: string; url?: string; filePath?: string; projectPath?: string }) => Promise<any>;
   popoutPanel: (data: { panelType: 'terminal' | 'editor'; payload: any }) => Promise<{ panelId: string }>;
   closePopoutPanel: (panelId: string) => void;
   popoutRefresh: () => void;
+  popoutNotifyCCDone: () => void;
   onPopoutLoad: (cb: (data: any) => void) => () => void;
   onPopoutRefresh: (cb: () => void) => () => void;
   onPopoutClosed: (cb: () => void) => () => void;
