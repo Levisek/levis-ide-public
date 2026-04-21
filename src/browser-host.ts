@@ -31,6 +31,21 @@ interface IBrowserHost {
 
   /** Absolutní cesta k root projektu (pro lasso PNG cestu). */
   getProjectRoot(): string;
+
+  /** Touch emulation přes CDP — id je webContentsId guest webview (getWebContentsId). */
+  mobileEnableTouch(webContentsId: number): Promise<boolean>;
+  mobileDisableTouch(webContentsId: number): Promise<boolean>;
+  mobileSetColorScheme(webContentsId: number, scheme: 'dark' | 'light'): Promise<boolean>;
+
+  /** Per-projekt preference (pin URL, panelsSwapped …). */
+  getProjectPrefs(projectPath: string): Promise<Record<string, unknown> | undefined>;
+  setProjectPref(projectPath: string, key: string, value: unknown): Promise<void>;
+
+  /** OS file dialog (Open file…). */
+  openFileDialog(multi?: boolean): Promise<string[] | null>;
+
+  /** Read file (probe pro index.html detection v browser.ts initial load). */
+  readFile(filePath: string): Promise<string | { error: string }>;
 }
 
 // ── WorkspaceWindow — minimální typ pro window.workspace (exponovaný z app.ts) ─────────────────
@@ -89,6 +104,17 @@ function createLevisHost(projectPath: string): IBrowserHost {
     getProjectRoot() {
       return projectPath;
     },
+
+    mobileEnableTouch(id) { return levis.mobileEnableTouch(id); },
+    mobileDisableTouch(id) { return levis.mobileDisableTouch(id); },
+    mobileSetColorScheme(id, scheme) { return levis.mobileSetColorScheme(id, scheme); },
+
+    getProjectPrefs(p) { return levis.getProjectPrefs(p) as Promise<Record<string, unknown> | undefined>; },
+    async setProjectPref(p, key, value) { await levis.setProjectPref(p, key, value); },
+
+    openFileDialog(multi) { return levis.openFileDialog(multi); },
+
+    readFile(f) { return levis.readFile(f); },
   };
 }
 
@@ -97,7 +123,7 @@ function createLevisHost(projectPath: string): IBrowserHost {
 // ── PopoutHost — pro pop-out preview okno (window.popoutApi) ─────────────────────────
 
 interface PopoutApiShape {
-  sendPrompt: (prompt: string) => void;
+  sendPrompt: (payload: { text: string; submit: boolean }) => void;
   storeGet: <T = unknown>(key: string) => Promise<T | undefined>;
   storeSet: <T = unknown>(key: string, value: T) => Promise<void>;
   clipboardRead: () => string;
@@ -105,17 +131,21 @@ interface PopoutApiShape {
   captureRegion: (rect: { x: number; y: number; width: number; height: number }, savePath: string) => Promise<{ success?: boolean; error?: string; path?: string }>;
   captureCleanup: (tmpDir: string) => Promise<{ success?: boolean; error?: string }>;
   onCCDone: (cb: () => void) => () => void;
+  mobileEnableTouch: (id: number) => Promise<boolean>;
+  mobileDisableTouch: (id: number) => Promise<boolean>;
+  mobileSetColorScheme: (id: number, scheme: 'dark' | 'light') => Promise<boolean>;
+  getProjectPrefs: (projectPath: string) => Promise<Record<string, unknown> | undefined>;
+  setProjectPref: (projectPath: string, key: string, value: unknown) => Promise<void>;
+  openFileDialog: (multi?: boolean) => Promise<string[] | null>;
+  readFile: (filePath: string) => Promise<string | { error: string }>;
 }
 
 function createPopoutHost(projectPath: string): IBrowserHost {
   const api = (window as unknown as { popoutApi: PopoutApiShape }).popoutApi;
   return {
-    async sendPromptToCC(text, _submit) {
-      // Popout nemá přímý přístup k termu → forward přes main → workspace.
-      // `submit` flag zatím neposíláme (workspace handler posílá prompt + '\r'),
-      // inspect/annotate v popoutu jede vždy s auto-submit.
-      void _submit;
-      api.sendPrompt(text);
+    async sendPromptToCC(text, submit) {
+      // Popout nemá přímý přístup k termu → forward přes main → workspace queue.
+      api.sendPrompt({ text, submit });
     },
     storeGet<T = unknown>(key: string): Promise<T | undefined> {
       return api.storeGet<T>(key);
@@ -143,6 +173,13 @@ function createPopoutHost(projectPath: string): IBrowserHost {
     getProjectRoot() {
       return projectPath;
     },
+    mobileEnableTouch(id) { return api.mobileEnableTouch(id); },
+    mobileDisableTouch(id) { return api.mobileDisableTouch(id); },
+    mobileSetColorScheme(id, scheme) { return api.mobileSetColorScheme(id, scheme); },
+    getProjectPrefs(p) { return api.getProjectPrefs(p); },
+    setProjectPref(p, key, value) { return api.setProjectPref(p, key, value); },
+    openFileDialog(multi) { return api.openFileDialog(multi); },
+    readFile(f) { return api.readFile(f); },
   };
 }
 

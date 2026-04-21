@@ -99,9 +99,12 @@ export function registerWindowHandlers(mainWindow: BrowserWindow): void {
   });
 
   // Forward prompt from popout to main window
-  ipcMain.on('popout:sendPrompt', (_event, prompt: string) => {
+  // Payload: { text: string; submit: boolean } — submit=false = prepare mód (bez Enteru).
+  // Legacy string payload zůstává backward-compat (submit=true default).
+  ipcMain.on('popout:sendPrompt', (_event, payload: string | { text: string; submit: boolean }) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('popout:sendPrompt', prompt);
+      const normalized = typeof payload === 'string' ? { text: payload, submit: true } : payload;
+      mainWindow.webContents.send('popout:sendPrompt', normalized);
     }
   });
 

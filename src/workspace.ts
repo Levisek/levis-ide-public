@@ -1476,13 +1476,11 @@ async function createWorkspace(projectPath: string, projectName: string, project
 
   // Drag-out řeší grid (onDragOut callback výš). Žádné duplicitní handlery.
 
-  // Receive prompt from popout window → send to terminal
-  const unsubPopoutPrompt = levis.onPopoutSendPrompt((prompt: string) => {
-    const first = termInstances[0];
-    if (first) {
-      switchLeftPanel('terminal');
-      levis.writePty(first.ptyId, prompt + '\r');
-    }
+  // Receive prompt from popout window → projdou přes queue (stejná cesta jako workspace browser).
+  // Bug fix: dříve se posílalo rovnou do PTY s '\r', čímž se obcházela fronta i prepare mód.
+  const unsubPopoutPrompt = levis.onPopoutSendPrompt((payload) => {
+    switchLeftPanel('terminal');
+    sendToFirstTerminal(payload.text, payload.submit, false);
   });
   cleanups.push(unsubPopoutPrompt);
 

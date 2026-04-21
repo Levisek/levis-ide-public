@@ -25,7 +25,7 @@ interface LevisAPI {
   onPopoutLoad: (cb: (data: any) => void) => () => void;
   onPopoutRefresh: (cb: () => void) => () => void;
   onPopoutClosed: (cb: () => void) => () => void;
-  onPopoutSendPrompt: (cb: (prompt: string) => void) => () => void;
+  onPopoutSendPrompt: (cb: (payload: { text: string; submit: boolean }) => void) => () => void;
   storeGet: (key: string) => Promise<any>;
   storeSet: (key: string, value: any) => Promise<void>;
   storeGetAll: () => Promise<any>;
@@ -110,7 +110,7 @@ declare function applyTheme(theme: string): void;
 interface Window {
   renderHub: (container: HTMLElement, onOpenProject: (project: any) => void) => Promise<void>;
   createTerminal: (container: HTMLElement, cwd: string, projectName: string) => Promise<any>;
-  createBrowser: (container: HTMLElement, defaultUrl?: string, projectPath?: string) => any;
+  createBrowser: (container: HTMLElement, defaultUrl?: string, projectPath?: string, injectedHost?: unknown) => any;
   createWorkspace: (projectPath: string, projectName: string) => Promise<any>;
   createFileTree: (container: HTMLElement, rootPath: string, onFileOpen: (path: string) => void) => any;
   createEditor: (container: HTMLElement) => Promise<any>;

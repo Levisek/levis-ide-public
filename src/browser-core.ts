@@ -120,6 +120,9 @@ function createBrowserCore(
   type CreateInspectorFn = () => InspectorInstanceLite;
   const createInspectorRef = ((window as unknown) as { createInspector?: CreateInspectorFn }).createInspector;
   const inspector: InspectorInstanceLite | null = createInspectorRef ? createInspectorRef() : null;
+  if (!createInspectorRef) {
+    console.warn('[BrowserCore] createInspector není dostupný — inspect/annotate tlačítka nebudou funkční. Zkontroluj že inspector.js je loaded před browser-core.js.');
+  }
   let inspectActive = false;
   let selectedElement: InspectorElementInfo | null = null;
 
@@ -305,7 +308,14 @@ function createBrowserCore(
   // ── Inspect flow ─────────────────────────
   function setupInspect(): void {
     const btn = toolbar.inspectBtn;
-    if (!btn || !inspector) return;
+    if (!btn) {
+      console.warn('[BrowserCore] inspect btn nebyl nalezen (selector .browser-inspect) — inspect tlačítko nebude reagovat.');
+      return;
+    }
+    if (!inspector) {
+      console.warn('[BrowserCore] inspector instance je null — inspect tlačítko nebude reagovat.');
+      return;
+    }
 
     btn.addEventListener('click', () => {
       inspectActive = !inspectActive;
@@ -313,8 +323,7 @@ function createBrowserCore(
       btn.title = t(inspectActive ? 'browser.inspectOn' : 'browser.inspect');
       if (inspectActive) {
         if (annotating) toggleAnnotate(false);
-        // Inspector přijímá iframe i webview (rozliší přes tagName === 'WEBVIEW').
-        inspector.enable(activeView() as unknown as HTMLIFrameElement);
+        enableInspectorOnActiveView();
       } else {
         inspector.disable();
       }
@@ -332,11 +341,34 @@ function createBrowserCore(
           selectedElement = null;
           if (inspectActive) {
             inspector.disable();
-            window.setTimeout(() => inspector.enable(activeView() as unknown as HTMLIFrameElement), 150);
+            window.setTimeout(() => enableInspectorOnActiveView(), 150);
           }
         },
       );
     });
+  }
+
+  // Enable inspector s retry logic — pokud webview ještě není dom-ready,
+  // inspector.enable volá executeJavaScript na prázdné stránce a tiše failuje.
+  // Čekáme na dom-ready event — cross-ok pro iframe (ready je vždy true).
+  function enableInspectorOnActiveView(): void {
+    if (!inspector) return;
+    const view = activeView();
+    const isWebview = view.tagName === 'WEBVIEW';
+    const wv = view as HTMLElement & { isLoading?: () => boolean };
+    const ready = !isWebview || (typeof wv.isLoading === 'function' ? !wv.isLoading() : true);
+    if (ready) {
+      inspector.enable(view as unknown as HTMLIFrameElement);
+      return;
+    }
+    // Retry až webview oznámí dom-ready
+    const onReady = (): void => {
+      view.removeEventListener('dom-ready', onReady);
+      if (inspectActive && inspector) {
+        inspector.enable(view as unknown as HTMLIFrameElement);
+      }
+    };
+    view.addEventListener('dom-ready', onReady);
   }
 
   async function sendElementPrompt(userText: string, auto: boolean): Promise<void> {
@@ -368,7 +400,10 @@ function createBrowserCore(
   // ── Annotate flow ─────────────────────────
   function setupAnnotate(): void {
     const btn = toolbar.annotateBtn;
-    if (!btn) return;
+    if (!btn) {
+      console.warn('[BrowserCore] annotate btn nebyl nalezen (selector .browser-annotate) — mark/annotate tlačítko nebude reagovat.');
+      return;
+    }
     btn.addEventListener('click', () => toggleAnnotate());
 
     annotCanvas.addEventListener('mousedown', (e: MouseEvent) => {
@@ -445,9 +480,12 @@ function createBrowserCore(
       { x: minX, y: minY, width: w, height: h },
       `${Math.round(w)}×${Math.round(h)}px`,
       async (text, auto) => {
-        if (!text) return;
+        // Bez uživatelského textu stále posíláme — prompt obsahuje souřadnice oblasti,
+        // CC se sám zeptá / uhodne co uživatel chce. Konzistence s inspect flow,
+        // kde taky prázdný input submituje prompt se selectorem elementu.
         const shot = await captureLasso({ x: minX, y: minY, width: w, height: h }, false);
-        let prompt = `V prohlížeči (${label}) v oblasti (${Math.round(minX)},${Math.round(minY)} → ${Math.round(maxX)},${Math.round(maxY)}) udělej: ${text}`;
+        const userPart = text ? ` udělej: ${text}` : ` — podívej se na tuhle oblast`;
+        let prompt = `V prohlížeči (${label}) v oblasti (${Math.round(minX)},${Math.round(minY)} → ${Math.round(maxX)},${Math.round(maxY)})${userPart}`;
         if (shot) prompt += ` (screenshot: ${shot.rel})`;
         const submit = auto;
         armedReloadAfterCC = true;

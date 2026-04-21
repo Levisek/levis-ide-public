@@ -1008,6 +1008,9 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
           const status = action.slice('setStatus:'.length) as 'active' | 'paused' | 'finished';
           if (status === 'active') delete projectStatuses[p.path];
           else projectStatuses[p.path] = status;
+          // Bez aktualizace in-memory objektu by picker po re-renderu četl stale status
+          // (createTileElement → showContextMenu: `currentStatus = project.status || 'active'`).
+          p.status = status;
           await levis.storeSet('projectStatuses', { ...projectStatuses });
           applyFilter();
           return;
@@ -1301,6 +1304,7 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
             for (const p of projects.filter(x => selectedPaths.has(x.path))) {
               if (status === 'active') delete projectStatuses[p.path];
               else projectStatuses[p.path] = status;
+              p.status = status;
             }
             await levis.storeSet('projectStatuses', { ...projectStatuses });
             clearSelection();

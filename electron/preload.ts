@@ -52,8 +52,11 @@ const api = {
     ipcRenderer.on('popout:closed', handler);
     return () => { ipcRenderer.off('popout:closed', handler); };
   },
-  onPopoutSendPrompt: (cb: (prompt: string) => void) => {
-    const handler = (_e: any, prompt: string) => cb(prompt);
+  onPopoutSendPrompt: (cb: (payload: { text: string; submit: boolean }) => void) => {
+    const handler = (_e: any, payload: { text: string; submit: boolean } | string) => {
+      const normalized = typeof payload === 'string' ? { text: payload, submit: true } : payload;
+      cb(normalized);
+    };
     ipcRenderer.on('popout:sendPrompt', handler);
     return () => { ipcRenderer.off('popout:sendPrompt', handler); };
   },

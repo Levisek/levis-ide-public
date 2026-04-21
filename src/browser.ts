@@ -21,8 +21,21 @@ interface BrowserInstance {
   dispose: () => void;
 }
 
-function createBrowser(container: HTMLElement, defaultUrl: string = '', projectPath: string = ''): BrowserInstance {
+function createBrowser(
+  container: HTMLElement,
+  defaultUrl: string = '',
+  projectPath: string = '',
+  injectedHost?: IBrowserHost,
+): BrowserInstance {
   const I = (window as any).icon;
+
+  // Pro file:// defaultUrl ukazujeme v URL baru čistou cestu (konzistence s loadFile)
+  // — uživatelsky přátelštější než 'file:///C:/...'. Samotný webview.src musí zůstat
+  // s plným file:/// schématem aby Electron webview stránku načetl.
+  const initialInputValue = defaultUrl.startsWith('file:///')
+    ? defaultUrl.replace('file:///', '').replace(/\//g, '\\')
+    : defaultUrl;
+
   const wrapper = document.createElement('div');
   wrapper.className = 'browser-panel';
   wrapper.style.cssText = 'display:flex;flex-direction:column;width:100%;height:100%;position:relative;';
@@ -33,7 +46,7 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
     <button class="btn-back" title="${t('browser.back')}">‹</button>
     <button class="btn-forward" title="${t('browser.forward')}">›</button>
     <div class="browser-url-wrap">
-      <input type="text" class="browser-url" value="${defaultUrl}" placeholder="${t('browser.urlPlaceholder')}">
+      <input type="text" class="browser-url" value="${initialInputValue}" placeholder="${t('browser.urlPlaceholder')}">
       <button class="artifact-btn browser-pin-url" title="${t('browser.pinUrl')}">${I('pin')}</button>
     </div>
     <div class="artifact-size-btns">
@@ -139,7 +152,11 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
   const zoomLabel = toolbar.querySelector('.browser-zoom-label') as HTMLElement;
   const btnPin = toolbar.querySelector('.browser-pin-url') as HTMLElement | null;
 
-  let currentFilePath: string | null = null;
+  // Pro file:// defaultUrl nastavíme currentFilePath — tím funguje refresh (loadFile cestu)
+  // a getUrl() vrátí správné file:/// URL zpět do workspace popout caller.
+  let currentFilePath: string | null = defaultUrl.startsWith('file:///')
+    ? defaultUrl.replace('file:///', '').replace(/\//g, '\\')
+    : null;
   let currentSize: 'mobile' | 'tablet' | 'full' = 'full';
   let zoomLevel = 1.0;
   let touchWebContentsId: number | null = null;
@@ -158,7 +175,8 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
       webviewEl: HTMLElement,
     ) => BrowserCoreInstance;
   };
-  const host = w.createLevisHost(projectPath);
+  // Injektovaný host (popout předá PopoutHost); fallback = LevisHost pro main workspace.
+  const host = injectedHost ?? w.createLevisHost(projectPath);
   const toolbarRefs: BrowserToolbarRefs = {
     inspectBtn: toolbar.querySelector('.browser-inspect'),
     annotateBtn: toolbar.querySelector('.browser-annotate'),
@@ -175,7 +193,7 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
   };
 
   async function getMonitorCssPPI(): Promise<number> {
-    const diag = Number(await levis.storeGet('monitorDiagonal')) || 24;
+    const diag = Number(await host.storeGet('monitorDiagonal')) || 24;
     const sw = window.screen.width;
     const sh = window.screen.height;
     return Math.sqrt(sw * sw + sh * sh) / diag;
@@ -293,7 +311,7 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
   webview.addEventListener('dom-ready', () => {
     ensureWebContentsId();
     if (touchEmulationOn && touchWebContentsId != null) {
-      levis.mobileEnableTouch(touchWebContentsId).catch(() => {});
+      host.mobileEnableTouch(touchWebContentsId).catch(() => {});
     }
   });
 
@@ -304,8 +322,8 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
     contentArea.style.cursor = touchEmulationOn ? 'none' : '';
     ensureWebContentsId();
     if (touchWebContentsId != null) {
-      if (touchEmulationOn) await levis.mobileEnableTouch(touchWebContentsId);
-      else await levis.mobileDisableTouch(touchWebContentsId);
+      if (touchEmulationOn) await host.mobileEnableTouch(touchWebContentsId);
+      else await host.mobileDisableTouch(touchWebContentsId);
     }
     showToast(t(touchEmulationOn ? 'mobile.touchOn' : 'mobile.touchOff'), 'info');
   });
@@ -317,7 +335,7 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
     btnColorScheme.classList.toggle('artifact-btn-active', colorScheme === 'dark');
     ensureWebContentsId();
     if (touchWebContentsId != null) {
-      await levis.mobileSetColorScheme(touchWebContentsId, colorScheme);
+      await host.mobileSetColorScheme(touchWebContentsId, colorScheme);
     }
     showToast(`prefers-color-scheme: ${colorScheme}`, 'info');
   });
@@ -366,7 +384,7 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
   btnForward.addEventListener('click', () => { if (webview.canGoForward()) webview.goForward(); });
 
   toolbar.querySelector('.browser-open-file')!.addEventListener('click', async () => {
-    const files = await levis.openFileDialog(false);
+    const files = await host.openFileDialog(false);
     if (!files || files.length === 0) return;
     const fp = files[0];
     if (/\.(html?|svg)$/i.test(fp)) {
@@ -380,7 +398,7 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
   async function refreshPinState(): Promise<void> {
     if (!btnPin || !projectPath) return;
     try {
-      const prefs = await levis.getProjectPrefs(projectPath);
+      const prefs = await host.getProjectPrefs(projectPath);
       const pinnedUrl = (prefs as any)?.previewUrl;
       const isPinned = !!pinnedUrl && pinnedUrl === urlInput.value.trim();
       btnPin.classList.toggle('artifact-btn-active', isPinned);
@@ -392,15 +410,15 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
     if (!url || url === 'about:blank') { showToast(t('browser.pinEmpty'), 'warning'); return; }
     if (!projectPath) return;
     try {
-      const prefs = await levis.getProjectPrefs(projectPath);
+      const prefs = await host.getProjectPrefs(projectPath);
       const pinnedUrl = (prefs as any)?.previewUrl;
       if (pinnedUrl === url) {
-        await levis.setProjectPref(projectPath, 'previewUrl', '');
+        await host.setProjectPref(projectPath, 'previewUrl', '');
         btnPin.classList.remove('artifact-btn-active');
         btnPin.title = t('browser.pinUrl');
         showToast(t('browser.unpinned'), 'info');
       } else {
-        await levis.setProjectPref(projectPath, 'previewUrl', url);
+        await host.setProjectPref(projectPath, 'previewUrl', url);
         btnPin.classList.add('artifact-btn-active');
         btnPin.title = t('browser.unpinUrl');
         showToast(t('browser.pinSaved', { url }), 'success');
@@ -475,7 +493,7 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
       ];
       for (const c of candidates) {
         try {
-          const content = await levis.readFile(c);
+          const content = await host.readFile(c);
           if (typeof content === 'string') { await loadFile(c); return; }
         } catch { /* candidate not present */ }
       }
@@ -488,7 +506,13 @@ function createBrowser(container: HTMLElement, defaultUrl: string = '', projectP
   return {
     element: wrapper,
     setUrl: (url: string) => loadUrl(url),
-    getUrl: () => urlInput.value,
+    // Vrátí plně kvalifikovanou URL. Pro file contextu (loadFile) vrátí file:/// —
+    // workspace popout caller se pak správně rozhodne mezi data.filePath vs data.url.
+    // urlInput.value drží jen path (UX), takže ho tady doplníme o schéma.
+    getUrl: () => {
+      if (currentFilePath) return 'file:///' + currentFilePath.replace(/\\/g, '/');
+      return urlInput.value;
+    },
     loadFile,
     refresh: () => {
       if (currentFilePath) { void loadFile(currentFilePath); return; }
