@@ -23,13 +23,7 @@
       flex-shrink: 0;
     }
     .panel-title { font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600; color: #ffa500; }
-    .panel-window-controls { display: flex; -webkit-app-region: no-drag; margin-left: auto; gap: 2px; }
-    .panel-window-controls button {
-      background: transparent; border: none; color: #9999ad;
-      width: 32px; height: 24px; font-size: 12px; cursor: pointer; border-radius: 4px;
-    }
-    .panel-window-controls button:hover { background: rgba(255,255,255,0.08); color: #e8e8f0; }
-    .panel-window-controls #panel-close:hover { background: #ef4444 !important; color: white !important; }
+    .panel-window-controls { margin-left: auto; }
     #panel-return {
       -webkit-app-region: no-drag;
       background: transparent; border: 1px solid #2d303c; color: #b8bac8;
@@ -46,10 +40,10 @@
     <span class="panel-title" id="panel-title">Panel</span>
     <button id="panel-return" data-i18n-title="panel.return" title="Vrátit panel zpět do hlavního okna"><svg class="lvi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="19 12 5 12"/><polyline points="12 19 5 12 12 5"/></svg></button>
     <span style="flex:1"></span>
-    <div class="panel-window-controls">
-      <button id="panel-min" data-i18n-title="panel.minimize" title="Minimalizovat">&#x2500;</button>
-      <button id="panel-max" data-i18n-title="panel.maximize" title="Maximalizovat">&#x25A1;</button>
-      <button id="panel-close" data-i18n-title="panel.close" title="Zavřít">&#x2715;</button>
+    <div class="panel-window-controls lvi-win-controls">
+      <button id="panel-min" class="lvi-win-btn" data-i18n-title="panel.minimize" title="Minimalizovat">&#x2500;</button>
+      <button id="panel-max" class="lvi-win-btn" data-i18n-title="panel.maximize" title="Maximalizovat">&#x25A1;</button>
+      <button id="panel-close" class="lvi-win-btn lvi-win-btn-close" data-i18n-title="panel.close" title="Zavřít">&#x2715;</button>
     </div>
   </div>
   <div id="panel-content"></div>

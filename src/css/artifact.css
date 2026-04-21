@@ -327,15 +327,6 @@
 #popout-controls {
   display: flex; -webkit-app-region: no-drag; margin-left: var(--space-2); gap: 2px;
 }
-#popout-controls button {
-  background: transparent; border: none; color: var(--text-muted);
-  width: 32px; height: 28px; font-size: 12px; cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition: all var(--t-fast) var(--ease);
-  display: flex; align-items: center; justify-content: center;
-}
-#popout-controls button:hover { background: var(--bg-elev-2); color: var(--text); }
-#pop-close:hover { background: var(--error) !important; color: white !important; }
 
 #popout-content {
   flex: 1; overflow: hidden; position: relative; background: var(--bg-deep);

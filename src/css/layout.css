@@ -133,19 +133,24 @@
 #btn-feedback:hover, #btn-help:hover, #btn-settings:hover { color: var(--accent); border-color: var(--accent); }
 #btn-feedback svg, #btn-settings svg { width: 14px; height: 14px; }
 
-#window-controls {
-  display: flex; -webkit-app-region: no-drag; margin-left: auto; height: 100%;
+/* Sdílený chrome pro window controls (min/max/close) — používají index.html, popout.html, popout-panel.html */
+.lvi-win-controls {
+  display: flex; -webkit-app-region: no-drag; height: 100%;
   align-items: center; gap: 2px; padding: 0 var(--space-1);
 }
-#window-controls button:not(#btn-help):not(#btn-settings):not(#btn-feedback) {
+.lvi-win-btn {
+  -webkit-app-region: no-drag;
   background: transparent; border: none; color: var(--text-muted);
   width: 36px; height: 28px; font-size: 12px; cursor: pointer;
   border-radius: var(--radius-sm);
   transition: all var(--t-fast) var(--ease);
   display: flex; align-items: center; justify-content: center;
 }
-#window-controls button:not(#btn-help):not(#btn-settings):not(#btn-feedback):hover { background: var(--bg-elev-2); color: var(--text); }
-#btn-close:hover { background: var(--error) !important; color: white !important; }
+.lvi-win-btn:hover { background: var(--bg-elev-2); color: var(--text); }
+.lvi-win-btn.lvi-win-btn-close:hover { background: var(--error); color: white; }
+
+/* Hlavní okno — wrapper kolem chrome + akcí (settings/help/feedback). Drží chrome vpravo. */
+#window-controls { margin-left: auto; }
 
 /* Settings/Help/Feedback — vždy v titlebaru (konzistence v Hubu i Workspace) */
 
