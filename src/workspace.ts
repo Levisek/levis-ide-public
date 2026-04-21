@@ -1654,6 +1654,9 @@ async function createWorkspace(projectPath: string, projectName: string, project
     // Pop-out drží vlastní BrowserCore s armed-reload flag — notifyCCDone
     // pošle signál a core si sám rozhodne, jestli refreshne (armed po inspect/lasso).
     try { levis.popoutNotifyCCDone?.(); } catch {}
+    // Editor reload — CC mohl upravit otevřené soubory; clean soubory získají
+    // nový obsah přes pushEditOperations (zachová undo), dirty dostanou toast.
+    try { editorInstance?.reloadOpenFilesFromDisk?.(); } catch {}
   });
 
   // Checkpoint — ulož HEAD hash PŘED prací CC (při idle→working)

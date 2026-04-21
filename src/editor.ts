@@ -10,6 +10,7 @@ interface EditorInstance {
   getOpenFiles: () => string[];
   hasUnsavedChanges: () => boolean;
   onFilesChange: (cb: (files: string[]) => void) => () => void;
+  reloadOpenFilesFromDisk: () => Promise<void>;
   dispose: () => void;
 }
 
@@ -465,6 +466,55 @@ async function createEditor(container: HTMLElement): Promise<EditorInstance> {
     });
   }
 
+  // Reload všech otevřených souborů z disku — volá se z workspace.ccDoneImmediateCallbacks
+  // když CC dokončí práci. Pro ne-dirty soubory aplikuje edity přes pushEditOperations
+  // (zachová undo stack, cursor, scroll). Pro dirty soubory zobrazí per-file toast s
+  // volbou Reload (force overwrite). Soubory se smazaným disk obsahem se přeskakují.
+  async function reloadOpenFilesFromDisk(): Promise<void> {
+    if (!monaco || !editor) return;
+    let reloaded = 0;
+    for (const [filePath, entry] of openFiles) {
+      try {
+        const diskContent = await levis.readFile(filePath);
+        if (typeof diskContent !== 'string') continue;
+        const currentContent = entry.model.getValue();
+        if (diskContent === currentContent) continue;
+        if (entry.isDirty) {
+          showToast(
+            t('editor.dirtyConflict', { name: basename(filePath) }),
+            'warning',
+            {
+              action: {
+                label: t('editor.dirtyConflictReload'),
+                onClick: () => {
+                  try {
+                    entry.model.pushEditOperations(
+                      [],
+                      [{ range: entry.model.getFullModelRange(), text: diskContent }],
+                      () => null,
+                    );
+                    entry.isDirty = false;
+                    renderTabs();
+                  } catch {}
+                },
+              },
+            },
+          );
+          continue;
+        }
+        entry.model.pushEditOperations(
+          [],
+          [{ range: entry.model.getFullModelRange(), text: diskContent }],
+          () => null,
+        );
+        reloaded++;
+      } catch { /* skip — smazaný soubor / IO error */ }
+    }
+    if (reloaded > 0) {
+      showToast(t('editor.reloadedAfterCC', { count: String(reloaded) }), 'info');
+    }
+  }
+
   saveBtn.addEventListener('click', () => saveFile());
 
   // Initial render — empty state
@@ -509,6 +559,7 @@ async function createEditor(container: HTMLElement): Promise<EditorInstance> {
     },
     getOpenFiles: () => Array.from(openFiles.keys()),
     hasUnsavedChanges: () => Array.from(openFiles.values()).some(e => e.isDirty),
+    reloadOpenFilesFromDisk,
     onFilesChange: (cb: (files: string[]) => void) => {
       filesChangeListeners.push(cb);
       return () => {
