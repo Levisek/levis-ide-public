@@ -838,6 +838,9 @@ function switchTab(tabId: string): void {
   }
   // Skrýt titlebar settings/help/feedback v Hubu (Hub má vlastní)
   document.getElementById('window-controls')?.classList.toggle('hub-active', tabId === 'hub');
+  // Expose active workspace na window pro browser-host.ts (LevisHost)
+  const activeTab = tabs.find(t => t.id === tabId);
+  (window as { workspace?: WorkspaceInstance }).workspace = activeTab?.workspace ?? undefined;
 }
 
 async function closeTab(tabId: string): Promise<void> {
@@ -952,6 +955,10 @@ async function openProject(project: any): Promise<void> {
     contentEl.innerHTML = '';
     contentEl.appendChild(workspace.element);
     tabInfo.workspace = workspace;
+    // Aktualizuj window.workspace pokud je tento tab aktivní
+    if (activeTabId === tabId) {
+      (window as { workspace?: typeof workspace }).workspace = workspace;
+    }
     // Tab: CC working indikátor — živá animace dokud CC pracuje
     if (typeof workspace.onCCStateChange === 'function') {
       workspace.onCCStateChange((state: string) => {

@@ -5,6 +5,8 @@ interface WorkspaceInstance {
   getActiveTerminals: () => Array<{ label: string; state: 'idle' | 'working' | 'waiting' }>;
   onCCDone: (cb: () => void) => () => void;
   onCCStateChange: (cb: (state: string) => void) => () => void;
+  /** Pošle text do aktivního terminálu (volitelně bez Enteru pro prepare mód). */
+  sendToFirstTerminal: (text: string, submit?: boolean, bypassQueue?: boolean) => void;
   hasUnsavedChanges: () => boolean;
   getDirtyFiles: () => string[];
   // Otevřít soubor v editoru (pro Ctrl+P quick file open)
@@ -1683,6 +1685,7 @@ async function createWorkspace(projectPath: string, projectName: string, project
       label: `Terminál ${i + 1}`,
       state: t.getState ? t.getState() : 'idle',
     })),
+    sendToFirstTerminal,
     onCCDone: (cb: () => void) => {
       ccDoneCallbacks.push(cb);
       return () => {
