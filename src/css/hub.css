@@ -904,10 +904,10 @@
 .settings-btn-shortcut:hover { border-color: var(--accent); color: var(--accent); }
 .settings-btn-shortcut:disabled { opacity: 0.5; cursor: wait; }
 .settings-btn-update {
-  background: var(--bg-elev-2); border: 1px solid var(--border);
-  color: var(--text); border-radius: var(--radius); padding: 6px 14px;
-  font-size: 12px; font-weight: 500; cursor: pointer;
-  transition: all 150ms ease;
+  background: var(--bg-elev-2); color: var(--text); border: 1px solid var(--border);
+  border-radius: var(--radius-pill); padding: 6px var(--space-4); cursor: pointer;
+  font-size: 12px; font-weight: 500;
+  transition: all var(--t-fast) var(--ease);
 }
 .settings-btn-update:hover { border-color: var(--accent); color: var(--accent); }
 .settings-btn-update:disabled { opacity: 0.5; cursor: wait; }
