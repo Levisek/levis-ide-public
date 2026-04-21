@@ -349,8 +349,10 @@ function showAboutDialog(): void {
       const data = await res.json() as { entries: Array<{ version: string; date: string; summary: string }> };
       const top = (data.entries || []).slice(0, 3);
       if (!top.length) throw new Error('empty');
+      // V aj verzi summary skrýváme — staré commit messages jsou česky, aj overlay nemá český text
+      const showSummary = getLocale() !== 'en';
       listEl.innerHTML = top.map((e) =>
-        `<div class="about-cl-entry"><strong>v${escapeHtml(e.version)}</strong> <span class="about-cl-date">${escapeHtml(e.date)}</span> — ${escapeHtml(e.summary)}</div>`
+        `<div class="about-cl-entry"><strong>v${escapeHtml(e.version)}</strong> <span class="about-cl-date">${escapeHtml(e.date)}</span>${showSummary ? ' — ' + escapeHtml(e.summary) : ''}</div>`
       ).join('');
     } catch {
       listEl.innerHTML = `<div class="about-cl-entry" style="opacity:.6">${t('about.changelogUnavailable')}</div>`;
@@ -481,6 +483,8 @@ function createTileElement(project: HubProjectInfo, onOpen: (p: HubProjectInfo) 
     const menu = document.createElement('div');
     menu.className = 'tile-context-menu';
     const Ic = (window as any).icon;
+    const currentStatus = project.status || 'active';
+    const currentColor = color || '';
     menu.innerHTML = `
       <div class="tcm-item" data-act="open">${Ic('folder')} ${t('hub.tcm.open')}</div>
       <div class="tcm-item" data-act="explorer">${Ic('folder')} ${t('hub.tcm.explorer')}</div>
@@ -491,15 +495,15 @@ function createTileElement(project: HubProjectInfo, onOpen: (p: HubProjectInfo) 
       <div class="tcm-sep"></div>
       <div class="tcm-item tcm-status-trigger">${Ic('check')} ${t('hub.tcm.status')}
         <div class="tcm-status-options">
-          <span class="tcm-status-opt" data-status="active">● ${t('hub.tcm.statusActive')}</span>
-          <span class="tcm-status-opt" data-status="paused">◐ ${t('hub.tcm.statusPaused')}</span>
-          <span class="tcm-status-opt" data-status="finished">✓ ${t('hub.tcm.statusFinished')}</span>
+          <span class="tcm-status-opt${currentStatus === 'active' ? ' tcm-current' : ''}" data-status="active">● ${t('hub.tcm.statusActive')}</span>
+          <span class="tcm-status-opt${currentStatus === 'paused' ? ' tcm-current' : ''}" data-status="paused">◐ ${t('hub.tcm.statusPaused')}</span>
+          <span class="tcm-status-opt${currentStatus === 'finished' ? ' tcm-current' : ''}" data-status="finished">✓ ${t('hub.tcm.statusFinished')}</span>
         </div>
       </div>
       <div class="tcm-item tcm-color-trigger" data-act="color">${Ic('palette')} ${t('hub.tcm.color')}
         <div class="tcm-color-palette">
-          ${PROJECT_COLOR_PALETTE.map(c => `<span class="tcm-color-swatch" data-color="${c}" style="background:${c}"></span>`).join('')}
-          <span class="tcm-color-swatch tcm-color-clear" data-color="" title="${t('hub.tcm.colorClear')}">✕</span>
+          ${PROJECT_COLOR_PALETTE.map(c => `<span class="tcm-color-swatch${c === currentColor ? ' tcm-current' : ''}" data-color="${c}" style="background:${c}"></span>`).join('')}
+          <span class="tcm-color-swatch tcm-color-clear${currentColor === '' ? ' tcm-current' : ''}" data-color="" title="${t('hub.tcm.colorClear')}">✕</span>
         </div>
       </div>
       <div class="tcm-sep"></div>
@@ -1532,6 +1536,10 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
           <span>${t('settings.desktopShortcut')}</span>
           <button class="settings-btn-shortcut" type="button">${t('settings.createShortcut')}</button>
         </div>
+        <div class="settings-row">
+          <span>${t('settings.updates')}</span>
+          <button class="settings-btn-update" type="button">${t('settings.checkUpdate')}</button>
+        </div>
         <div class="settings-row" data-billing-row>
           <span>${t('settings.liveBilling')}<br><small class="settings-row-hint" data-billing-state></small></span>
           <button class="settings-btn-billing" type="button" data-billing-action="">…</button>
@@ -1685,6 +1693,15 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
       } finally {
         btn.disabled = false;
       }
+    });
+
+    settingsPanel.querySelector('.settings-btn-update')?.addEventListener('click', async () => {
+      const btn = settingsPanel.querySelector('.settings-btn-update') as HTMLButtonElement;
+      const orig = btn.textContent || '';
+      btn.disabled = true;
+      btn.textContent = t('settings.checking');
+      try { await (window as any).checkForUpdatesManually?.(); } catch {}
+      window.setTimeout(() => { btn.disabled = false; btn.textContent = orig; }, 2500);
     });
   }
 

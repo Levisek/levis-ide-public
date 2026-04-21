@@ -232,6 +232,8 @@ async function createEditor(container: HTMLElement): Promise<EditorInstance> {
     padding: { top: 8 },
     // Fixne hover widgety (color picker, suggestions) v body — neclipuje cell overflow
     fixedOverflowWidgets: true,
+    // Tiše odstraní LS/PS znaky místo dotěrného dialogu na každé otevření
+    unusualLineTerminators: 'auto',
   });
 
   // Force layout after render

@@ -349,6 +349,21 @@
 .tcm-status-opt[data-status="paused"]:hover   { --accent-text: var(--warning); border-color: var(--warning); background: color-mix(in srgb, var(--warning) 15%, transparent); }
 .tcm-status-opt[data-status="finished"]:hover { --accent-text: #64748b;        border-color: #64748b;        background: color-mix(in srgb, #64748b 15%, transparent); }
 
+/* Aktuální stav projektu — vypadá zamáčknuté, stejný vzhled jako hover */
+.tcm-status-opt.tcm-current {
+  background: var(--accent-dim);
+  border-color: var(--accent-ring);
+  color: var(--accent-text);
+}
+.tcm-status-opt[data-status="active"].tcm-current   { --accent-text: var(--success); border-color: var(--success); background: color-mix(in srgb, var(--success) 22%, transparent); box-shadow: inset 0 0 0 1px var(--success); }
+.tcm-status-opt[data-status="paused"].tcm-current   { --accent-text: var(--warning); border-color: var(--warning); background: color-mix(in srgb, var(--warning) 22%, transparent); box-shadow: inset 0 0 0 1px var(--warning); }
+.tcm-status-opt[data-status="finished"].tcm-current { --accent-text: #64748b;        border-color: #64748b;        background: color-mix(in srgb, #64748b 22%, transparent);        box-shadow: inset 0 0 0 1px #64748b; }
+.tcm-color-swatch.tcm-current {
+  transform: scale(1.3);
+  border-color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 0 2px var(--bg-elev-2), 0 0 0 3px var(--accent-ring);
+}
+
 /* ── Group submenu v context menu ── */
 .tcm-group-trigger { position: relative; flex-wrap: wrap; }
 .tcm-group-options {

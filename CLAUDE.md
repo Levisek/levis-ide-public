@@ -197,6 +197,10 @@ Kompilace: `npx tsc` — output do `dist/`
 
 ## TODO v1.6+
 
+### UX drobnosti
+- **Vyvolání updatu v nastavení** — tlačítko v Settings dialogu (Hub → ozubené kolo), využít existující `checkForUpdatesManually` z `src/updater.ts`. Teď nejde spustit check manuálně, jen autostart při startu aplikace.
+- **Bilingual changelog** — About dialog zobrazuje `dist/changelog.json` summary z commit messages (česky). V aj verzi fallback na odkaz na GitHub Releases, od teď nové commity psát cs + en (marker v commit body?). Zpětně staré commity nepřepisovat.
+
 ### Bezpečnost zbývá
 - Cross-platform testování (macOS, Linux)
 
@@ -217,9 +221,9 @@ Kompilace: `npx tsc` — output do `dist/`
 - **Cenotvorba** — osobní / komerční / team / lifetime — rozhodnout před implementací
 
 ### EULA / TOS
-- `build/license.txt` nebo `.rtf` — text zobrazený v NSIS instalátoru (i wipe u open-source cesty)
-- Privacy policy na levinger.cz (hostuje se data o klíčích, logování aktivací)
-- Refund policy (14 dní?)
+- ✅ `build/license_en.txt` + `build/license_cs.txt` — NSIS `multiLanguageInstaller` s oběma jazyky
+- ✅ `build/privacy_policy.md` — bundlovaný přes `extraResources` v `package.json`
+- Refund policy (14 dní?) — zbývá rozhodnout
 
 ### Build s podpisem
 - Code signing certifikát (Windows) — $100-300/rok, DigiCert / Sectigo / SSL.com; bez něj instalátor hází SmartScreen warning

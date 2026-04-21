@@ -18,6 +18,29 @@ function applyTheme(theme: string): void {
 }
 (window as any).applyTheme = applyTheme;
 
+// Monaco (standalone build) nemá vlastní DialogService → padá na nativní window.confirm,
+// který v Electronu vypadá jako ošklivý Chromium dialog s titulkem okna.
+// Přesměrujeme confirm/alert/prompt do našeho toastu a vrátíme bezpečný default.
+(function patchNativeDialogs(): void {
+  window.confirm = (message?: string): boolean => {
+    const msg = String(message ?? '');
+    console.warn('[confirm]', msg);
+    try { (window as any).showToast?.(msg, 'warning'); } catch {}
+    return false;
+  };
+  window.alert = (message?: string): void => {
+    const msg = String(message ?? '');
+    console.warn('[alert]', msg);
+    try { (window as any).showToast?.(msg, 'info'); } catch {}
+  };
+  window.prompt = (message?: string, _defaultValue?: string): string | null => {
+    const msg = String(message ?? '');
+    console.warn('[prompt]', msg);
+    try { (window as any).showToast?.(msg, 'warning'); } catch {}
+    return null;
+  };
+})();
+
 async function init(): Promise<void> {
   await initI18n();
   applyI18nDom(document);
