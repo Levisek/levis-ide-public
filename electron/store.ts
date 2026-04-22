@@ -20,7 +20,6 @@ interface StoreSchema {
   sidebarWidth: number;
   editorFontSize: number;
   terminalFontSize: number;
-  deployConfigs: Record<string, { host: string; user: string; password: string; remotePath: string }>;
   pinnedProjects: string[];
   projectPrefs: Record<string, { panelsSwapped?: boolean; workspaceLayout?: unknown; editorOpenFiles?: string[]; previewUrl?: string }>;
   ccNotifications: boolean;
@@ -69,7 +68,6 @@ export const store = new Store<StoreSchema>({
     sidebarWidth: 220,
     editorFontSize: 14,
     terminalFontSize: 13,
-    deployConfigs: {},
     pinnedProjects: [],
     projectPrefs: {},
     ccNotifications: true,

@@ -299,25 +299,11 @@
 .annot-prompt-send:hover { background: var(--accent); border-color: var(--accent); color: white; }
 .annot-prompt-clear:hover { color: #ff5555; border-color: rgba(255, 85, 85, 0.4); }
 
-/* ── Pop-out Window ──────────────── */
+/* ── Pop-out Window ────────────────
+   Base styles (bar, title, akční buttony) žijí v layout.css (.lvi-popbar / .lvi-popbar-title / .lvi-popbtn),
+   aby byly sdílené s popout-panel.html. Zde zůstávají jen specifika browser popupu. */
 
-#popout-bar {
-  display: flex; align-items: center; gap: var(--space-2);
-  min-height: 40px; flex-shrink: 0; flex-wrap: wrap;
-  background: var(--bg-base);
-  padding: 0 var(--space-4); -webkit-app-region: drag; user-select: none;
-}
-.popout-title { font-weight: 600; color: var(--accent); font-size: 12px; flex-shrink: 0; }
 .popout-file { color: var(--text-muted); font-size: 11px; font-family: 'JetBrains Mono', monospace; flex-shrink: 0; }
-.pop-btn {
-  -webkit-app-region: no-drag; background: transparent; border: none; color: var(--text-muted);
-  cursor: pointer; padding: 5px var(--space-2);
-  border-radius: var(--radius-sm);
-  transition: all var(--t-fast) var(--ease);
-  display: inline-flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-}
-.pop-btn:hover { background: var(--bg-elev-2); color: var(--text); }
 .pop-size-btn {
   -webkit-app-region: no-drag; background: var(--bg-elev-1); border: none; color: var(--text-muted);
   width: 30px; height: 24px; border-radius: var(--radius-sm); cursor: pointer; font-size: 11px;

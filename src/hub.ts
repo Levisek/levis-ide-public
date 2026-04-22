@@ -1452,14 +1452,21 @@ async function renderHub(container: HTMLElement, onOpenProject: (project: HubPro
   async function newProjectHandler(): Promise<void> {
     const name = await askModal(t('hub.dialog.newProject'), t('hub.dialog.newProjectLabel'));
     if (!name) return;
+    // UI-side sanity check — main-side má tvrdší whitelist (VALID_NAME),
+    // zde jen chceme rychlou zpětnou vazbu bez zbytečného round-tripu.
+    const trimmed = name.trim();
+    if (!trimmed || !/^[A-Za-z0-9_\-. ]{1,64}$/.test(trimmed)) {
+      showToast(t('hub.toast.invalidName') || 'Neplatný název projektu (povoleno: A-Z a-z 0-9 _ - . mezera, 1–64 znaků)', 'error');
+      return;
+    }
     const tpl = await pickTemplate();
     if (tpl === null) return;
     showToast(t('toast.creatingProject'), 'info');
-    const result = await levis.scaffoldProject(name, scanPath, tpl || undefined);
+    const result = await levis.scaffoldProject(trimmed, scanPath, tpl || undefined);
     if (result.error) {
       showToast(t('hub.toast.error', { msg: result.error }), 'error');
     } else {
-      showToast(t('hub.toast.projectCreated', { name }), 'success');
+      showToast(t('hub.toast.projectCreated', { name: trimmed }), 'success');
       loadProjects();
     }
   }

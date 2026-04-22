@@ -12,6 +12,7 @@ const api = {
   // Window controls
   minimize: (panelId: string) => ipcRenderer.send('panel:minimize', panelId),
   toggleMaximize: (panelId: string) => ipcRenderer.send('panel:toggleMaximize', panelId),
+  toggleFullscreen: (panelId: string) => ipcRenderer.send('panel:toggleFullscreen', panelId),
   close: (panelId: string) => ipcRenderer.send('panel:close', panelId),
   returnToWorkspace: (panelId: string) => ipcRenderer.send('panel:returnToWorkspace', panelId),
 
@@ -29,8 +30,10 @@ const api = {
   notifyReady: (panelId: string) => ipcRenderer.send('panel:ready', panelId),
 
   // PTY
+  createPty: (cwd: string) => ipcRenderer.invoke('pty:create', cwd),
   writePty: (id: string, data: string) => ipcRenderer.send('pty:write', id, data),
   resizePty: (id: string, cols: number, rows: number) => ipcRenderer.send('pty:resize', id, cols, rows),
+  killPty: (id: string) => ipcRenderer.send('pty:kill', id),
   onPtyData: (cb: (id: string, data: string) => void) => {
     const handler = (_e: any, id: string, data: string) => cb(id, data);
     ipcRenderer.on('pty:data', handler);

@@ -13,34 +13,19 @@
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/utilities.css">
   <style>
-    body { margin: 0; background: #0a0a0f; color: #e8e8f0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-    #panel-bar {
-      -webkit-app-region: drag;
-      display: flex; align-items: center; gap: 8px;
-      padding: 6px 14px;
-      background: #1a1a24;
-      border-bottom: 1px solid rgba(255,255,255,0.05);
-      flex-shrink: 0;
-    }
-    .panel-title { font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600; color: #ffa500; }
-    .panel-window-controls { margin-left: auto; }
-    #panel-return {
-      -webkit-app-region: no-drag;
-      background: transparent; border: 1px solid #2d303c; color: #b8bac8;
-      padding: 4px 12px; border-radius: 12px; font-size: 11px;
-      cursor: pointer; font-family: 'Inter', sans-serif;
-      transition: all 120ms ease;
-    }
-    #panel-return:hover { background: #272a35; border-color: #ff7a1a; color: #ff7a1a; }
+    /* Jen body layout — ostatní (bar, buttons) jsou sdílené v layout.css */
+    body { margin: 0; background: var(--bg-deep, #0a0a0f); color: var(--text, #e8e8f0); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
     #panel-content { flex: 1; min-height: 0; display: flex; }
   </style>
 </head>
 <body>
-  <div id="panel-bar">
-    <span class="panel-title" id="panel-title">Panel</span>
-    <button id="panel-return" data-i18n-title="panel.return" title="Vrátit panel zpět do hlavního okna"><svg class="lvi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="19 12 5 12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+  <div id="panel-bar" class="lvi-popbar">
+    <span class="lvi-popbar-title" id="panel-title">Panel</span>
+    <div id="panel-actions" style="display:flex;gap:2px;margin-left:8px;"></div>
     <span style="flex:1"></span>
-    <div class="panel-window-controls lvi-win-controls">
+    <button id="panel-return" class="lvi-popbtn" data-i18n-title="panel.return" title="Vrátit panel zpět do hlavního okna"><svg class="lvi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="19 12 5 12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+    <button id="panel-fullscreen" class="lvi-popbtn" data-i18n-title="popout.fullscreen" title="Fullscreen"><svg class="lvi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button>
+    <div class="lvi-win-controls">
       <button id="panel-min" class="lvi-win-btn" data-i18n-title="panel.minimize" title="Minimalizovat">&#x2500;</button>
       <button id="panel-max" class="lvi-win-btn" data-i18n-title="panel.maximize" title="Maximalizovat">&#x25A1;</button>
       <button id="panel-close" class="lvi-win-btn lvi-win-btn-close" data-i18n-title="panel.close" title="Zavřít">&#x2715;</button>
@@ -52,6 +37,7 @@
   <script src="../node_modules/@xterm/xterm/lib/xterm.js"></script>
   <script src="../node_modules/@xterm/addon-fit/lib/addon-fit.js"></script>
   <script src="../node_modules/@xterm/addon-web-links/lib/addon-web-links.js"></script>
+  <script src="../node_modules/@xterm/addon-search/lib/addon-search.js"></script>
   <script src="../node_modules/@xterm/addon-webgl/lib/addon-webgl.js"></script>
 
   <script src="../dist/src/i18n.js"></script>

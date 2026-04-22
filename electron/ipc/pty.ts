@@ -5,11 +5,17 @@ import { isPathAllowed } from './safe-path';
 
 const ptyProcesses: Map<string, pty.IPty> = new Map();
 
-// Broadcast PTY event do všech otevřených oken — renderer si sám filtruje podle id
+// Broadcast PTY event do všech otevřených oken — renderer si sám filtruje podle id.
+// Chyba posílání typicky znamená že se okno právě zavíralo — logujeme jako warn,
+// ať diagnostika PTY regresí není slepá.
 function broadcastPty(channel: string, ...args: any[]): void {
   for (const win of BrowserWindow.getAllWindows()) {
     if (!win.isDestroyed()) {
-      try { win.webContents.send(channel, ...args); } catch {}
+      try {
+        win.webContents.send(channel, ...args);
+      } catch (err) {
+        log.warn(`broadcastPty ${channel} failed:`, err);
+      }
     }
   }
 }

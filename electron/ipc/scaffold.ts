@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import { execFile } from 'child_process';
 import simpleGit from 'simple-git';
 import log from 'electron-log';
+import { isPathAllowed } from './safe-path';
 
 function runCli(cmd: string, args: string[], cwd: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -16,27 +17,63 @@ function runCli(cmd: string, args: string[], cwd: string): Promise<void> {
   });
 }
 
+// Whitelist znaků pro název projektu — odmítáme path traversal a XSS injection
+// do HTML/JS šablon (projectName se interpoluje do index.html + main.js).
+const VALID_NAME = /^[A-Za-z0-9_\-. ]{1,64}$/;
+
+function escHtml(s: string): string {
+  return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+}
+
+function escJsStr(s: string): string {
+  // VALID_NAME uz omezuje projectName na ASCII whitelist, takze tady staci
+  // escape pro zakladni JS string breakery jako defensive belt-and-suspenders.
+  return s.replace(/[\\'"\n\r\t]/g, c =>
+    ({ '\\': '\\\\', "'": "\\'", '"': '\\"', '\n': '\\n', '\r': '\\r', '\t': '\\t' }[c]!));
+}
+
 export function registerScaffoldHandlers(): void {
   ipcMain.handle('scaffold:create', async (_event, projectName: string, targetDir: string, templateRepo?: string) => {
     try {
+      // Validace targetDir — musí ležet v allowed rootech (scanPath/~/dev/Documents/Desktop)
+      if (!isPathAllowed(targetDir)) {
+        log.warn(`Scaffold rejected, targetDir not allowed: ${targetDir}`);
+        return { error: 'Target path not allowed' };
+      }
+      // Validace projectName — whitelist znaků, žádné /, \, .., atd.
+      if (!projectName || !VALID_NAME.test(projectName) || projectName === '.' || projectName === '..') {
+        return { error: 'Invalid project name' };
+      }
       const dest = path.join(targetDir, projectName);
+      // Ověř že výsledná cesta je stále v allowed rootech (belt-and-suspenders)
+      if (!isPathAllowed(dest)) {
+        log.warn(`Scaffold rejected, resolved dest not allowed: ${dest}`);
+        return { error: 'Resolved path not allowed' };
+      }
+      // Cílová složka nesmí existovat — jinak by se nový scaffold merge-oval
+      // do user existujícího projektu (mkdirSync({recursive:true}) nefejli).
+      if (fs.existsSync(dest)) {
+        return { error: `Projekt „${projectName}" už v cílové složce existuje` };
+      }
 
       // Empty — jen prázdná složka, žádné soubory (git init + .gitignore se přidají níže)
       if (templateRepo === '__empty__') {
         fs.mkdirSync(dest, { recursive: true });
       } else if (templateRepo === '__plain__') {
         fs.mkdirSync(dest, { recursive: true });
+        const safeHtml = escHtml(projectName);
+        const safeJs = escJsStr(projectName);
         fs.writeFileSync(path.join(dest, 'index.html'),
 `<!DOCTYPE html>
 <html lang="cs">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${projectName}</title>
+  <title>${safeHtml}</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>${projectName}</h1>
+  <h1>${safeHtml}</h1>
   <script src="main.js"></script>
 </body>
 </html>
@@ -47,7 +84,7 @@ body { font-family: system-ui, sans-serif; max-width: 720px; margin: 40px auto; 
 h1 { color: #ff6a00; }
 `);
         fs.writeFileSync(path.join(dest, 'main.js'),
-`console.log('${projectName} ready');\n`);
+`console.log('${safeJs} ready');\n`);
       } else if (templateRepo === '__next__') {
         await runCli('npx', ['create-next-app@latest', dest, '--ts', '--eslint', '--app', '--no-tailwind', '--src-dir', '--no-import-alias', '--use-npm'], targetDir);
       } else if (templateRepo === '__astro__') {

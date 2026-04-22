@@ -45,6 +45,7 @@ window.addEventListener('DOMContentLoaded', () => {
 document.getElementById('panel-min')!.addEventListener('click', () => panelApi.minimize(myPanelId));
 document.getElementById('panel-max')!.addEventListener('click', () => panelApi.toggleMaximize(myPanelId));
 document.getElementById('panel-close')!.addEventListener('click', () => panelApi.close(myPanelId));
+document.getElementById('panel-fullscreen')?.addEventListener('click', () => panelApi.toggleFullscreen?.(myPanelId));
 // Vrátit panel zpět do hlavního workspace
 document.getElementById('panel-return')!.addEventListener('click', () => {
   if (panelApi.returnToWorkspace) {
@@ -63,6 +64,7 @@ async function initTerminalPanel(host: HTMLElement, payload: any): Promise<void>
   const Fit: any = (window as any).FitAddon?.FitAddon;
   const Web: any = (window as any).WebLinksAddon?.WebLinksAddon;
   const Wgl: any = (window as any).WebglAddon?.WebglAddon || null;
+  const Search: any = (window as any).SearchAddon?.SearchAddon || null;
 
   // Normalizace: starý formát (single ptyId) → nový (terminals pole)
   const terminals: TermEntry[] = payload.terminals
@@ -103,13 +105,16 @@ async function initTerminalPanel(host: HTMLElement, payload: any): Promise<void>
   termContainer.style.cssText = 'flex:1; display:flex; gap:4px; min-height:0; overflow:hidden;';
   host.appendChild(termContainer);
 
-  const instances: Array<{ term: any; fit: any; container: HTMLElement; ptyId: string; unsubs: Array<() => void> }> = [];
+  const instances: Array<{ term: any; fit: any; search: any; container: HTMLElement; ptyId: string; unsubs: Array<() => void> }> = [];
+  let activeIdx = 0;
+  const projectPath: string = payload.projectPath || '';
 
-  for (let i = 0; i < terminals.length; i++) {
-    const entry = terminals[i];
+  // Factory pro jeden terminal slot — použito při init i při split
+  function addTermSlot(ptyId: string, initial?: string): void {
     const slot = document.createElement('div');
-    slot.style.cssText = 'flex:1; padding:2px; min-width:0; min-height:0; overflow:hidden; background:var(--term-bg, #15161c); transition: box-shadow .15s ease;';
+    slot.style.cssText = 'flex:1; padding:2px; min-width:0; min-height:0; overflow:hidden; background:var(--term-bg, #15161c); transition: box-shadow .15s ease; position:relative;';
     slot.addEventListener('mousedown', () => {
+      activeIdx = instances.findIndex(x => x.container === slot);
       termContainer.querySelectorAll(':scope > div').forEach((s) => {
         (s as HTMLElement).style.boxShadow = '';
       });
@@ -129,13 +134,12 @@ async function initTerminalPanel(host: HTMLElement, payload: any): Promise<void>
     const fit = new Fit();
     term.loadAddon(fit);
     if (Web) term.loadAddon(new Web());
+    const search = Search ? new Search() : null;
+    if (search) term.loadAddon(search);
     term.open(slot);
-    // WebGL vypnutý — canvas stabilnější
-    // if (Wgl) { try { term.loadAddon(new Wgl()); } catch {} }
 
-    if (entry.initial) { try { term.write(entry.initial); } catch {} }
+    if (initial) { try { term.write(initial); } catch {} }
 
-    const ptyId = entry.ptyId;
     const unsubData = panelApi.onPtyData((id: string, data: string) => {
       if (id === ptyId) term.write(data);
     });
@@ -163,7 +167,110 @@ async function initTerminalPanel(host: HTMLElement, payload: any): Promise<void>
       return true;
     });
 
-    instances.push({ term, fit, container: slot, ptyId, unsubs: [unsubData, unsubExit] });
+    // Close button — skryt na prvním, ostatní smí být zavřené
+    if (instances.length > 0) {
+      const closeBtn = document.createElement('button');
+      closeBtn.className = 'lvi-popbtn';
+      closeBtn.style.cssText = 'position:absolute;top:4px;right:4px;z-index:5;background:var(--bg-elev-1);opacity:.5;';
+      closeBtn.onmouseenter = () => { closeBtn.style.opacity = '1'; };
+      closeBtn.onmouseleave = () => { closeBtn.style.opacity = '.5'; };
+      closeBtn.title = 'Zavřít terminál';
+      closeBtn.innerHTML = '<svg class="lvi" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+      closeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const idx = instances.findIndex(x => x.container === slot);
+        if (idx < 0 || instances.length <= 1) return;
+        const inst = instances[idx];
+        inst.unsubs.forEach(u => u());
+        try { inst.term.dispose(); } catch {}
+        try { panelApi.killPty?.(inst.ptyId); } catch {}
+        slot.remove();
+        instances.splice(idx, 1);
+        if (activeIdx >= instances.length) activeIdx = instances.length - 1;
+        requestAnimationFrame(fitAll);
+      });
+      slot.appendChild(closeBtn);
+    }
+
+    instances.push({ term, fit, search, container: slot, ptyId, unsubs: [unsubData, unsubExit] });
+  }
+
+  for (let i = 0; i < terminals.length; i++) {
+    const entry = terminals[i];
+    addTermSlot(entry.ptyId, entry.initial);
+  }
+
+  // ── Akční lišta v top baru (search + clear) — napojená na aktivní instanci ──
+  const actionsHost = document.getElementById('panel-actions');
+  if (actionsHost) {
+    actionsHost.innerHTML = '';
+    const tt = (window as any).t as (key: string) => string;
+    const mkBtn = (titleKey: string, fallback: string, svg: string, onClick: () => void): HTMLButtonElement => {
+      const btn = document.createElement('button');
+      btn.className = 'lvi-popbtn';
+      btn.title = tt?.(titleKey) || fallback;
+      btn.setAttribute('data-i18n-title', titleKey);
+      btn.innerHTML = svg;
+      btn.addEventListener('click', (e) => { e.preventDefault(); onClick(); });
+      return btn;
+    };
+    const iconSearch = '<svg class="lvi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
+    const iconClear  = '<svg class="lvi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>';
+    const iconEqualize = '<svg class="lvi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="21"/><line x1="12" y1="3" x2="12" y2="21"/><line x1="18" y1="3" x2="18" y2="21"/></svg>';
+    const iconSplit = '<svg class="lvi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="12" y1="3" x2="12" y2="21"/></svg>';
+
+    // Search overlay — malý inline input na top baru, hledá v aktivním terminálu
+    let searchBar: HTMLElement | null = null;
+    const toggleSearch = (): void => {
+      if (searchBar) { searchBar.remove(); searchBar = null; return; }
+      const inst = instances[activeIdx] || instances[0];
+      if (!inst?.search) return;
+      searchBar = document.createElement('div');
+      searchBar.className = 'term-search-bar';
+      searchBar.style.cssText = 'position:absolute;top:42px;left:50%;transform:translateX(-50%);z-index:20;';
+      searchBar.innerHTML = `<input type="text" class="term-search-input" placeholder="${tt?.('terminal.searchPh') || 'Hledat…'}">`;
+      document.body.appendChild(searchBar);
+      const input = searchBar.querySelector('.term-search-input') as HTMLInputElement;
+      input.focus();
+      input.addEventListener('input', () => { try { inst.search.findNext(input.value); } catch {} });
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { try { inst.search.findNext(input.value); } catch {} }
+        if (e.key === 'Escape') toggleSearch();
+      });
+    };
+
+    actionsHost.appendChild(mkBtn('terminal.search', 'Hledat (Ctrl+F)', iconSearch, toggleSearch));
+    actionsHost.appendChild(mkBtn('terminal.clear', 'Vyčistit', iconClear, () => {
+      const inst = instances[activeIdx] || instances[0];
+      try { inst?.term.clear(); } catch {}
+    }));
+    actionsHost.appendChild(mkBtn('ws.equalizeTerminals', 'Vyrovnat šířky terminálů', iconEqualize, () => {
+      termContainer.querySelectorAll(':scope > div').forEach((s) => {
+        (s as HTMLElement).style.flex = '1';
+        (s as HTMLElement).style.width = '';
+      });
+      requestAnimationFrame(fitAll);
+    }));
+    actionsHost.appendChild(mkBtn('ws.newTerminal', 'Otevřít další terminál (max 3)', iconSplit, async () => {
+      if (instances.length >= 3) {
+        try { const ts = (window as any).showToast; ts?.(tt?.('toast.maxTerminals') || 'Max 3 terminály', 'warning'); } catch {}
+        return;
+      }
+      if (!projectPath) {
+        try { const ts = (window as any).showToast; ts?.('Chybí projectPath — nelze vytvořit PTY', 'error'); } catch {}
+        return;
+      }
+      try {
+        const newPtyId: string = await panelApi.createPty(projectPath);
+        addTermSlot(newPtyId);
+        requestAnimationFrame(fitAll);
+      } catch (err) {
+        console.error('[popout-panel] split createPty selhalo', err);
+      }
+    }));
+
+    // Přelož nově vložené data-i18n-title atributy
+    (window as any).applyI18nDom?.(actionsHost);
   }
 
   // Fit all terminals

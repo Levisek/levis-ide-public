@@ -42,6 +42,9 @@ export function registerWindowHandlers(mainWindow: BrowserWindow): void {
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
+        // Popout preload používá `clipboard` přímo (mimo sandbox whitelist),
+        // proto sandbox:false. contextIsolation + webSecurity:false drží izolaci
+        // a will-attach-webview validátor níže brání data:/javascript: exfilu.
         sandbox: false,
         preload: path.join(__dirname, '..', 'preload-popout.js'),
         webviewTag: true,
@@ -136,7 +139,8 @@ export function registerWindowHandlers(mainWindow: BrowserWindow): void {
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
-        sandbox: false,
+        // Panel preload používá jen ipcRenderer + contextBridge → sandbox OK
+        sandbox: true,
         preload: path.join(__dirname, '..', 'preload-popout-panel.js'),
         webviewTag: false,
         backgroundThrottling: true, // šetří CPU/baterku když panel v pozadí
@@ -182,6 +186,10 @@ export function registerWindowHandlers(mainWindow: BrowserWindow): void {
     if (w && !w.isDestroyed()) {
       if (w.isMaximized()) w.unmaximize(); else w.maximize();
     }
+  });
+  ipcMain.on('panel:toggleFullscreen', (_event, panelId: string) => {
+    const w = panelPopouts.get(panelId);
+    if (w && !w.isDestroyed()) w.setFullScreen(!w.isFullScreen());
   });
 
   // Vrátit panel zpět do hlavního workspace okna

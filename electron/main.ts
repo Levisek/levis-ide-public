@@ -71,7 +71,9 @@ function createWindow(): void {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      sandbox: false,
+      // Chromium sandbox ON — preload používá jen contextBridge + ipcRenderer,
+      // žádné Node API ani require, takže sandbox nezlomí funkčnost.
+      sandbox: true,
       preload: path.join(__dirname, 'preload.js'),
       webviewTag: true,
     },
@@ -115,13 +117,16 @@ function createWindow(): void {
     log.info('LevisIDE window ready');
   });
 
-  // DevTools shortcut: Ctrl+Shift+I / F12
-  mainWindow.webContents.on('before-input-event', (_e, input) => {
-    if (input.type !== 'keyDown') return;
-    if (input.key === 'F12' || (input.control && input.shift && (input.key === 'I' || input.key === 'i'))) {
-      mainWindow!.webContents.toggleDevTools();
-    }
-  });
+  // DevTools shortcut: Ctrl+Shift+I / F12 — jen v dev buildu (případně přes env flag)
+  const devToolsEnabled = !app.isPackaged || process.env.LEVIS_DEVTOOLS === '1';
+  if (devToolsEnabled) {
+    mainWindow.webContents.on('before-input-event', (_e, input) => {
+      if (input.type !== 'keyDown') return;
+      if (input.key === 'F12' || (input.control && input.shift && (input.key === 'I' || input.key === 'i'))) {
+        mainWindow!.webContents.toggleDevTools();
+      }
+    });
+  }
 
   // Save window state on resize/move
   const saveWindowState = () => {

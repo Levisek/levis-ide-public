@@ -1228,10 +1228,29 @@ async function createWorkspace(projectPath: string, projectName: string, project
         `).join('')}
       </div>
     `;
-    const rect = btnQueue.getBoundingClientRect();
-    popup.style.left = `${rect.left}px`;
-    popup.style.bottom = `${window.innerHeight - rect.top + 4}px`;
     document.body.appendChild(popup);
+    // Pozicování s clamp do viewportu — btnQueue typicky stojí vpravo u status baru,
+    // takže při naivním left = rect.left popup (300–450px) přetéká mimo okno.
+    const rect = btnQueue.getBoundingClientRect();
+    const margin = 8;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const popW = popup.offsetWidth;
+    const popH = popup.offsetHeight;
+    // Zarovnej pravý okraj popupu s pravým okrajem tlačítka, pak clampni do viewportu
+    let left = rect.right - popW;
+    if (left < margin) left = margin;
+    if (left + popW > vw - margin) left = vw - popW - margin;
+    popup.style.left = `${left}px`;
+    // Preferuj otevřít nahoru (nad tlačítko). Pokud by výška popupu nevešla, vysun nahoru
+    // nebo otoč na top-based kotvení pod tlačítko.
+    const spaceAbove = rect.top - margin;
+    if (popH <= spaceAbove) {
+      popup.style.bottom = `${vh - rect.top + 4}px`;
+    } else {
+      // Nevejde se nad — zkus clampnout aby horní okraj nevyšel z okna
+      popup.style.bottom = `${Math.max(margin, vh - popH - margin)}px`;
+    }
     // Clear all
     popup.querySelector('.queue-popup-clear')!.addEventListener('click', () => {
       promptQueue.length = 0;
