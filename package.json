@@ -68,7 +68,7 @@
       "license": "build/license_en.txt",
       "installerLanguages": ["en_US", "cs_CZ"],
       "multiLanguageInstaller": true,
-      "displayLanguageSelector": false,
+      "displayLanguageSelector": true,
       "installerIcon": "assets/icon.ico",
       "uninstallerIcon": "assets/icon.ico",
       "installerHeaderIcon": "assets/icon.ico",

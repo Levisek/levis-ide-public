@@ -246,6 +246,14 @@ async function createEditor(container: HTMLElement): Promise<EditorInstance> {
   editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyW, () => {
     if (currentFilePath) closeFile(currentFilePath);
   });
+  // Ctrl+Tab / Ctrl+Shift+Tab — cyklování project tabů (přebíjí default Monaco binding).
+  // Bez toho Monaco chytí klávesu a app-level shortcut nefunguje z fokusu v editoru.
+  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Tab, () => {
+    (window as any).cycleProjectTab?.(false);
+  });
+  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Tab, () => {
+    (window as any).cycleProjectTab?.(true);
+  });
   } // konec initMonaco
 
   function basename(p: string): string {

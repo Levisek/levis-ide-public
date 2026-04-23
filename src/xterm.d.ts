@@ -17,6 +17,7 @@ interface LevisAPI {
   onWindowOsFocus: (cb: () => void) => () => void;
   onWindowOsBlur: (cb: () => void) => () => void;
   onConfirmQuit: (cb: () => void) => () => void;
+  onTabCycle: (cb: (data: { backward: boolean }) => void) => () => void;
   popout: (data: { type: string; url?: string; filePath?: string; projectPath?: string }) => Promise<any>;
   popoutPanel: (data: { panelType: 'terminal' | 'editor'; payload: any }) => Promise<{ panelId: string }>;
   closePopoutPanel: (panelId: string) => void;
@@ -53,6 +54,9 @@ interface LevisAPI {
   shellOpenPath: (targetPath: string) => Promise<{ success?: boolean; error?: string }>;
   openExternal: (url: string) => Promise<{ success?: boolean; error?: string }>;
   deleteFile: (filePath: string) => Promise<{ success?: boolean; error?: string }>;
+  deletePath: (targetPath: string) => Promise<{ success?: boolean; error?: string }>;
+  renamePath: (oldPath: string, newName: string) => Promise<{ success?: boolean; path?: string; error?: string }>;
+  createFile: (filePath: string) => Promise<{ success?: boolean; error?: string }>;
   readDir: (dirPath: string) => Promise<Array<{ name: string; path: string; isDirectory: boolean }>>;
   dirStats: (dirPath: string) => Promise<{ files: number; size: number }>;
   fileStats: (filePath: string) => Promise<{ isDirectory?: boolean; files?: number; size: number } | null>;

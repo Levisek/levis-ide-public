@@ -22,6 +22,11 @@ const api = {
     ipcRenderer.on('app:confirmQuit', handler);
     return () => { ipcRenderer.off('app:confirmQuit', handler); };
   },
+  onTabCycle: (cb: (data: { backward: boolean }) => void) => {
+    const handler = (_e: any, data: { backward: boolean }) => cb(data);
+    ipcRenderer.on('tab:cycle', handler);
+    return () => { ipcRenderer.off('tab:cycle', handler); };
+  },
   popout: (data: { type: string; url?: string; filePath?: string }) => ipcRenderer.invoke('window:popout', data),
   popoutPanel: (data: { panelType: 'terminal' | 'editor'; payload: any }) => ipcRenderer.invoke('window:popoutPanel', data),
   closePopoutPanel: (panelId: string) => ipcRenderer.send('panel:close', panelId),
@@ -114,6 +119,9 @@ const api = {
   shellOpenPath: (targetPath: string) => ipcRenderer.invoke('shell:openPath', targetPath),
   openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
   deleteFile: (filePath: string) => ipcRenderer.invoke('fs:deleteFile', filePath),
+  deletePath: (targetPath: string) => ipcRenderer.invoke('fs:deletePath', targetPath),
+  renamePath: (oldPath: string, newName: string) => ipcRenderer.invoke('fs:renamePath', oldPath, newName),
+  createFile: (filePath: string) => ipcRenderer.invoke('fs:createFile', filePath),
 
   // File system
   readDir: (dirPath: string) => ipcRenderer.invoke('fs:readDir', dirPath),

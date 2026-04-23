@@ -15,6 +15,12 @@ interface FileTreeInstance {
   dispose: () => void;
 }
 
+function ftEscape(str: string): string {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
 // Mapování přípony → ikona + CSS třída pro barvu
 const FILE_ICON_MAP: Record<string, { icon: string; cls: string }> = {
   // Code
@@ -81,6 +87,56 @@ function getFileExt(name: string): string {
   return dot > 0 ? name.slice(dot + 1).toLowerCase() : '';
 }
 
+// Vlastní confirm modal — nahrazuje native window.confirm (blokující + nekonzistentní UX).
+function ftConfirm(message: string, okLabel: string, danger = true): Promise<boolean> {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.className = 'ft-modal-overlay';
+    const modal = document.createElement('div');
+    modal.className = 'ft-modal';
+    modal.setAttribute('role', 'dialog');
+
+    const msgEl = document.createElement('div');
+    msgEl.className = 'ft-modal-msg';
+    msgEl.textContent = message;
+    modal.appendChild(msgEl);
+
+    const actions = document.createElement('div');
+    actions.className = 'ft-modal-actions';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'ft-modal-btn';
+    cancelBtn.textContent = t('ft.cancel');
+    const okBtn = document.createElement('button');
+    okBtn.className = 'ft-modal-btn ' + (danger ? 'ft-modal-btn-danger' : 'ft-modal-btn-primary');
+    okBtn.textContent = okLabel;
+    actions.appendChild(cancelBtn);
+    actions.appendChild(okBtn);
+    modal.appendChild(actions);
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    const done = (result: boolean) => {
+      document.removeEventListener('keydown', onKey);
+      overlay.remove();
+      resolve(result);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.preventDefault(); done(false); }
+      if (e.key === 'Enter')  { e.preventDefault(); done(true); }
+    };
+    document.addEventListener('keydown', onKey);
+    cancelBtn.addEventListener('click', () => done(false));
+    okBtn.addEventListener('click', () => done(true));
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) done(false); });
+    okBtn.focus();
+  });
+}
+
+function ftToast(msg: string, type: 'info' | 'success' | 'warning' | 'error' = 'info'): void {
+  const fn = (window as any).showToast;
+  if (typeof fn === 'function') fn(msg, type);
+}
+
 async function createFileTree(
   container: HTMLElement,
   rootPath: string,
@@ -94,10 +150,11 @@ async function createFileTree(
   const header = document.createElement('div');
   header.className = 'file-tree-header';
   header.innerHTML = `
-    <span class="file-tree-title">${t('ws.files')}</span>
+    <span class="file-tree-title">${ftEscape(t('ws.files'))}</span>
     <div class="file-tree-actions">
-      <button class="file-tree-btn file-tree-collapse-all" title="${t('ws.collapseAll')}">${I('chevron-right', { size: 12 })}</button>
-      <button class="file-tree-btn file-tree-refresh" title="${t('ws.refreshFiles')}">${I('refresh', { size: 12 })}</button>
+      <button class="file-tree-btn file-tree-new" title="${ftEscape(t('ft.newItem'))}">${I('plus', { size: 12 })}</button>
+      <button class="file-tree-btn file-tree-collapse-all" title="${ftEscape(t('ws.collapseAll'))}">${I('chevron-right', { size: 12 })}</button>
+      <button class="file-tree-btn file-tree-refresh" title="${ftEscape(t('ws.refreshFiles'))}">${I('refresh', { size: 12 })}</button>
     </div>
   `;
   wrapper.appendChild(header);
@@ -111,6 +168,7 @@ async function createFileTree(
   // ── Multi-select ──
   const selectedPaths = new Set<string>();
   let lastClickedPath: string | null = null;
+  let activePath: string | null = null;
 
   function clearSelection(): void {
     selectedPaths.clear();
@@ -127,12 +185,23 @@ async function createFileTree(
     el.classList.remove('ft-selected');
   }
 
+  // Item je "viditelný" pokud má layout (žádný předek nemá display:none).
+  // offsetParent === null jasně signalizuje neviditelnost.
   function getAllVisibleItems(): HTMLElement[] {
-    return Array.from(treeContainer.querySelectorAll('.file-tree-item:not([style*="display: none"])')) as HTMLElement[];
+    return Array.from(treeContainer.querySelectorAll<HTMLElement>('.file-tree-item'))
+      .filter(el => el.offsetParent !== null);
   }
 
-  function getSelectedPathsText(): string {
-    return Array.from(selectedPaths).map(p => `"${p}"`).join(' ');
+  // Po re-renderu obnov vizuální stav (třídy) — Set přežívá, DOM ne.
+  function restoreSelectionVisual(): void {
+    for (const p of selectedPaths) {
+      const el = treeContainer.querySelector<HTMLElement>(`.file-tree-item[data-path="${CSS.escape(p)}"]`);
+      if (el) el.classList.add('ft-selected');
+    }
+    if (activePath) {
+      const el = treeContainer.querySelector<HTMLElement>(`.file-tree-item[data-path="${CSS.escape(activePath)}"]`);
+      if (el) el.classList.add('ft-active');
+    }
   }
 
   function getFileIcon(node: FileTreeNode): { svg: string; cls: string } {
@@ -153,8 +222,16 @@ async function createFileTree(
   const gitStatusMap = new Map<string, string>();
   const gitDirtyDirs = new Set<string>();
 
+  // Case-insensitive path prefix match (Windows má case-insensitive filesystem,
+  // git i Node vrací různý casing disk letter → bez toho badge nechytí).
   function pathToRel(fullPath: string): string {
-    return fullPath.replace(rootPath, '').replace(/^[\\\/]+/, '').replace(/\\/g, '/');
+    const lowerFull = fullPath.toLowerCase();
+    const lowerRoot = rootPath.toLowerCase();
+    let sliced = fullPath;
+    if (lowerFull.startsWith(lowerRoot)) {
+      sliced = fullPath.slice(rootPath.length);
+    }
+    return sliced.replace(/^[\\\/]+/, '').replace(/\\/g, '/');
   }
 
   async function loadGitStatus(): Promise<void> {
@@ -164,7 +241,7 @@ async function createFileTree(
       const status: any = await (window as any).levis.gitStatus(rootPath);
       if (!status || status.error) return;
       const addEntry = (filePath: string, code: string) => {
-        const rel = filePath.replace(/\\/g, '/');
+        const rel = filePath.replace(/\\/g, '/').toLowerCase();
         gitStatusMap.set(rel, code);
         let dir = rel;
         while (dir.includes('/')) {
@@ -182,7 +259,7 @@ async function createFileTree(
   }
 
   function getGitBadge(node: FileTreeNode): string {
-    const rel = pathToRel(node.path);
+    const rel = pathToRel(node.path).toLowerCase();
     if (node.isDirectory) {
       return gitDirtyDirs.has(rel) ? '<span class="ft-git-dot"></span>' : '';
     }
@@ -195,12 +272,13 @@ async function createFileTree(
     else if (code === 'D') { cls = 'ft-git ft-git-deleted'; label = 'D'; }
     else if (code === '?') { cls = 'ft-git ft-git-untracked'; label = 'U'; }
     else if (code === 'R') { cls = 'ft-git ft-git-renamed'; label = 'R'; }
-    return `<span class="${cls}">${label}</span>`;
+    return `<span class="${cls}">${ftEscape(label)}</span>`;
   }
 
   async function loadChildren(node: FileTreeNode): Promise<void> {
     if (!node.isDirectory || node.loaded) return;
-    const entries = await levis.readDir(node.path);
+    const raw = await levis.readDir(node.path);
+    const entries = Array.isArray(raw) ? raw : [];
     node.children = entries.map((e: any) => ({
       name: e.name,
       path: e.path,
@@ -229,10 +307,11 @@ async function createFileTree(
       ? `<span class="ft-chevron">${I(node.expanded ? 'chevron-down' : 'chevron-right', { size: 12 })}</span>`
       : '<span class="ft-chevron-spacer"></span>';
 
+    // node.name jde přes ftEscape — jinak soubor se jménem "<img onerror=...>" rozbije DOM.
     el.innerHTML = `
       ${chevron}
       <span class="ft-icon ${fileIcon.cls}">${fileIcon.svg}</span>
-      <span class="ft-name">${node.name}</span>
+      <span class="ft-name">${ftEscape(node.name)}</span>
       ${gitBadge}
     `;
 
@@ -259,7 +338,6 @@ async function createFileTree(
         const ic = getFileIcon(node);
         const iconEl = el.querySelector('.ft-icon');
         if (iconEl) { iconEl.innerHTML = ic.svg; iconEl.className = 'ft-icon ' + ic.cls; }
-        // Dispatch pro status bar info
         wrapper.dispatchEvent(new CustomEvent('file-selected', { detail: { path: node.path, isDirectory: true }, bubbles: true }));
       });
 
@@ -285,11 +363,9 @@ async function createFileTree(
       el.addEventListener('click', (e: MouseEvent) => {
         e.stopPropagation();
         if (e.ctrlKey || e.metaKey) {
-          // Toggle select
           if (selectedPaths.has(node.path)) deselectItem(node.path, el);
           else selectItem(node.path, el);
         } else if (e.shiftKey && lastClickedPath) {
-          // Range select
           const items = getAllVisibleItems();
           const fromIdx = items.findIndex(i => i.dataset.path === lastClickedPath);
           const toIdx = items.findIndex(i => i.dataset.path === node.path);
@@ -304,11 +380,11 @@ async function createFileTree(
           clearSelection();
           treeContainer.querySelectorAll('.ft-active').forEach(n => n.classList.remove('ft-active'));
           el.classList.add('ft-active');
+          activePath = node.path;
           selectItem(node.path, el);
           onFileOpen(node.path);
         }
         lastClickedPath = node.path;
-        // Dispatch file-info event pro status bar
         wrapper.dispatchEvent(new CustomEvent('file-selected', { detail: { path: node.path, isDirectory: false }, bubbles: true }));
       });
       el.addEventListener('contextmenu', (e: MouseEvent) => {
@@ -320,88 +396,209 @@ async function createFileTree(
     }
   }
 
-  function showFileContextMenu(x: number, y: number, node: FileTreeNode): void {
+  // Inline rename input (soubor i složka)
+  function startRename(node: FileTreeNode): void {
+    const itemEl = treeContainer.querySelector(`.file-tree-item[data-path="${CSS.escape(node.path)}"]`);
+    if (!itemEl) return;
+    const nameEl = itemEl.querySelector('.ft-name') as HTMLElement;
+    if (!nameEl) return;
+    const oldName = node.name;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = oldName;
+    input.className = 'ft-rename-input';
+    nameEl.textContent = '';
+    nameEl.appendChild(input);
+    input.focus();
+    // Výchozí: vybrat jen basename bez přípony
+    const dot = oldName.lastIndexOf('.');
+    if (dot > 0 && !node.isDirectory) input.setSelectionRange(0, dot);
+    else input.select();
+    let done = false;
+    const finish = async (commit: boolean) => {
+      if (done) return;
+      done = true;
+      const newName = input.value.trim();
+      if (!commit || !newName || newName === oldName) {
+        nameEl.textContent = oldName;
+        return;
+      }
+      const res = await levis.renamePath(node.path, newName);
+      if (res && res.error) {
+        ftToast(t('ft.renameFailed', { err: res.error }), 'error');
+        nameEl.textContent = oldName;
+        return;
+      }
+      // Update selection set — starý path už neexistuje
+      if (selectedPaths.has(node.path)) {
+        selectedPaths.delete(node.path);
+        if (res && res.path) selectedPaths.add(res.path);
+      }
+      if (activePath === node.path && res && res.path) activePath = res.path;
+      await renderTree();
+    };
+    input.addEventListener('blur', () => finish(true));
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+      if (e.key === 'Escape') { e.preventDefault(); done = true; nameEl.textContent = oldName; }
+    });
+  }
+
+  // Inline input pro New File / New Folder
+  function startCreate(parentPath: string, kind: 'file' | 'folder'): void {
+    // Cílový kontejner
+    let host: HTMLElement | null = null;
+    let depth = 0;
+    if (parentPath === rootPath) {
+      host = treeContainer;
+      depth = 0;
+    } else {
+      const parentItem = treeContainer.querySelector<HTMLElement>(`.ft-dir[data-path="${CSS.escape(parentPath)}"]`);
+      if (!parentItem) return;
+      const childrenEl = parentItem.parentElement?.querySelector<HTMLElement>('.ft-children') ?? null;
+      if (!childrenEl) return;
+      if (childrenEl.style.display === 'none') parentItem.click(); // rozbalí
+      host = childrenEl;
+      const padding = parseInt(parentItem.style.paddingLeft || '8', 10);
+      depth = Math.max(0, Math.round((padding - 8) / 18)) + 1;
+    }
+    if (!host) return;
+
+    const row = document.createElement('div');
+    row.className = 'file-tree-item ft-create-row';
+    row.style.paddingLeft = `${8 + depth * 18}px`;
+    const iconSvg = kind === 'folder' ? I('folder', { size: 16 }) : I('file', { size: 16 });
+    row.innerHTML = `<span class="ft-chevron-spacer"></span><span class="ft-icon">${iconSvg}</span>`;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'ft-rename-input';
+    input.placeholder = t(kind === 'folder' ? 'ft.newFolderPlaceholder' : 'ft.newFilePlaceholder');
+    row.appendChild(input);
+    host.insertBefore(row, host.firstChild);
+    input.focus();
+
+    let done = false;
+    const finish = async (commit: boolean) => {
+      if (done) return;
+      done = true;
+      const name = input.value.trim();
+      row.remove();
+      if (!commit || !name) return;
+      if (name.includes('/') || name.includes('\\') || name.includes('..')) {
+        ftToast(t('ft.invalidName'), 'error');
+        return;
+      }
+      const sep = parentPath.includes('\\') || /^[A-Za-z]:/.test(parentPath) ? '\\' : '/';
+      const targetPath = parentPath.replace(/[\\/]+$/, '') + sep + name;
+      const res = kind === 'folder'
+        ? await levis.createDir(targetPath)
+        : await levis.createFile(targetPath);
+      if (res && res.error) {
+        ftToast(t('ft.createFailed', { err: res.error }), 'error');
+        return;
+      }
+      await renderTree();
+    };
+    input.addEventListener('blur', () => finish(true));
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+      if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+    });
+  }
+
+  async function doDelete(paths: string[]): Promise<void> {
+    if (paths.length === 0) return;
+    const names = paths.map(p => p.replace(/\\/g, '/').split('/').pop() || p);
+    const ok = await ftConfirm(t('ft.confirmDelete', { names: names.join(', ') }), t('ft.delete'), true);
+    if (!ok) return;
+    const errors: string[] = [];
+    for (const p of paths) {
+      const res = await levis.deletePath(p);
+      if (res && res.error) errors.push(`${names.find(n => p.endsWith(n)) || p}: ${res.error}`);
+    }
+    if (errors.length) ftToast(t('ft.deleteFailed', { err: errors.join('; ') }), 'error');
+    else if (paths.length > 1) ftToast(t('ft.deletedCount', { n: String(paths.length) }), 'success');
+    // Vyčistit selection pro smazané cesty
+    for (const p of paths) selectedPaths.delete(p);
+    if (activePath && paths.includes(activePath)) activePath = null;
+    await renderTree();
+  }
+
+  function showFileContextMenu(x: number, y: number, node: FileTreeNode | null): void {
     document.querySelectorAll('.ft-context-menu').forEach(m => m.remove());
     const menu = document.createElement('div');
     menu.className = 'ft-context-menu';
     const hasMultiSelect = selectedPaths.size > 1;
-    menu.innerHTML = `
-      <div class="tcm-item" data-act="rename">${I('editor', { size: 13 })} ${t('hub.tcm.rename')}</div>
-      <div class="tcm-item" data-act="copyPath">${I('file', { size: 13 })} ${t('hub.tcm.copyPath')}</div>
-      <div class="tcm-item" data-act="explorer">${I('folder', { size: 13 })} ${t('hub.tcm.explorer')}</div>
-      <div class="tcm-sep"></div>
-      <div class="tcm-item" data-act="sendToCC">${I('terminal', { size: 13 })} ${t('ft.sendToCC')}${hasMultiSelect ? ` (${selectedPaths.size})` : ''}</div>
-      <div class="tcm-sep"></div>
-      <div class="tcm-item tcm-danger" data-act="delete">${I('close', { size: 13 })} ${t('hub.tcm.delete')}</div>
-    `;
+    const rootClick = !node;
+    const parentForNew = rootClick ? rootPath : (node.isDirectory ? node.path : rootPath);
+
+    if (rootClick) {
+      // Menu v prázdném prostoru — jen create akce
+      menu.innerHTML = `
+        <div class="tcm-item" data-act="newFile">${I('file', { size: 13 })} ${ftEscape(t('ft.newFile'))}</div>
+        <div class="tcm-item" data-act="newFolder">${I('folder', { size: 13 })} ${ftEscape(t('ft.newFolder'))}</div>
+      `;
+    } else {
+      menu.innerHTML = `
+        ${node.isDirectory ? `
+          <div class="tcm-item" data-act="newFile">${I('file', { size: 13 })} ${ftEscape(t('ft.newFile'))}</div>
+          <div class="tcm-item" data-act="newFolder">${I('folder', { size: 13 })} ${ftEscape(t('ft.newFolder'))}</div>
+          <div class="tcm-sep"></div>
+        ` : ''}
+        <div class="tcm-item" data-act="rename">${I('editor', { size: 13 })} ${ftEscape(t('hub.tcm.rename'))}</div>
+        <div class="tcm-item" data-act="copyPath">${I('file', { size: 13 })} ${ftEscape(t('hub.tcm.copyPath'))}</div>
+        <div class="tcm-item" data-act="explorer">${I('folder', { size: 13 })} ${ftEscape(t('hub.tcm.explorer'))}</div>
+        <div class="tcm-sep"></div>
+        <div class="tcm-item" data-act="sendToCC">${I('terminal', { size: 13 })} ${ftEscape(t('ft.sendToCC'))}${hasMultiSelect ? ` (${selectedPaths.size})` : ''}</div>
+        <div class="tcm-sep"></div>
+        <div class="tcm-item tcm-danger" data-act="delete">${I('close', { size: 13 })} ${ftEscape(t('hub.tcm.delete'))}</div>
+      `;
+    }
+
     menu.style.left = `${x}px`;
     menu.style.top = `${y}px`;
     document.body.appendChild(menu);
     const r = menu.getBoundingClientRect();
     if (r.right > window.innerWidth) menu.style.left = `${window.innerWidth - r.width - 8}px`;
     if (r.bottom > window.innerHeight) menu.style.top = `${window.innerHeight - r.height - 8}px`;
+
+    const closeMenu = () => {
+      document.removeEventListener('click', onOutsideClick);
+      menu.remove();
+    };
+    const onOutsideClick = (ev: MouseEvent) => {
+      if (!menu.contains(ev.target as Node)) closeMenu();
+    };
+
     menu.querySelectorAll('.tcm-item').forEach(item => {
-      item.addEventListener('click', async () => {
+      item.addEventListener('click', async (ev) => {
+        ev.stopPropagation();
         const act = (item as HTMLElement).dataset.act;
-        menu.remove();
-        if (act === 'rename') {
-          // Inline rename — najdi element v tree a nahraď text inputem
-          const itemEl = treeContainer.querySelector(`[data-path="${CSS.escape(node.path)}"]`);
-          if (!itemEl) return;
-          const nameEl = itemEl.querySelector('.ft-name') as HTMLElement;
-          if (!nameEl) return;
-          const oldName = node.name;
-          const input = document.createElement('input');
-          input.type = 'text';
-          input.value = oldName;
-          input.className = 'ft-rename-input';
-          input.style.cssText = 'background:var(--bg-deep);border:1px solid var(--accent);color:var(--text);padding:1px 4px;font-size:12px;border-radius:3px;width:100%;outline:none;';
-          nameEl.textContent = '';
-          nameEl.appendChild(input);
-          input.focus();
-          input.select();
-          const finish = async () => {
-            const newName = input.value.trim();
-            if (newName && newName !== oldName) {
-              try {
-                await levis.renameProject(node.path, newName);
-                await renderTree();
-              } catch { nameEl.textContent = oldName; }
-            } else {
-              nameEl.textContent = oldName;
-            }
-          };
-          input.addEventListener('blur', finish);
-          input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
-            if (e.key === 'Escape') { input.value = oldName; input.blur(); }
-          });
-        } else if (act === 'copyPath') {
+        closeMenu();
+        if (act === 'newFile') {
+          startCreate(parentForNew, 'file');
+        } else if (act === 'newFolder') {
+          startCreate(parentForNew, 'folder');
+        } else if (act === 'rename' && node) {
+          startRename(node);
+        } else if (act === 'copyPath' && node) {
           const paths = selectedPaths.size > 1 ? Array.from(selectedPaths).join('\n') : node.path;
           levis.clipboardWrite(paths);
-        } else if (act === 'explorer') {
-          levis.shellOpenPath(node.isDirectory ? node.path : node.path.substring(0, Math.max(node.path.lastIndexOf('\\'), node.path.lastIndexOf('/'))));
-        } else if (act === 'sendToCC') {
+        } else if (act === 'explorer' && node) {
+          const target = node.isDirectory ? node.path : node.path.substring(0, Math.max(node.path.lastIndexOf('\\'), node.path.lastIndexOf('/')));
+          levis.shellOpenPath(target);
+        } else if (act === 'sendToCC' && node) {
           const paths = selectedPaths.size > 1 ? Array.from(selectedPaths) : [node.path];
           const text = paths.map(p => `"${p}"`).join(' ');
           wrapper.dispatchEvent(new CustomEvent('send-to-pty', { detail: text, bubbles: true }));
-        } else if (act === 'delete') {
+        } else if (act === 'delete' && node) {
           const paths = selectedPaths.size > 1 ? Array.from(selectedPaths) : [node.path];
-          const names = paths.map(p => p.replace(/\\/g, '/').split('/').pop() || p);
-          if (!confirm(t('ft.confirmDelete', { names: names.join(', ') }))) return;
-          for (const p of paths) {
-            try { await levis.deleteFile(p); } catch {}
-          }
-          await renderTree();
+          await doDelete(paths);
         }
       });
     });
-    setTimeout(() => {
-      const close = (ev: MouseEvent) => {
-        if (!menu.contains(ev.target as Node)) { menu.remove(); document.removeEventListener('click', close); }
-      };
-      document.addEventListener('click', close);
-    }, 0);
+
+    setTimeout(() => document.addEventListener('click', onOutsideClick), 0);
   }
 
   function applyGitBadges(): void {
@@ -410,7 +607,8 @@ async function createFileTree(
       if (!path) return;
       const isDir = el.classList.contains('ft-dir');
       const node: any = { path, isDirectory: isDir, expanded: false };
-      el.querySelectorAll('.ft-git, .ft-git-dot').forEach(b => b.remove());
+      // Mažeme jen přímé děti (scope) — zabrání zásahu do children trees
+      el.querySelectorAll(':scope > .ft-git, :scope > .ft-git-dot').forEach(b => b.remove());
       const badge = getGitBadge(node);
       if (badge) {
         const tmp = document.createElement('div');
@@ -428,7 +626,6 @@ async function createFileTree(
     treeContainer.querySelectorAll('.ft-dir').forEach(el => {
       const path = (el as HTMLElement).dataset.path;
       if (!path) return;
-      // .ft-dir je .file-tree-item uvnitř .ft-node, .ft-children je sibling
       const parent = el.parentElement; // .ft-node
       const children = parent?.querySelector('.ft-children') as HTMLElement;
       if (children && children.style.display !== 'none') {
@@ -448,10 +645,10 @@ async function createFileTree(
   }
 
   async function renderTree(): Promise<void> {
-    // Ulož stav před renderem
     collectExpandedPaths();
     treeContainer.innerHTML = '';
-    const entries = await levis.readDir(rootPath);
+    const raw = await levis.readDir(rootPath);
+    const entries = Array.isArray(raw) ? raw : [];
     const rootNodes: FileTreeNode[] = entries.map((e: any) => ({
       name: e.name,
       path: e.path,
@@ -460,16 +657,15 @@ async function createFileTree(
       expanded: false,
       loaded: false,
     }));
-    // Sort: dirs first, then alpha
     rootNodes.sort((a, b) => {
       if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1;
       return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
     });
-    // Obnov expandované složky
     if (expandedPaths.size > 0) await restoreExpanded(rootNodes);
     for (const node of rootNodes) {
       treeContainer.appendChild(renderNode(node, 0));
     }
+    restoreSelectionVisual();
     loadGitStatus().then(applyGitBadges).catch(() => {});
   }
 
@@ -485,20 +681,36 @@ async function createFileTree(
     } else if (e.key === 'Delete') {
       e.preventDefault();
       if (selectedPaths.size === 0) return;
-      const paths = Array.from(selectedPaths);
-      const names = paths.map(p => p.replace(/\\/g, '/').split('/').pop() || p);
-      if (!confirm(t('ft.confirmDelete', { names: names.join(', ') }))) return;
-      for (const p of paths) {
-        try { await levis.deleteFile(p); } catch {}
-      }
-      clearSelection();
-      await renderTree();
+      await doDelete(Array.from(selectedPaths));
+    } else if (e.key === 'F2') {
+      e.preventDefault();
+      const target = activePath || (selectedPaths.size === 1 ? Array.from(selectedPaths)[0] : null);
+      if (!target) return;
+      // Najdi node — stačí base info z DOM
+      const el = treeContainer.querySelector<HTMLElement>(`.file-tree-item[data-path="${CSS.escape(target)}"]`);
+      if (!el) return;
+      const name = el.querySelector('.ft-name')?.textContent || '';
+      const isDir = el.classList.contains('ft-dir');
+      startRename({ name, path: target, isDirectory: isDir });
     }
+  });
+
+  // Pravý klik v prázdném prostoru treeu → menu s New File/Folder do rootu
+  treeContainer.addEventListener('contextmenu', (e: MouseEvent) => {
+    const hit = (e.target as HTMLElement).closest('.file-tree-item');
+    if (hit) return; // řeší item handler
+    e.preventDefault();
+    showFileContextMenu(e.clientX, e.clientY, null);
   });
 
   // ── Header actions ──
   header.querySelector('.file-tree-refresh')!.addEventListener('click', renderTree);
-
+  header.querySelector('.file-tree-new')!.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const btn = e.currentTarget as HTMLElement;
+    const r = btn.getBoundingClientRect();
+    showFileContextMenu(r.left, r.bottom + 4, null);
+  });
   header.querySelector('.file-tree-collapse-all')!.addEventListener('click', () => {
     treeContainer.querySelectorAll('.ft-children').forEach((c) => {
       (c as HTMLElement).style.display = 'none';
@@ -514,8 +726,9 @@ async function createFileTree(
 
   await renderTree();
 
-  // Auto-refresh git status
+  // Auto-refresh git status — jen když je tree skutečně vidět (šetří IPC + CPU).
   const gitPoll = setInterval(() => {
+    if (wrapper.offsetParent === null) return;
     loadGitStatus().then(applyGitBadges).catch(() => {});
   }, 6000);
 

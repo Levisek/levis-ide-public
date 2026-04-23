@@ -150,6 +150,16 @@ async function initTerminalPanel(host: HTMLElement, payload: any): Promise<void>
 
     term.attachCustomKeyEventHandler((e: KeyboardEvent) => {
       if (e.type !== 'keydown') return true;
+      // Globální app shortcuts — v popout okně je document listener jiný,
+      // ale aspoň pustíme Ctrl+Tab do document pro případ, že přidáme window-level routing.
+      const isMod = e.ctrlKey || e.metaKey;
+      if (isMod && e.key === 'Tab') return false;
+      if (isMod && e.shiftKey) {
+        const k = e.key.toUpperCase();
+        if (k === 'P' || k === 'O' || k === 'F' || k === 'T' || k === 'R' || k === 'W') return false;
+        if (e.code === 'Comma') return false;
+      }
+      if (e.key === 'F1') return false;
       if ((e.ctrlKey || e.metaKey) && (e.key === 'v' || e.key === 'V')) {
         panelApi.clipboardRead().then((text: string) => {
           if (text) panelApi.writePty(ptyId, text);

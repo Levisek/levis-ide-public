@@ -167,12 +167,20 @@ export function registerFsHandlers(mainWindow: BrowserWindow): void {
     return files;
   });
 
+  // Skrýváme jen to, co uživatel nikdy nechce vidět v IDE:
+  // - node_modules (velké, generované)
+  // - .git (interní git metadata)
+  // - .DS_Store / Thumbs.db (OS junk)
+  // - .levis-tmp (naše tmp)
+  // Dotfiles jako .env, .gitignore, .prettierrc atd. zůstávají viditelné.
+  const HIDDEN_ENTRIES = new Set(['node_modules', '.git', '.DS_Store', 'Thumbs.db', '.levis-tmp']);
+
   ipcMain.handle('fs:readDir', async (_event, dirPath: string) => {
-    if (!isPathAllowed(dirPath)) return { error: 'Path not allowed' };
+    if (!isPathAllowed(dirPath)) return [];
     try {
       const entries = fs.readdirSync(dirPath, { withFileTypes: true });
       return entries
-        .filter(e => !e.name.startsWith('.') && e.name !== 'node_modules')
+        .filter(e => !HIDDEN_ENTRIES.has(e.name))
         .map(e => ({
           name: e.name,
           path: path.join(dirPath, e.name),
@@ -182,7 +190,7 @@ export function registerFsHandlers(mainWindow: BrowserWindow): void {
           if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1;
           return a.name.localeCompare(b.name);
         });
-    } catch (err) {
+    } catch {
       return [];
     }
   });
@@ -310,6 +318,58 @@ export function registerFsHandlers(mainWindow: BrowserWindow): void {
       if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
         fs.unlinkSync(filePath);
       }
+      return { success: true };
+    } catch (err) {
+      return { error: String(err) };
+    }
+  });
+
+  // Mazání libovolné cesty (soubor i složka). Bezpečnostní kontroly:
+  // - isPathAllowed (safe-path)
+  // - minimální délka (netrefit drive root / allowed root)
+  // - symlinky neprocházíme (fs.rmSync s force řeší bezpečně)
+  ipcMain.handle('fs:deletePath', async (_event, targetPath: string) => {
+    if (!isPathAllowed(targetPath)) return { error: 'Path not allowed' };
+    if (!targetPath || targetPath.length < 6) return { error: 'Path too short' };
+    try {
+      if (!fs.existsSync(targetPath)) return { success: true };
+      const st = fs.lstatSync(targetPath);
+      if (st.isDirectory()) {
+        fs.rmSync(targetPath, { recursive: true, force: true });
+      } else {
+        fs.unlinkSync(targetPath);
+      }
+      return { success: true };
+    } catch (err) {
+      return { error: String(err) };
+    }
+  });
+
+  // Generický rename (soubor i složka). Na rozdíl od fs:renameProject
+  // nepředpokládá že jde o projekt — používá se z file tree.
+  ipcMain.handle('fs:renamePath', async (_event, oldPath: string, newName: string) => {
+    if (!isPathAllowed(oldPath)) return { error: 'Path not allowed' };
+    if (!newName || newName.includes('/') || newName.includes('\\') || newName.includes('..')) {
+      return { error: 'Invalid name' };
+    }
+    try {
+      const parent = path.dirname(oldPath);
+      const newPath = path.join(parent, newName);
+      if (!isPathAllowed(newPath)) return { error: 'Target path not allowed' };
+      if (fs.existsSync(newPath)) return { error: 'Target already exists' };
+      fs.renameSync(oldPath, newPath);
+      return { success: true, path: newPath };
+    } catch (err) {
+      return { error: String(err) };
+    }
+  });
+
+  // Vytvoření prázdného souboru. Složky má fs:createDir.
+  ipcMain.handle('fs:createFile', async (_event, filePath: string) => {
+    if (!isPathAllowed(filePath)) return { error: 'Path not allowed' };
+    try {
+      if (fs.existsSync(filePath)) return { error: 'Already exists' };
+      fs.writeFileSync(filePath, '', 'utf-8');
       return { success: true };
     } catch (err) {
       return { error: String(err) };

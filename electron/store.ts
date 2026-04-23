@@ -79,7 +79,7 @@ export const store = new Store<StoreSchema>({
     ccInstallOffered: false,
     ccLoginOffered: false,
     autostartDev: true,
-    locale: 'cs',
+    locale: 'en',
     monitorDiagonal: 24,
     projectGroups: {},
     projectOrder: [],

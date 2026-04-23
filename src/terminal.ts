@@ -158,6 +158,16 @@ async function createTerminal(
   // ktery by mohl vest k duplikatu).
   term.attachCustomKeyEventHandler((e: KeyboardEvent) => {
     if (e.type !== 'keydown') return true;
+    // Globální app shortcuts — nech projít do document keydown listeneru.
+    // Bez toho xterm eventy konzumuje a Ctrl+Tab a spol. nefungují z fokusu v terminálu.
+    const isMod = e.ctrlKey || e.metaKey;
+    if (isMod && e.key === 'Tab') return false;
+    if (isMod && e.shiftKey) {
+      const k = e.key.toUpperCase();
+      if (k === 'P' || k === 'O' || k === 'F' || k === 'T' || k === 'R' || k === 'W') return false;
+      if (e.code === 'Comma') return false;
+    }
+    if (e.key === 'F1') return false;
     if ((e.ctrlKey || e.metaKey) && (e.key === 'v' || e.key === 'V')) {
       e.preventDefault();
       e.stopPropagation();

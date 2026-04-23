@@ -215,6 +215,24 @@ app.whenReady().then(() => {
     },
   ]));
 
+  // Webview ani jiná webContents (než mainWindow) neprotahují keyboard eventy
+  // do parent rendereru. Proto globálně chytáme Ctrl+Tab / Ctrl+Shift+Tab tady
+  // a posíláme do mainWindow jako app event tab:cycle. Bez toho Ctrl+Tab
+  // nefunguje když má fokus browser panel nebo popout webview.
+  app.on('web-contents-created', (_event, wc) => {
+    wc.on('before-input-event', (e, input) => {
+      if (input.type !== 'keyDown') return;
+      if (input.key !== 'Tab') return;
+      if (!input.control && !input.meta) return;
+      e.preventDefault();
+      try {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('tab:cycle', { backward: !!input.shift });
+        }
+      } catch {}
+    });
+  });
+
   createWindow();
   log.info('LevisIDE started, version', app.getVersion());
 });

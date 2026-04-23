@@ -460,9 +460,39 @@ async function init(): Promise<void> {
     }, 150);
   });
 
+  // Vystav cycle projectu na window — xterm i Monaco ho musí umět zavolat
+  // (oba mají vlastní event capture a nedoručí keydown do document listeneru).
+  (window as any).cycleProjectTab = (backward: boolean) => {
+    if (tabs.length < 2) return;
+    const idx = tabs.findIndex(t => t.id === activeTabId);
+    const next = backward
+      ? (idx - 1 + tabs.length) % tabs.length
+      : (idx + 1) % tabs.length;
+    switchTab(tabs[next].id);
+  };
+  (window as any).closeActiveTab = () => {
+    if (activeTabId !== 'hub') closeTab(activeTabId);
+  };
+
+  // Tab cycle z main procesu — pokryje případy, kdy má fokus webview
+  // (browser panel) nebo popout webContents; jejich keydown nikdy nedoletí
+  // k document listeneru v renderer.
+  levis.onTabCycle?.((data: { backward: boolean }) => {
+    (window as any).cycleProjectTab(!!data.backward);
+  });
+
   // ── Native keyboard shortcuts (NO hotkeys-js — no Ctrl+C/V conflict) ──
   document.addEventListener('keydown', (e: KeyboardEvent) => {
-    // Don't intercept anything inside terminal, editor, or inputs
+    // Global shortcuts — fungují všude, i při fokusu v terminálu/editoru/inputu.
+    // Řeší se PŘED early-return guardy, protože xterm/Monaco jinak eventy konzumují
+    // a zbývá jen cesta přes jejich vlastní key handlery, které je zpětně propouští sem.
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Tab') {
+      e.preventDefault();
+      (window as any).cycleProjectTab(e.shiftKey);
+      return;
+    }
+
+    // Don't intercept anything inside terminal, editor, or inputs (pro ostatní shortcuts)
     const el = e.target as HTMLElement;
     if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') return;
     if (el.closest('.xterm')) return;
@@ -500,16 +530,7 @@ async function init(): Promise<void> {
       e.preventDefault();
       levis.hardReload();
     }
-    // Ctrl+Tab / Ctrl+Shift+Tab — cyklovat mezi taby
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Tab') {
-      e.preventDefault();
-      if (tabs.length < 2) return;
-      const idx = tabs.findIndex(t => t.id === activeTabId);
-      const next = e.shiftKey
-        ? (idx - 1 + tabs.length) % tabs.length
-        : (idx + 1) % tabs.length;
-      switchTab(tabs[next].id);
-    }
+    // Ctrl+Tab / Ctrl+Shift+Tab — řešeno nahoře jako global shortcut
     // Ctrl+Shift+W — close tab
     if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'W') {
       e.preventDefault();

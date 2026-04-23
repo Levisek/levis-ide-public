@@ -158,6 +158,29 @@
 }
 .terminal-container { flex: 1; padding: 2px; overflow: hidden; min-height: 0; }
 
+/* Override xterm.css defaultů.
+   xterm.css dává .xterm-viewport tvrdě black (#000) background + overflow-y: scroll,
+   což znamená že vpravo je vždy černý pruh (scrollbar track s jiným pozadím
+   než zbytek terminálu --term-bg = #15161c). Výsledný dojem: "terminál
+   nezabírá plnou šířku, vpravo je mezera".
+   Řešení: průhledný track (ukazuje náš --term-bg) + auto overflow. */
+.xterm .xterm-viewport {
+  background-color: transparent !important;
+  overflow-y: auto !important;
+}
+.xterm .xterm-viewport::-webkit-scrollbar-track { background: transparent; }
+.xterm .xterm-viewport::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-pill, 8px);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+.xterm .xterm-viewport::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.22);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+
 .term-search-bar {
   position: relative; z-index: 10; flex-shrink: 0;
   padding: var(--space-2) var(--space-3); background: var(--bg-elev-2);
@@ -837,6 +860,46 @@
   transition: background var(--t-fast) var(--ease);
 }
 .ft-context-menu .tcm-item:hover { background: var(--bg-elev-3); color: var(--accent); }
+
+/* ── File tree: inline rename + create inputs ── */
+.ft-rename-input {
+  background: var(--bg-deep);
+  border: 1px solid var(--accent);
+  color: var(--text);
+  padding: 1px 4px;
+  font-size: 12px;
+  border-radius: var(--radius-xs);
+  width: 100%;
+  outline: none;
+}
+.ft-create-row { opacity: 0.95; }
+.ft-create-row .ft-rename-input { flex: 1; }
+
+/* ── File tree confirm modal ── */
+.ft-modal-overlay {
+  position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 10050;
+}
+.ft-modal {
+  background: var(--bg-elev-2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px; min-width: 360px; max-width: 520px;
+  box-shadow: var(--shadow-lg); font-size: 13px; color: var(--text);
+}
+.ft-modal-msg { margin-bottom: 16px; line-height: 1.4; word-break: break-word; }
+.ft-modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.ft-modal-btn {
+  background: var(--bg-elev-3); color: var(--text);
+  border: 1px solid var(--border);
+  padding: 6px 14px; border-radius: var(--radius-xs);
+  cursor: pointer; font-size: 12px;
+  transition: background var(--t-fast) var(--ease), filter var(--t-fast) var(--ease);
+}
+.ft-modal-btn:hover { background: var(--bg-elev-4, var(--bg-elev-3)); }
+.ft-modal-btn-primary { background: var(--accent); color: var(--bg-deep); border-color: var(--accent); }
+.ft-modal-btn-primary:hover { filter: brightness(1.1); }
+.ft-modal-btn-danger { background: var(--danger, #e05151); color: #fff; border-color: var(--danger, #e05151); }
+.ft-modal-btn-danger:hover { filter: brightness(1.1); }
 
 /* ── Terminal context menu ── */
 .term-context-menu {

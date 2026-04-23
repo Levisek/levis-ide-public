@@ -91,6 +91,18 @@ const EN: Dict = {
   'ws.files':            'Files',
   'ft.sendToCC':         'Send to CC',
   'ft.confirmDelete':    'Delete {names}?',
+  'ft.delete':           'Delete',
+  'ft.cancel':           'Cancel',
+  'ft.newFile':          'New file',
+  'ft.newFolder':        'New folder',
+  'ft.newFilePlaceholder':   'filename.ext',
+  'ft.newFolderPlaceholder': 'folder name',
+  'ft.invalidName':      'Invalid name',
+  'ft.renameFailed':     'Rename failed: {err}',
+  'ft.deleteFailed':     'Delete failed: {err}',
+  'ft.createFailed':     'Create failed: {err}',
+  'ft.deletedCount':     'Deleted {n} items',
+  'ft.newItem':          'New...',
   'ws.newFile':          'New file',
   'ws.newFolder':        'New folder',
   'ws.newFileName':      'File name:',
@@ -827,6 +839,18 @@ const CS: Dict = {
   'ws.files':            'Soubory',
   'ft.sendToCC':         'Poslat do CC',
   'ft.confirmDelete':    'Smazat {names}?',
+  'ft.delete':           'Smazat',
+  'ft.cancel':           'Zrušit',
+  'ft.newFile':          'Nový soubor',
+  'ft.newFolder':        'Nová složka',
+  'ft.newFilePlaceholder':   'nazev.pripona',
+  'ft.newFolderPlaceholder': 'název složky',
+  'ft.invalidName':      'Neplatný název',
+  'ft.renameFailed':     'Přejmenování selhalo: {err}',
+  'ft.deleteFailed':     'Mazání selhalo: {err}',
+  'ft.createFailed':     'Vytvoření selhalo: {err}',
+  'ft.deletedCount':     'Smazáno {n} položek',
+  'ft.newItem':          'Nový...',
   'ws.newFile':          'Nový soubor',
   'ws.newFolder':        'Nová složka',
   'ws.newFileName':      'Název souboru:',
@@ -1484,7 +1508,7 @@ const CS: Dict = {
 
 const DICTS: Record<Locale, Dict> = { en: EN, cs: CS };
 
-let currentLocale: Locale = 'cs';
+let currentLocale: Locale = 'en';
 
 function t(key: string, params?: Record<string, string | number>): string {
   const dict = DICTS[currentLocale] || EN;

@@ -200,6 +200,7 @@ Kompilace: `npx tsc` — output do `dist/`
 ### UX drobnosti
 - **Vyvolání updatu v nastavení** — tlačítko v Settings dialogu (Hub → ozubené kolo), využít existující `checkForUpdatesManually` z `src/updater.ts`. Teď nejde spustit check manuálně, jen autostart při startu aplikace.
 - **Bilingual changelog** — About dialog zobrazuje `dist/changelog.json` summary z commit messages (česky). V aj verzi fallback na odkaz na GitHub Releases, od teď nové commity psát cs + en (marker v commit body?). Zpětně staré commity nepřepisovat.
+- **Customizace ikon v tab baru** — dnes se cyklují projektové taby přes Ctrl+Tab / Ctrl+Shift+Tab, ikony v tab baru jsou fixní (dot dle projectPrefs barvy + titulek). Chtělo by: výběr ikony per-projekt (emoji / preset z `src/icons.ts` / upload SVG), možná i per-tab variant (minimal / icon+label / label-only) volitelný v Settings. Viz taky: konvergence s `hub.ts` `projectPrefs` (dnes jen color).
 
 ### Bezpečnost zbývá
 - Cross-platform testování (macOS, Linux)
