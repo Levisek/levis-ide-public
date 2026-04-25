@@ -205,6 +205,34 @@ Kompilace: `npx tsc` — output do `dist/`
 ### Bezpečnost zbývá
 - Cross-platform testování (macOS, Linux)
 
+## TODO v1.8 — Multi-agent support (CC + Cursor + Codex + Gemini + Copilot)
+
+Cíl: udělat z LevisIDE IDE pro libovolného frontier CLI agenta, ne jen Claude Code. Frontier seznam je krátký (~5–6) → hardcoded `AgentRegistry`, žádný plugin systém netřeba.
+
+### Profily agentů
+- `src/agents/index.ts` — `AgentRegistry` se signaturami: `{ id, displayName, command, detector, promptFormatter, screenshotPathSyntax }`.
+- Profily v `src/agents/profiles/`: `claude-code.ts`, `cursor.ts`, `codex.ts`, `gemini.ts`, `copilot.ts`, ev. `aider.ts`. Každý má detector patterny (idle/working/waiting) + autodetect signaturu z prvních ~50 řádků PTY výstupu.
+- `promptFormatter(text, screenshotPath)` — CC bere relativní cestu, Cursor možná `@file`, atd. Sjednocené API pro Inspector/Lasso flow.
+
+### Refactor jádra
+- `cc-state.ts` → `agent-state.ts` — generalizace na `AgentDetector` interface, per-PTY instance.
+- `terminal.ts` — prompt fronta se ptá detektoru přiřazeného k danému PTY (ne globálního CC). Status dot a Shift+Enter line continuation zůstávají.
+- `workspace.sendToFirstTerminal()` → routing na první terminál s podporovaným agentem (ne libovolný PTY).
+- `armedReloadAfterCC` v `browser.ts` → `armedReloadAfterAgent` (stejná logika, jen názvosloví).
+
+### Per-terminál UI
+- Badge v headeru terminálu: `🤖 CC` / `🤖 Cursor` / … s dropdownem pro override autodetectu.
+- Generic shell mód = fallback když detekce selže: žádná fronta, žádný status dot, žádný Inspect binding. V UI jasně signalizovat (šedý badge `🐚 shell`).
+
+### Settings + i18n
+- Settings → "Výchozí agent" (radio) + checkboxy "Povolit X" (skryje volby těch, co user nepoužívá).
+- i18n: všechny "CC" / "Claude Code" stringy projít — `tab badge`, `pre-quit modal`, toast notifikace, status dot tooltipy. Nahradit `{agentName}` interpolací (`t('agent.done', { agent })`).
+- Inspector popover: `t('inspect.sendTo', { agent })` místo hardcoded "Odeslat do Claude Code".
+
+### Otevřené (ujasnit před implementací)
+- Autodetect z výstupu vs. explicit volba při spawn — pravděpodobně oboje (autodetect + manual override v badge).
+- Generic shell mód: defaultně ON (i terminály bez agenta jsou užitečné), nebo skrýt v Advanced settings?
+
 ## TODO v1.6 — Monetizace / licencování
 
 ### Licenční klíče (paid verze)
