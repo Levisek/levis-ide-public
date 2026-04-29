@@ -13,6 +13,7 @@ release/
 .claude/settings.local.json
 .claude/projects/
 .claude/cache/
+.claude/*.lock
 # Globálně ignorovat scripts/, ale povolit release skripty (cheat: /**/* + negace)
 /scripts/**/*
 !/scripts/pre-release-check.mjs
